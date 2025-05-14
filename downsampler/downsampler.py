@@ -577,42 +577,13 @@ def parse_backfill_window(args: dict) -> tuple[datetime | None, datetime]:
     return backfill_start, backfill_end
 
 
-def generate_fields_string_for_scheduler(
+def generate_fields_string(
     fields_aggregate_list: list[tuple[str, str]],
     interval: tuple[int, str],
     tags_list: list,
 ):
     """
-    Generates the SELECT clause for scheduler-based downsampling queries.
-
-    Args:
-        fields_aggregate_list (list[tuple[str, str]]): List of tuples containing field names and aggregation functions.
-        interval (tuple[int, str]): Tuple of interval magnitude and unit (e.g., (10, 'minutes')).
-        tags_list (list): List of tag names to include in the query.
-
-    Returns:
-        str: SQL SELECT clause string including DATE_BIN, aggregations, and tags.
-    """
-    query = f"DATE_BIN(INTERVAL '{interval[0]} {interval[1]}', time, '1970-01-01T00:00:00Z') AS _time,\n \
-    \tcount(*) AS record_count"
-
-    for field in fields_aggregate_list:
-        query += ",\n"
-        query += f'\t{field[1]}("{field[0]}") as "{field[0]}_{field[1]}"'
-
-    for tag in tags_list:
-        query += f',\n\t"{tag}"'
-
-    return query
-
-
-def generate_fields_string_for_http(
-    fields_aggregate_list: list[tuple[str, str]],
-    interval: tuple[int, str],
-    tags_list: list,
-):
-    """
-    Generates the SELECT clause for HTTP-based downsampling queries.
+    Generates the SELECT clause for downsampling.
 
     Args:
         fields_aggregate_list (list[tuple[str, str]]): List of tuples containing field names and aggregation functions.
@@ -669,94 +640,47 @@ def generate_tag_filter_clause(tag_values):
     influxql = ""
     for key, values in tag_values.items():
         if len(values) == 1:
-            # Для одного значения используем =
             influxql += f"AND\n\t\"{key}\" = '{values[0]}'\n"
         else:
-            # Для нескольких значений используем IN
             quoted_values = ", ".join(f"'{v}'" for v in values)
             influxql += f'AND\n\t"{key}" IN ({quoted_values})\n'
     return influxql
 
 
-def get_query_for_scheduler(
-    fields_list: list,
+def build_downsample_query(
+    fields_list: list[tuple[str, str]],
     measurement: str,
-    window: timedelta,
-    call_time: datetime,
-    offset: timedelta,
-    tags_list: list,
-    interval: tuple,
-    tag_values: dict,
-):
-    """
-    Generates the SQL query for scheduler-based downsampling.
-
-    Args:
-        fields_list (list): List of tuples containing field names and aggregation functions.
-        measurement (str): Name of the source measurement.
-        window (timedelta): Time window for downsampling.
-        call_time (datetime): Time of the scheduler call.
-        offset (timedelta): Offset to apply to the time window.
-        tags_list (list): List of tag names.
-        interval (tuple): Tuple of interval magnitude and unit.
-        tag_values (dict): Dictionary of tag names and their values for filtering.
-
-    Returns:
-        str: Complete SQL query for downsampling.
-    """
-    fields_clause = generate_fields_string_for_scheduler(
-        fields_list, interval, tags_list
-    )
-    tags_clause = generate_group_by_string(tags_list)
-    tag_values = generate_tag_filter_clause(tag_values)
-
-    real_now = call_time - offset
-    real_then = real_now - window
-
-    query = f"""
-        SELECT
-            {fields_clause}
-        FROM
-            {measurement}
-        WHERE
-            time > '{real_then.strftime('%Y-%m-%d %H:%M:%S')}'
-        AND
-            time < '{real_now.strftime('%Y-%m-%d %H:%M:%S')}'
-        {tag_values}
-        GROUP BY
-        {tags_clause}
-    """
-
-    return query
-
-
-def get_query_for_http(
-    fields_list: list,
-    measurement: str,
-    tags_list: list,
-    interval: tuple,
-    tag_values: dict,
+    tags_list: list[str],
+    interval: tuple[int, str],
+    tag_values: dict[str, list[str]] | None,
     start_time: datetime,
-    end_time: datetime,
-):
+    end_time: datetime
+) -> str:
     """
-    Generates the SQL query for HTTP-based downsampling.
+    Builds a downsampling SQL query for any mode (HTTP or scheduler), given explicit start/end.
 
     Args:
-        fields_list (list): List of tuples containing field names and aggregation functions.
-        measurement (str): Name of the source measurement.
-        tags_list (list): List of tag names.
-        interval (tuple): Tuple of interval magnitude and unit.
-        tag_values (dict): Dictionary of tag names and their values for filtering.
-        start_time (datetime): Start time for the query.
-        end_time (datetime): End time for the query.
+        fields_list: [(field, aggregation), ...]
+        measurement: source measurement name
+        tags_list: list of tag keys to GROUP BY
+        interval: (magnitude, unit) for DATE_BIN
+        tag_values: optional tag filters {tag: [val1, val2]}
+        start_time: UTC datetime for WHERE time > ...
+        end_time:   UTC datetime for WHERE time < ...
 
     Returns:
-        str: Complete SQL query for downsampling.
+        A complete SQL query string.
     """
-    fields_clause = generate_fields_string_for_http(fields_list, interval, tags_list)
-    tags_clause = generate_group_by_string(tags_list)
-    tag_values = generate_tag_filter_clause(tag_values)
+    # SELECT clause
+    fields_clause = generate_fields_string(fields_list, interval, tags_list)
+    # GROUP BY clause
+    group_by = generate_group_by_string(tags_list)
+    # tag filters
+    tag_filter = generate_tag_filter_clause(tag_values)
+
+    # ISO timestamps
+    start_iso = start_time.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    end_iso = end_time.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     query = f"""
         SELECT
@@ -764,14 +688,13 @@ def get_query_for_http(
         FROM
             {measurement}
         WHERE
-            time > '{start_time.strftime('%Y-%m-%d %H:%M:%S')}'
-        AND
-            time < '{end_time.strftime('%Y-%m-%d %H:%M:%S')}'
-        {tag_values}
+            time > '{start_iso}'
+        AND 
+            time < '{end_iso}'
+        {tag_filter}
         GROUP BY
-        {tags_clause}
+        {group_by}
     """
-
     return query
 
 
@@ -801,7 +724,7 @@ def write_downsampled_data(
             try:
                 for row in data:
                     if target_database:
-                        influxdb3_local.write_to(target_database, row)
+                        influxdb3_local.write_to_db(target_database, row)
                     else:
                         influxdb3_local.write(row)
                 influxdb3_local.info(f"Successful write to {target_measurement}")
@@ -910,15 +833,17 @@ def process_scheduled_call(
     window: timedelta = parse_window(args)
     call_time_: datetime = call_time.replace(tzinfo=timezone.utc)
 
-    query: str = get_query_for_scheduler(
+    real_now = call_time_ - offset
+    real_then = real_now - window
+
+    query: str = build_downsample_query(
         fields,
         source_measurement,
-        window,
-        call_time_,
-        offset,
         tags,
         interval,
         tag_value_filters,
+        real_then,
+        real_now,
     )
 
     data = influxdb3_local.query(query)
@@ -1010,7 +935,7 @@ def process_request(
     while cursor < backfill_end:
         batch_end = min(cursor + batch_delta, backfill_end)
 
-        query = get_query_for_http(
+        query = build_downsample_query(
             fields,
             source_measurement,
             tags,
