@@ -5,19 +5,34 @@ import time
 from datetime import datetime, timedelta, timezone
 
 
-def parse_interval(args: dict) -> tuple[int, str]:
+def parse_time_interval(args: dict, key: str) -> tuple[int, str]:
     """
     Parses the interval string into a tuple of magnitude and unit for downsampling.
 
+    Supports time units: seconds (s), minutes (min), hours (h), days (d), weeks (w),
+    months (m), quarters (q), and years (y). Months, quarters, and years are converted
+    to days using approximate values: 1 month ≈ 30.42 days, 1 quarter ≈ 91.25 days,
+    1 year = 365 days.
+
     Args:
         args (dict): Dictionary containing configuration parameters, including the 'interval' key
-            with a string in the format '<number><unit>' (e.g., '10min').
+            with a string in the format '<number><unit>' (e.g., '10min', '2m', '1y').
+        key (str): The key used to access the 'key' parameter in the 'args' dictionary.
 
     Returns:
-        tuple[int, str]: A tuple containing the magnitude (integer) and the unit (e.g., 'minutes').
+        tuple[int, str]: A tuple containing the magnitude (integer) and the unit (e.g., 'minutes' or 'days').
+            For months, quarters, and years, the magnitude is the equivalent number of days, and the unit is 'days'.
 
     Raises:
-        Exception: If the interval format is invalid or the unit is not supported ('s', 'min', 'h', 'd', 'w').
+        Exception: If the interval format is invalid, the unit is not supported, or the magnitude is less than 1.
+
+    Example:
+        >>> parse_time_interval({'interval': '10min'}, 'interval')
+        (10, 'minutes')
+        >>> parse_time_interval({'interval': '2m'}, 'interval')
+        (60, 'days')  # 2 months ≈ 60.84 days, rounded to 60
+        >>> parse_time_interval({'interval': '1y'}, 'interval')
+        (365, 'days')
     """
     unit_mapping = {
         "s": "seconds",
@@ -25,46 +40,37 @@ def parse_interval(args: dict) -> tuple[int, str]:
         "h": "hours",
         "d": "days",
         "w": "weeks",
+        "m": "days",    # Months converted to days
+        "q": "days",    # Quarters converted to days
+        "y": "days",    # Years converted to days
+    }
+
+    # Conversion factors to days for month, quarter, and year
+    day_conversions = {
+        "m": 30.42,     # Average days in a month (365 ÷ 12)
+        "q": 91.25,     # Average days in a quarter (365 ÷ 4)
+        "y": 365.0,     # Days in a year (non-leap)
     }
 
     valid_units = unit_mapping.keys()
-    interval: str = args.get("interval", "10min")
+
+    if key == "interval":
+        interval: str = args.get(key, "10min")
+    else:
+        interval: str = args.get(key, "1d")
 
     match = re.fullmatch(r"(\d+)([a-zA-Z]+)", interval)
     if match:
         number_part, unit = match.groups()
-        if unit in valid_units and int(number_part) >= 1:
-            return int(number_part), unit_mapping[unit]
+        magnitude = int(number_part)
+        if unit in valid_units and magnitude >= 1:
+            if unit in day_conversions:
+                # Convert months, quarters, or years to days
+                days = int(magnitude * day_conversions[unit])
+                return days, "days"
+            return magnitude, unit_mapping[unit]
 
-    raise Exception(f"Invalid interval format: {interval}")
-
-
-def parse_batch_size(args: dict) -> tuple[int, str]:
-    """
-    Parses the batch size string into a tuple of magnitude and unit for batch processing.
-
-    Args:
-        args (dict): Dictionary containing configuration parameters, including the 'batch_size' key
-            with a string in the format '<number><unit>' (e.g., '1h').
-
-    Returns:
-        tuple[int, str]: A tuple containing the magnitude (integer) and the unit (e.g., 'hours').
-
-    Raises:
-        Exception: If the batch size format is invalid or the unit is not supported ('min', 'h', 'd', 'w').
-    """
-    unit_mapping = {"min": "minutes", "h": "hours", "d": "days", "w": "weeks"}
-
-    valid_units = unit_mapping.keys()
-    batch_size: str = args.get("batch_size", "10min")
-
-    match = re.fullmatch(r"(\d+)([a-zA-Z]+)", batch_size)
-    if match:
-        number_part, unit = match.groups()
-        if unit in valid_units and int(number_part) >= 1:
-            return int(number_part), unit_mapping[unit]
-
-    raise Exception(f"Invalid batch_size format: {batch_size}")
+    raise Exception(f"Invalid {key} format: {interval}")
 
 
 def get_aggregatable_fields(influxdb3_local, measurement: str) -> list[str]:
@@ -98,33 +104,24 @@ def get_aggregatable_fields(influxdb3_local, measurement: str) -> list[str]:
     return field_names
 
 
-def parse_specific_fields_for_scheduler(
-    influxdb3_local, measurement: str, args: dict
-) -> list[str]:
+def parse_fields_for_http(influxdb3_local, measurement: str, key: str, args: dict) -> list[str]:
     """
-    Parses specific fields for downsampling in scheduler-based requests.
+    Parses fields for HTTP-based downsampling.
 
     Args:
         influxdb3_local: InfluxDB client instance.
-        measurement (str): Name of the measurement.
-        args (dict): Dictionary containing the 'specific_fields' key with a dot-separated
-            string of field names (e.g., 'co.temperature').
+        args (dict): Dictionary containing the 'key' key with a list of field names.
+        key (str): The key used to access the 'key' parameter in the 'args' dictionary.
 
     Returns:
-        list[str]: List of valid field names that exist in the measurement.
-
-    Raises:
-        Exception: If the 'specific_fields' format is invalid (must match '^[a-zA-Z]+(\.[a-zA-Z]+)*$').
+        list[str]: List of valid field names to exclude from downsampling.
     """
-    specific_fields: str | None = args.get("specific_fields", None)
-    pattern: str = r"^[a-zA-Z]+(\.[a-zA-Z]+)*$"
-    if specific_fields is not None:
-        if not re.match(pattern, specific_fields):
-            raise Exception(f"Invalid specific_fields format: {specific_fields}")
-
-        fields: list = specific_fields.split(".")
-        measurement_fields: list = get_aggregatable_fields(influxdb3_local, measurement)
-        result_fields = []
+    fields: list | None = args.get(key, None)
+    result_fields: list = []
+    if fields is not None:
+        measurement_fields: list = get_aggregatable_fields(
+            influxdb3_local, measurement
+        )
         for field in fields:
             if field not in measurement_fields:
                 influxdb3_local.info(
@@ -132,39 +129,7 @@ def parse_specific_fields_for_scheduler(
                 )
             else:
                 result_fields.append(field)
-        return result_fields
-    else:
-        return []
-
-
-def parse_specific_fields_for_http(
-    influxdb3_local, measurement: str, args: dict
-) -> list[str]:
-    """
-    Parses specific fields for downsampling in HTTP-based requests.
-
-    Args:
-        influxdb3_local: InfluxDB client instance.
-        measurement (str): Name of the measurement.
-        args (dict): Dictionary containing the 'specific_fields' key with a list of field names.
-
-    Returns:
-        list[str]: List of valid field names that exist in the measurement.
-    """
-    specific_fields: list | None = args.get("specific_fields", None)
-    if specific_fields is not None:
-        measurement_fields: list = get_aggregatable_fields(influxdb3_local, measurement)
-        result_fields = []
-        for field in specific_fields:
-            if field not in measurement_fields:
-                influxdb3_local.info(
-                    f"Field '{field}' is not available for downsampling '{measurement}'"
-                )
-            else:
-                result_fields.append(field)
-        return result_fields
-    else:
-        return []
+    return result_fields
 
 
 def get_tag_names(influxdb3_local, measurement: str) -> list[str]:
@@ -203,7 +168,7 @@ def parse_tag_values_for_scheduler(
     Args:
         influxdb3_local: InfluxDB client instance.
         args (dict): Dictionary containing the 'tag_values' key with a dot-separated string
-            of tag-value pairs (e.g., 'room:Kitchen-Bedroom').
+            of tag-value pairs (e.g., 'room:Kitchen-Bedroom-"Some other room"' ).
         source_measurement (str): Name of the source measurement.
 
     Returns:
@@ -285,13 +250,13 @@ def parse_field_aggregations_for_scheduler(
     Raises:
         Exception: If no aggregatable fields are found, or if the aggregation format or type is invalid.
     """
-    available_calculations: list = ["avg", "sum", "min", "max", "derivative"]
+    available_calculations: list = ["avg", "sum", "min", "max", "derivative", "median"]
     pattern: str = r"^([^:.]+:[^:.]+)(\.[^:.]+:[^:.]+)*$"
     measurement: str = args["source_measurement"]
-    excluded_fields: list = parse_excluded_fields_for_scheduler(influxdb3_local, args)
+    excluded_fields: list = parse_fields_for_scheduler(influxdb3_local, measurement, "excluded_fields",args)
     calculations_input: str = args.get("calculations", "avg")
-    specific_fields: list = parse_specific_fields_for_scheduler(
-        influxdb3_local, measurement, args
+    specific_fields: list = parse_fields_for_scheduler(
+        influxdb3_local, measurement, "specific_fields", args
     )
     all_fields: list = get_aggregatable_fields(influxdb3_local, measurement)
 
@@ -344,7 +309,7 @@ def parse_field_aggregations_for_http(
     Args:
         influxdb3_local: InfluxDB client instance.
         data (dict): Dictionary containing 'source_measurement' and 'calculations' keys.
-            'calculations' can be 'avg' or a list of dictionaries with 'field' and 'aggregation' keys.
+            'calculations' can be 'avg' or a list of tuples with 'field' and 'aggregation' (e.g., [('co', 'avg')]).
 
     Returns:
         list[tuple[str, str]]: List of tuples containing field names and their aggregation functions.
@@ -354,12 +319,12 @@ def parse_field_aggregations_for_http(
     """
     measurement: str = data["source_measurement"]
     calculations_input: list[tuple[str, str]] | str = data.get("calculations", "avg")
-    excluded_fields: list = parse_excluded_fields_for_http(influxdb3_local, data)
-    specific_fields: list = parse_specific_fields_for_http(
-        influxdb3_local, measurement, data
+    excluded_fields: list = parse_fields_for_http(influxdb3_local, measurement, "excluded_fields", data)
+    specific_fields: list = parse_fields_for_http(
+        influxdb3_local, measurement, "specific_fields", data
     )
     all_fields: list = get_aggregatable_fields(influxdb3_local, measurement)
-    available_calculations: list = ["avg", "sum", "min", "max", "derivative"]
+    available_calculations: list = ["avg", "sum", "min", "max", "derivative", "median"]
 
     if specific_fields:
         fields_to_use = []
@@ -394,66 +359,49 @@ def parse_field_aggregations_for_http(
         )
     return result
 
-
-def parse_excluded_fields_for_scheduler(influxdb3_local, args: dict) -> list[str]:
+def parse_fields_for_scheduler(
+    influxdb3_local, measurement: str, key: str, args: dict
+) -> list[str]:
     """
-    Parses excluded fields for scheduler-based downsampling.
+    Parses fields for downsampling in scheduler-based requests.
 
     Args:
         influxdb3_local: InfluxDB client instance.
-        args (dict): Dictionary containing the 'excluded_fields' key with a dot-separated string of field names.
+        measurement (str): Name of the measurement.
+        args (dict): Dictionary containing the 'key' key with a dot-separated
+            string of field names (e.g., 'co.temperature').
+            key (str): The key used to access the 'key' parameter in the 'args' dictionary.
 
     Returns:
-        list[str]: List of valid field names to exclude from downsampling.
+        list[str]: List of valid field names that exist in the measurement.
 
     Raises:
-        Exception: If the 'excluded_fields' format is invalid (must match '^[a-zA-Z]+(\.[a-zA-Z]+)*$').
+        Exception: If the 'key' format is invalid.
     """
-    excluded_fields: str | None = args.get("excluded_fields", None)
-    pattern: str = r"^[a-zA-Z]+(\.[a-zA-Z]+)*$"
-    result_fields: list = []
-    if excluded_fields is not None:
-        if not re.match(pattern, excluded_fields):
-            raise Exception(f"Invalid excluded_fields format: {excluded_fields}")
-        fields: list = excluded_fields.split(".")
-        measurement_fields: list = get_aggregatable_fields(
-            influxdb3_local, args["source_measurement"]
-        )
-        for field in fields:
-            if field not in measurement_fields:
-                influxdb3_local.info(
-                    f"Field '{field}' is not available for downsampling '{args['measurement']}'"
-                )
-            else:
-                result_fields.append(field)
-    return result_fields
+    fields: str | None = args.get(key, None)
+    # Field names must start with letter or digit, may contain letters, digits, dashes or underscores,
+    # and are separated by dots.
+    pattern = r"^[A-Za-z0-9][A-Za-z0-9_-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)*$"
 
+    if fields is None:
+        return []
 
-def parse_excluded_fields_for_http(influxdb3_local, args: dict) -> list[str]:
-    """
-    Parses excluded fields for HTTP-based downsampling.
+    if not re.fullmatch(pattern, fields):
+        raise Exception(f"Invalid specific_fields format: {fields!r}")
 
-    Args:
-        influxdb3_local: InfluxDB client instance.
-        args (dict): Dictionary containing the 'excluded_fields' key with a list of field names.
+    requested = fields.split(".")
+    measurement_fields = get_aggregatable_fields(influxdb3_local, measurement)
+    valid = []
 
-    Returns:
-        list[str]: List of valid field names to exclude from downsampling.
-    """
-    excluded_fields: list | None = args.get("excluded_fields", None)
-    result_fields: list = []
-    if excluded_fields is not None:
-        measurement_fields: list = get_aggregatable_fields(
-            influxdb3_local, args["source_measurement"]
-        )
-        for field in excluded_fields:
-            if field not in measurement_fields:
-                influxdb3_local.info(
-                    f"Field '{field}' is not available for downsampling '{args['measurement']}'"
-                )
-            else:
-                result_fields.append(field)
-    return result_fields
+    for field in requested:
+        if field not in measurement_fields:
+            influxdb3_local.info(
+                f"Field '{field}' is not available for downsampling '{measurement}'"
+            )
+        else:
+            valid.append(field)
+
+    return valid
 
 
 def parse_max_retries(args: dict) -> int:
@@ -589,47 +537,42 @@ def parse_window(args: dict) -> timedelta:
 
 def parse_backfill_window(args: dict) -> tuple[datetime | None, datetime]:
     """
-    Parses the backfill window for HTTP-based downsampling.
+    Parses the backfill window for HTTP-based downsampling. Requires timezone-aware datetime strings
+    in ISO 8601 format (e.g., '2025-05-01T00:00:00+03:00').
 
     Args:
-        args (dict): Dictionary containing 'backfill_start' and 'backfill_end' keys with datetime strings
-            in the format 'YYYY-MM-DD HH:MM:SS'.
+        args (dict): Dictionary containing 'backfill_start' and 'backfill_end' keys.
 
     Returns:
-        tuple[datetime | None, datetime]: Tuple of start and end datetimes for the backfill window.
-            Start is None if not provided, and end defaults to current time if not provided.
+        tuple[datetime | None, datetime]: Tuple of start and end datetimes in UTC.
 
     Raises:
-        Exception: If the datetime format is invalid or if backfill_start is not earlier than backfill_end.
+        Exception: If the datetime format is invalid, lacks timezone info, or if start ≥ end.
     """
-    fmt: str = "%Y-%m-%d %H:%M:%S"
-    start_str: str | None = args.get("backfill_start", None)
-    end_str: str | None = args.get("backfill_end", None)
+    def parse_iso_datetime(name: str, value: str) -> datetime:
+        try:
+            dt = datetime.fromisoformat(value)
+        except ValueError:
+            raise Exception(f"Invalid ISO 8601 datetime for {name}: '{value}'")
+        if dt.tzinfo is None:
+            raise Exception(f"{name} must include timezone info (e.g., '+00:00')")
+        return dt.astimezone(timezone.utc)
+
+    start_str = args.get("backfill_start")
+    end_str = args.get("backfill_end")
 
     if end_str:
-        try:
-            backfill_end = datetime.strptime(end_str, fmt).replace(tzinfo=timezone.utc)
-        except Exception:
-            raise Exception(
-                f"Invalid datetime format for backfill_end: '{end_str}', expected '{fmt}'"
-            )
+        backfill_end = parse_iso_datetime("backfill_end", end_str)
     else:
         backfill_end = datetime.now(timezone.utc)
 
     if start_str is None:
         return None, backfill_end
 
-    try:
-        backfill_start: datetime = datetime.strptime(start_str, fmt).replace(
-            tzinfo=timezone.utc
-        )
-    except Exception:
-        raise Exception(
-            f"Invalid datetime format for backfill_start: '{start_str}', expected '{fmt}'"
-        )
+    backfill_start = parse_iso_datetime("backfill_start", start_str)
 
     if backfill_start >= backfill_end:
-        raise Exception("Backfill_start must be earlier than backfill_end")
+        raise Exception("backfill_start must be earlier than backfill_end")
 
     return backfill_start, backfill_end
 
@@ -961,7 +904,7 @@ def process_scheduled_call(
     )
     tags: list = get_tag_names(influxdb3_local, source_measurement)
     fields: list = parse_field_aggregations_for_scheduler(influxdb3_local, args)
-    interval: tuple = parse_interval(args)
+    interval: tuple = parse_time_interval(args, "interval")
     max_retries: int = parse_max_retries(args)
     offset: timedelta = parse_offset(args)
     window: timedelta = parse_window(args)
@@ -1037,10 +980,10 @@ def process_request(
     )
     tags: list = get_tag_names(influxdb3_local, source_measurement)
     fields: list = parse_field_aggregations_for_http(influxdb3_local, data)
-    interval: tuple = parse_interval(data)
+    interval: tuple = parse_time_interval(data, "interval")
     max_retries: int = parse_max_retries(data)
 
-    batch_size: tuple = parse_batch_size(data)
+    batch_size: tuple = parse_time_interval(data, "batch_size")
     backfill_start, backfill_end = parse_backfill_window(data)
 
     if backfill_start is None:
@@ -1054,7 +997,7 @@ def process_request(
         influxdb3_local.info(f"Window mode: from {backfill_start} to {backfill_end}")
 
     cursor = backfill_start
-    total_rows, total_retries = 0, 0
+    total_retries = 0
 
     magnitude, unit = batch_size
     unit_mapping = {
@@ -1104,5 +1047,5 @@ def process_request(
     duration = time.time() - start_time
     influxdb3_local.info(
         f"Downsampling completed on '{source_measurement}' → '{target_measurement}': "
-        f"{total_rows} rows, {total_retries} retries, duration {duration:.2f}s"
+        f"{total_retries} retries, duration {duration:.2f}s"
     )
