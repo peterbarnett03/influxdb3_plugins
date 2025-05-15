@@ -16,7 +16,47 @@ This plugin enables downsampling of data in an InfluxDB 3 Core/Enterprise instan
 - **Scheduler and HTTP Support**: Run periodically via InfluxDB triggers or on-demand via HTTP requests.  
 - **Retry Logic**: Configurable retries for robust write operations.  
 - **Batch Processing**: Process large datasets in configurable time batches for HTTP requests.  
-- **Backfill Support**: Downsample historical data within a specified time window.  
+- **Backfill Support**: Downsample historical data within a specified time window.
+- **Metadata Columns**: Each downsampled record includes three additional columns:  
+  - `record_count` — the number of original points compressed into this single downsampled row,  
+  - `time_from` — the minimum timestamp among the original points in the interval,  
+  - `time_to` — the maximum timestamp among the original points in the interval.  
+
+## Logging
+
+During execution, the plugin writes internal logs into the InfluxDB `_internal` database, in the `system.processing_engine_logs` table. You can inspect the most recent log entries with:
+
+```bash
+influxdb3 query --database _internal "SELECT * FROM system.processing_engine_logs"
+
+```
+
+Example output:
+
+```text
++-------------------------------+--------------+-----------+-------------------------------------------------------------------+
+| event_time                    | trigger_name | log_level | log_text                                                          |
++-------------------------------+--------------+-----------+-------------------------------------------------------------------+
+| 2025-05-14T16:31:10.033295886 | my_scheduler    | INFO      | Finished execution in 31ms 449us 193ns                            |
+| 2025-05-14T16:31:10.033275724 | my_scheduler    | INFO      | Downsampling job finished in 0.021356821060180664 seconds         |
+| 2025-05-14T16:31:10.033232792 | my_scheduler    | INFO      | Successful write to home55                                        |
+| 2025-05-14T16:31:10.011881111 | my_scheduler    | INFO      | Starting downsampling schedule for call_time: 2025-05-14 16:31:10 |
+| 2025-05-14T16:31:10.001837231 | my_scheduler    | INFO      | Starting execution with scheduled time 2025-05-14 16:31:10 UTC    |
+| 2025-05-14T16:31:00.046641074 | my_scheduler    | INFO      | Finished execution in 44ms 724us 139ns                            |
+| 2025-05-14T16:31:00.046623022 | my_scheduler    | INFO      | Downsampling job finished in 0.021102190017700195 seconds         |
+| 2025-05-14T16:31:00.046579787 | my_scheduler    | ERROR     | Error during write to home_downsampled                            |
+| 2025-05-14T16:31:00.025482558 | my_scheduler    | INFO      | Starting downsampling schedule for call_time: 2025-05-14 16:31:00 |
+| 2025-05-14T16:31:00.001903138 | my_scheduler    | INFO      | starting execution with scheduled time 2025-05-14 16:31:00 UTC    |
++-------------------------------+--------------+-----------+-------------------------------------------------------------------+
+
+```
+
+### Log Columns Description
+
+-   **event_time**: Timestamp of the log event (with nanosecond precision).
+-   **trigger_name**: Name of the trigger that generated the log (e.g., `my_scheduler`).
+-   **log_level**: Severity level of the log entry (`INFO`, `WARN`, `ERROR`, etc.).
+-   **log_text**: Message describing the action, status, or error encountered by the plugin.
   
 ## Setup, Run & Test  
   
