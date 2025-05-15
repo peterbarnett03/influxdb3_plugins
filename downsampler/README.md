@@ -17,6 +17,7 @@ This plugin enables downsampling of data in an InfluxDB 3 Core/Enterprise instan
 - **Retry Logic**: Configurable retries for robust write operations.  
 - **Batch Processing**: Process large datasets in configurable time batches for HTTP requests.  
 - **Backfill Support**: Downsample historical data within a specified time window.
+- **Task ID Tracking**: Each execution generates a unique task_id included in logs and error messages for traceability.
 - **Metadata Columns**: Each downsampled record includes three additional columns:  
   - `record_count` — the number of original points compressed into this single downsampled row,  
   - `time_from` — the minimum timestamp among the original points in the interval,  
@@ -37,16 +38,16 @@ Example output:
 +-------------------------------+--------------+-----------+-------------------------------------------------------------------+
 | event_time                    | trigger_name | log_level | log_text                                                          |
 +-------------------------------+--------------+-----------+-------------------------------------------------------------------+
-| 2025-05-14T16:31:10.033295886 | my_scheduler    | INFO      | Finished execution in 31ms 449us 193ns                            |
-| 2025-05-14T16:31:10.033275724 | my_scheduler    | INFO      | Downsampling job finished in 0.021356821060180664 seconds         |
-| 2025-05-14T16:31:10.033232792 | my_scheduler    | INFO      | Successful write to home55                                        |
-| 2025-05-14T16:31:10.011881111 | my_scheduler    | INFO      | Starting downsampling schedule for call_time: 2025-05-14 16:31:10 |
-| 2025-05-14T16:31:10.001837231 | my_scheduler    | INFO      | Starting execution with scheduled time 2025-05-14 16:31:10 UTC    |
-| 2025-05-14T16:31:00.046641074 | my_scheduler    | INFO      | Finished execution in 44ms 724us 139ns                            |
-| 2025-05-14T16:31:00.046623022 | my_scheduler    | INFO      | Downsampling job finished in 0.021102190017700195 seconds         |
-| 2025-05-14T16:31:00.046579787 | my_scheduler    | ERROR     | Error during write to home_downsampled                            |
-| 2025-05-14T16:31:00.025482558 | my_scheduler    | INFO      | Starting downsampling schedule for call_time: 2025-05-14 16:31:00 |
-| 2025-05-14T16:31:00.001903138 | my_scheduler    | INFO      | starting execution with scheduled time 2025-05-14 16:31:00 UTC    |
+| 2025-05-14T16:31:10.033295886 | my_scheduler    | INFO      | [4726cf36-3b15-442e-bd9d-f9b768ad8781] Finished execution in 31ms 449us 193ns                            |
+| 2025-05-14T16:31:10.033275724 | my_scheduler    | INFO      | [4726cf36-3b15-442e-bd9d-f9b768ad8781] Downsampling job finished in 0.021356821060180664 seconds         |
+| 2025-05-14T16:31:10.033232792 | my_scheduler    | INFO      | [4726cf36-3b15-442e-bd9d-f9b768ad8781] Successful write to home_downsampled                              |
+| 2025-05-14T16:31:10.011881111 | some_scheduler  | INFO      | [528a316e-b28c-4bd2-8c05-07ad50bc1de2] Starting downsampling schedule for call_time: 2025-05-14 16:31:10 |
+| 2025-05-14T16:31:10.001837231 | some_scheduler  | INFO      | [528a316e-b28c-4bd2-8c05-07ad50bc1de2] Starting execution with scheduled time 2025-05-14 16:31:10 UTC    |
+| 2025-05-14T16:31:00.046641074 | my_scheduler    | INFO      | [cd5caa89-47db-443c-9621-5f90a129a0cc] Finished execution in 44ms 724us 139ns                            |
+| 2025-05-14T16:31:00.046623022 | my_scheduler    | INFO      | [cd5caa89-47db-443c-9621-5f90a129a0cc] Downsampling job finished in 0.021102190017700195 seconds         |
+| 2025-05-14T16:31:00.046579787 | some_scheduler  | ERROR     | [528a316e-b28c-4bd2-8c05-07ad50bc1de2] Error during write to home_downsampled                            |
+| 2025-05-14T16:31:00.025482558 | my_scheduler    | INFO      | [cd5caa89-47db-443c-9621-5f90a129a0cc] Starting downsampling schedule for call_time: 2025-05-14 16:31:00 |
+| 2025-05-14T16:31:00.001903138 | my_scheduler    | INFO      | [cd5caa89-47db-443c-9621-5f90a129a0cc] starting execution with scheduled time 2025-05-14 16:31:00 UTC    |
 +-------------------------------+--------------+-----------+-------------------------------------------------------------------+
 
 ```
@@ -56,7 +57,7 @@ Example output:
 -   **event_time**: Timestamp of the log event (with nanosecond precision).
 -   **trigger_name**: Name of the trigger that generated the log (e.g., `my_scheduler`).
 -   **log_level**: Severity level of the log entry (`INFO`, `WARN`, `ERROR`, etc.).
--   **log_text**: Message describing the action, status, or error encountered by the plugin.
+-   **log_text**: Message describing the action, status, or error encountered by the plugin with task_id.
   
 ## Setup, Run & Test  
   

@@ -2,10 +2,13 @@ import json
 import random
 import re
 import time
+import uuid
 from datetime import datetime, timedelta, timezone
 
 
-def parse_time_interval(args: dict, key: str) -> tuple[int, str]:
+def parse_time_interval(
+    influxdb3_local, args: dict, key: str, task_id: str
+) -> tuple[int, str]:
     """
     Parses the interval string into a tuple of magnitude and unit for downsampling.
 
@@ -15,9 +18,11 @@ def parse_time_interval(args: dict, key: str) -> tuple[int, str]:
     1 year = 365 days.
 
     Args:
+        influxdb3_local: InfluxDB client instance for querying the database.
         args (dict): Dictionary containing configuration parameters, including the 'interval' key
             with a string in the format '<number><unit>' (e.g., '10min', '2m', '1y').
         key (str): The key used to access the 'key' parameter in the 'args' dictionary.
+        task_id (str): The task ID.
 
     Returns:
         tuple[int, str]: A tuple containing the magnitude (integer) and the unit (e.g., 'minutes' or 'days').
@@ -27,11 +32,11 @@ def parse_time_interval(args: dict, key: str) -> tuple[int, str]:
         Exception: If the interval format is invalid, the unit is not supported, or the magnitude is less than 1.
 
     Example:
-        >>> parse_time_interval({'interval': '10min'}, 'interval')
+        >>> parse_time_interval(influxdb3_local, {'interval': '10min'}, 'interval', 'task_id')
         (10, 'minutes')
-        >>> parse_time_interval({'interval': '2m'}, 'interval')
+        >>> parse_time_interval(influxdb3_local, {'interval': '2m'}, 'interval', 'task_id')
         (60, 'days')  # 2 months ≈ 60.84 days, rounded to 60
-        >>> parse_time_interval({'interval': '1y'}, 'interval')
+        >>> parse_time_interval(influxdb3_local, {'interval': '1y'}, 'interval', 'task_id')
         (365, 'days')
     """
     unit_mapping = {
@@ -40,16 +45,16 @@ def parse_time_interval(args: dict, key: str) -> tuple[int, str]:
         "h": "hours",
         "d": "days",
         "w": "weeks",
-        "m": "days",    # Months converted to days
-        "q": "days",    # Quarters converted to days
-        "y": "days",    # Years converted to days
+        "m": "days",  # Months converted to days
+        "q": "days",  # Quarters converted to days
+        "y": "days",  # Years converted to days
     }
 
     # Conversion factors to days for month, quarter, and year
     day_conversions = {
-        "m": 30.42,     # Average days in a month (365 ÷ 12)
-        "q": 91.25,     # Average days in a quarter (365 ÷ 4)
-        "y": 365.0,     # Days in a year (non-leap)
+        "m": 30.42,  # Average days in a month (365 ÷ 12)
+        "q": 91.25,  # Average days in a quarter (365 ÷ 4)
+        "y": 365.0,  # Days in a year (non-leap)
     }
 
     valid_units = unit_mapping.keys()
@@ -57,7 +62,7 @@ def parse_time_interval(args: dict, key: str) -> tuple[int, str]:
     if key == "interval":
         interval: str = args.get(key, "10min")
     else:
-        interval: str = args.get(key, "1d")
+        interval: str = args.get(key, "30d")
 
     match = re.fullmatch(r"(\d+)([a-zA-Z]+)", interval)
     if match:
@@ -70,16 +75,20 @@ def parse_time_interval(args: dict, key: str) -> tuple[int, str]:
                 return days, "days"
             return magnitude, unit_mapping[unit]
 
-    raise Exception(f"Invalid {key} format: {interval}")
+    influxdb3_local.error(f"[{task_id}] Invalid {key} format: {interval}.")
+    raise Exception(f"[{task_id}] Invalid {key} format: {interval}.")
 
 
-def get_aggregatable_fields(influxdb3_local, measurement: str) -> list[str]:
+def get_aggregatable_fields(
+    influxdb3_local, measurement: str, task_id: str
+) -> list[str]:
     """
     Retrieves the list of fields in a measurement that can be aggregated (numeric types).
 
     Args:
         influxdb3_local: InfluxDB client instance for querying the database.
         measurement (str): Name of the measurement to query.
+        task_id (str): The task ID.
 
     Returns:
         list[str]: List of field names with 'Int64', 'Float64', or 'UInt64' data types.
@@ -97,21 +106,30 @@ def get_aggregatable_fields(influxdb3_local, measurement: str) -> list[str]:
     fields: list[dict] = influxdb3_local.query(query, {"measurement": measurement})
 
     if not fields:
-        raise Exception(f"No aggregatable fields found for measurement '{measurement}'")
+        influxdb3_local.error(
+            f"[{task_id}] No aggregatable fields found for measurement '{measurement}'."
+        )
+        raise Exception(
+            f"[{task_id}] No aggregatable fields found for measurement '{measurement}'."
+        )
 
     field_names: list[str] = [field["column_name"] for field in fields]
 
     return field_names
 
 
-def parse_fields_for_http(influxdb3_local, measurement: str, key: str, args: dict) -> list[str]:
+def parse_fields_for_http(
+    influxdb3_local, measurement: str, key: str, args: dict, task_id: str
+) -> list[str]:
     """
     Parses fields for HTTP-based downsampling.
 
     Args:
         influxdb3_local: InfluxDB client instance.
         args (dict): Dictionary containing the 'key' key with a list of field names.
+        measurement (str): Name of the measurement.
         key (str): The key used to access the 'key' parameter in the 'args' dictionary.
+        task_id (str): The task ID.
 
     Returns:
         list[str]: List of valid field names to exclude from downsampling.
@@ -120,25 +138,26 @@ def parse_fields_for_http(influxdb3_local, measurement: str, key: str, args: dic
     result_fields: list = []
     if fields is not None:
         measurement_fields: list = get_aggregatable_fields(
-            influxdb3_local, measurement
+            influxdb3_local, measurement, task_id
         )
         for field in fields:
             if field not in measurement_fields:
                 influxdb3_local.info(
-                    f"Field '{field}' is not available for downsampling '{measurement}'"
+                    f"[{task_id}] Field '{field}' is not available for downsampling '{measurement}'."
                 )
             else:
                 result_fields.append(field)
     return result_fields
 
 
-def get_tag_names(influxdb3_local, measurement: str) -> list[str]:
+def get_tag_names(influxdb3_local, measurement: str, task_id: str) -> list[str]:
     """
     Retrieves the list of tag names for a measurement.
 
     Args:
         influxdb3_local: InfluxDB client instance.
         measurement (str): Name of the measurement to query.
+        task_id (str): The task ID.
 
     Returns:
         list[str]: List of tag names with 'Dictionary(Int32, Utf8)' data type.
@@ -152,7 +171,9 @@ def get_tag_names(influxdb3_local, measurement: str) -> list[str]:
     res: list[dict] = influxdb3_local.query(query, {"measurement": measurement})
 
     if not res:
-        influxdb3_local.info(f"No tags found for measurement '{measurement}'")
+        influxdb3_local.info(
+            f"[{task_id}] No tags found for measurement '{measurement}'."
+        )
         return []
 
     tag_names: list[str] = [tag["column_name"] for tag in res]
@@ -160,7 +181,7 @@ def get_tag_names(influxdb3_local, measurement: str) -> list[str]:
 
 
 def parse_tag_values_for_scheduler(
-    influxdb3_local, args: dict, source_measurement: str
+    influxdb3_local, args: dict, source_measurement: str, task_id: str
 ) -> dict[str, list[str]] | None:
     """
     Parses tag values for scheduler-based downsampling requests.
@@ -170,6 +191,7 @@ def parse_tag_values_for_scheduler(
         args (dict): Dictionary containing the 'tag_values' key with a dot-separated string
             of tag-value pairs (e.g., 'room:Kitchen-Bedroom-"Some other room"' ).
         source_measurement (str): Name of the source measurement.
+        task_id (str): The task ID.
 
     Returns:
         dict[str, list[str]] | None: Dictionary mapping tag names to lists of values, or None if no tag values provided.
@@ -182,10 +204,13 @@ def parse_tag_values_for_scheduler(
 
     if tag_values is not None:
         if not re.match(pattern, tag_values):
-            raise Exception(f"Invalid tag_values format: {tag_values}")
+            influxdb3_local.error(
+                f"[{task_id}] Invalid tag_values format: {tag_values}."
+            )
+            raise Exception(f"[{task_id}] Invalid tag_values format: {tag_values}.")
 
         result: dict = {}
-        tag_names: list = get_tag_names(influxdb3_local, source_measurement)
+        tag_names: list = get_tag_names(influxdb3_local, source_measurement, task_id)
 
         pairs: list = tag_values.split(".")
         for pair in pairs:
@@ -198,7 +223,7 @@ def parse_tag_values_for_scheduler(
                     result[tag_name] = values
             else:
                 influxdb3_local.warn(
-                    f"Tag '{tag_name}' does not exist in '{source_measurement}'"
+                    f"[{task_id}] Tag '{tag_name}' does not exist in '{source_measurement}'."
                 )
 
         return result
@@ -206,7 +231,7 @@ def parse_tag_values_for_scheduler(
 
 
 def parse_tag_values_for_http(
-    influxdb3_local, data: dict, source_measurement: str
+    influxdb3_local, data: dict, source_measurement: str, task_id: str
 ) -> dict[str, list[str]] | None:
     """
     Parses tag values for HTTP-based downsampling requests.
@@ -215,6 +240,7 @@ def parse_tag_values_for_http(
         influxdb3_local: InfluxDB client instance.
         data (dict): Dictionary containing the 'tag_values' key with a dictionary mapping tag names to lists of values.
         source_measurement (str): Name of the source measurement.
+        task_id (str): The task ID.
 
     Returns:
         dict[str, list[str]] | None: Dictionary mapping tag names to lists of values, or None if no tag values provided.
@@ -222,11 +248,11 @@ def parse_tag_values_for_http(
     tag_value_filters: dict[str, list[str]] | None = data.get("tag_values", None)
 
     if tag_value_filters is not None:
-        tag_names: list = get_tag_names(influxdb3_local, source_measurement)
+        tag_names: list = get_tag_names(influxdb3_local, source_measurement, task_id)
         for tag_name in list(tag_value_filters.keys()):
             if tag_name not in tag_names:
                 influxdb3_local.warn(
-                    f"Tag '{tag_name}' does not exist in '{source_measurement}'"
+                    f"[{task_id}] Tag '{tag_name}' does not exist in '{source_measurement}'."
                 )
                 del tag_value_filters[tag_name]
         return tag_value_filters
@@ -234,7 +260,7 @@ def parse_tag_values_for_http(
 
 
 def parse_field_aggregations_for_scheduler(
-    influxdb3_local, args: dict
+    influxdb3_local, args: dict, task_id: str
 ) -> list[tuple[str, str]]:
     """
     Parses field aggregations for scheduler-based downsampling.
@@ -243,6 +269,7 @@ def parse_field_aggregations_for_scheduler(
         influxdb3_local: InfluxDB client instance.
         args (dict): Dictionary containing 'source_measurement' and 'calculations' keys.
             'calculations' can be a single aggregation (e.g., 'avg') or a dot-separated string of field:aggregation pairs.
+        task_id (str): The task ID.
 
     Returns:
         list[tuple[str, str]]: List of tuples containing field names and their aggregation functions (e.g., [('co', 'avg')]).
@@ -253,12 +280,14 @@ def parse_field_aggregations_for_scheduler(
     available_calculations: list = ["avg", "sum", "min", "max", "derivative", "median"]
     pattern: str = r"^([^:.]+:[^:.]+)(\.[^:.]+:[^:.]+)*$"
     measurement: str = args["source_measurement"]
-    excluded_fields: list = parse_fields_for_scheduler(influxdb3_local, measurement, "excluded_fields",args)
+    excluded_fields: list = parse_fields_for_scheduler(
+        influxdb3_local, measurement, "excluded_fields", args, task_id
+    )
     calculations_input: str = args.get("calculations", "avg")
     specific_fields: list = parse_fields_for_scheduler(
-        influxdb3_local, measurement, "specific_fields", args
+        influxdb3_local, measurement, "specific_fields", args, task_id
     )
-    all_fields: list = get_aggregatable_fields(influxdb3_local, measurement)
+    all_fields: list = get_aggregatable_fields(influxdb3_local, measurement, task_id)
 
     if specific_fields:
         fields_to_use = []
@@ -267,7 +296,7 @@ def parse_field_aggregations_for_scheduler(
                 fields_to_use.append(field)
             else:
                 influxdb3_local.info(
-                    f"Field '{field}' is not available for aggregation in measurement '{measurement}'"
+                    f"[{task_id}] Field '{field}' is not available for aggregation in measurement '{measurement}'."
                 )
     else:
         fields_to_use = all_fields
@@ -275,7 +304,12 @@ def parse_field_aggregations_for_scheduler(
     result: list = []
     if not re.match(pattern, calculations_input):
         if calculations_input not in available_calculations:
-            raise Exception(f"Aggregation '{calculations_input}' is not available")
+            influxdb3_local.error(
+                f"[{task_id}] Aggregation '{calculations_input}' is not available."
+            )
+            raise Exception(
+                f"[{task_id}] Aggregation '{calculations_input}' is not available."
+            )
 
         result = [
             (field, calculations_input)
@@ -287,21 +321,29 @@ def parse_field_aggregations_for_scheduler(
         for calc in calculations:
             field_name, calculation = calc.split(":")
             if calculation not in available_calculations:
-                raise Exception(f"Aggregation '{calculation}' is not available")
+                influxdb3_local.error(
+                    f"[{task_id}] Aggregation '{calculations_input}' is not available."
+                )
+                raise Exception(
+                    f"[{task_id}] Aggregation '{calculations_input}' is not available."
+                )
             if field_name in fields_to_use and field_name not in excluded_fields:
                 result.append((field_name, calculation))
             else:
                 influxdb3_local.info(
-                    f"Field '{field_name}' is not available or excluded"
+                    f"[{task_id}] Field '{field_name}' is not available or excluded."
                 )
 
     if not result:
-        raise Exception(f"No aggregatable fields found for measurement")
+        influxdb3_local.error(
+            f"[{task_id}] No aggregatable fields found for measurement."
+        )
+        raise Exception(f"[{task_id}] No aggregatable fields found for measurement.")
     return result
 
 
 def parse_field_aggregations_for_http(
-    influxdb3_local, data: dict
+    influxdb3_local, data: dict, task_id: str
 ) -> list[tuple[str, str]]:
     """
     Parses field aggregations for HTTP-based downsampling.
@@ -310,6 +352,7 @@ def parse_field_aggregations_for_http(
         influxdb3_local: InfluxDB client instance.
         data (dict): Dictionary containing 'source_measurement' and 'calculations' keys.
             'calculations' can be 'avg' or a list of tuples with 'field' and 'aggregation' (e.g., [('co', 'avg')]).
+        task_id (str): The task ID.
 
     Returns:
         list[tuple[str, str]]: List of tuples containing field names and their aggregation functions.
@@ -319,11 +362,13 @@ def parse_field_aggregations_for_http(
     """
     measurement: str = data["source_measurement"]
     calculations_input: list[tuple[str, str]] | str = data.get("calculations", "avg")
-    excluded_fields: list = parse_fields_for_http(influxdb3_local, measurement, "excluded_fields", data)
-    specific_fields: list = parse_fields_for_http(
-        influxdb3_local, measurement, "specific_fields", data
+    excluded_fields: list = parse_fields_for_http(
+        influxdb3_local, measurement, "excluded_fields", data, task_id
     )
-    all_fields: list = get_aggregatable_fields(influxdb3_local, measurement)
+    specific_fields: list = parse_fields_for_http(
+        influxdb3_local, measurement, "specific_fields", data, task_id
+    )
+    all_fields: list = get_aggregatable_fields(influxdb3_local, measurement, task_id)
     available_calculations: list = ["avg", "sum", "min", "max", "derivative", "median"]
 
     if specific_fields:
@@ -333,7 +378,7 @@ def parse_field_aggregations_for_http(
                 fields_to_use.append(field)
             else:
                 influxdb3_local.info(
-                    f"Field '{field}' is not available for aggregation in measurement '{measurement}' or excluded"
+                    f"[{task_id}] Field '{field}' is not available for aggregation in measurement '{measurement}' or excluded."
                 )
     else:
         fields_to_use = [field for field in all_fields if field not in excluded_fields]
@@ -344,23 +389,37 @@ def parse_field_aggregations_for_http(
         result = [(field, calculations_input) for field in fields_to_use]
     else:
         if not isinstance(calculations_input, list):
-            raise Exception(f"Invalid calculations format: {calculations_input}")
+            influxdb3_local.error(
+                f"[{task_id}] Invalid calculations format: {calculations_input}."
+            )
+            raise Exception(
+                f"[{task_id}] Invalid calculations format: {calculations_input}."
+            )
         for filed, calc in calculations_input:
             if calc not in available_calculations:
-                raise Exception(f"Aggregation '{calc}' is not available")
+                influxdb3_local.error(
+                    f"[{task_id}] Aggregation '{calc}' is not available."
+                )
+                raise Exception(f"[{task_id}] Aggregation '{calc}' is not available.")
             if filed in fields_to_use:
                 result.append((filed, calc))
             else:
-                influxdb3_local.info(f"Field '{filed}' is not available or excluded")
+                influxdb3_local.info(
+                    f"[{task_id}] Field '{filed}' is not available or excluded."
+                )
 
     if not result:
+        influxdb3_local.error(
+            f"[{task_id}] No aggregatable fields available for downsampling '{measurement}'."
+        )
         raise Exception(
-            f"No aggregatable fields available for downsampling '{measurement}'"
+            f"[{task_id}] No aggregatable fields available for downsampling '{measurement}'."
         )
     return result
 
+
 def parse_fields_for_scheduler(
-    influxdb3_local, measurement: str, key: str, args: dict
+    influxdb3_local, measurement: str, key: str, args: dict, task_id: str
 ) -> list[str]:
     """
     Parses fields for downsampling in scheduler-based requests.
@@ -370,7 +429,8 @@ def parse_fields_for_scheduler(
         measurement (str): Name of the measurement.
         args (dict): Dictionary containing the 'key' key with a dot-separated
             string of field names (e.g., 'co.temperature').
-            key (str): The key used to access the 'key' parameter in the 'args' dictionary.
+        key (str): The key used to access the 'key' parameter in the 'args' dictionary.
+        task_id (str): The task ID.
 
     Returns:
         list[str]: List of valid field names that exist in the measurement.
@@ -387,16 +447,19 @@ def parse_fields_for_scheduler(
         return []
 
     if not re.fullmatch(pattern, fields):
-        raise Exception(f"Invalid specific_fields format: {fields!r}")
+        influxdb3_local.error(
+            f"[{task_id}] Invalid specific_fields format: {fields!r}."
+        )
+        raise Exception(f"[{task_id}] Invalid specific_fields format: {fields!r}.")
 
     requested = fields.split(".")
-    measurement_fields = get_aggregatable_fields(influxdb3_local, measurement)
+    measurement_fields = get_aggregatable_fields(influxdb3_local, measurement, task_id)
     valid = []
 
     for field in requested:
         if field not in measurement_fields:
             influxdb3_local.info(
-                f"Field '{field}' is not available for downsampling '{measurement}'"
+                f"[{task_id}] Field '{field}' is not available for downsampling '{measurement}'."
             )
         else:
             valid.append(field)
@@ -434,13 +497,16 @@ def get_all_tables(influxdb3_local) -> list[str]:
     ]
 
 
-def parse_source_and_target_measurement(influxdb3_local, args: dict) -> tuple[str, str]:
+def parse_source_and_target_measurement(
+    influxdb3_local, args: dict, task_id: str
+) -> tuple[str, str]:
     """
     Parses source and target measurement names for downsampling.
 
     Args:
         influxdb3_local: InfluxDB client instance.
         args (dict): Dictionary containing 'source_measurement' and 'target_measurement' keys.
+        task_id (str): The task ID.
 
     Returns:
         tuple[str, str]: Tuple of source and target measurement names.
@@ -452,26 +518,33 @@ def parse_source_and_target_measurement(influxdb3_local, args: dict) -> tuple[st
     target_measurement: str | None = args.get("target_measurement", None)
 
     if source_measurement is None:
-        raise Exception("Missing source_measurement parameter")
+        influxdb3_local.error(f"[{task_id}] Missing source_measurement parameter.")
+        raise Exception(f"[{task_id}] Missing source_measurement parameter.")
     if target_measurement is None:
-        raise Exception("Missing target_measurement parameter")
+        influxdb3_local.error(f"[{task_id}] Missing target_measurement parameter.")
+        raise Exception(f"[{task_id}] Missing target_measurement parameter.")
 
     all_tables: list = get_all_tables(influxdb3_local)
 
     if source_measurement not in all_tables:
+        influxdb3_local.error(
+            f"[{task_id}] Source_measurement {source_measurement} does not exist in database."
+        )
         raise Exception(
-            f"Source_measurement {source_measurement} does not exist in database"
+            f"[{task_id}] Source_measurement {source_measurement} does not exist in database."
         )
 
     return source_measurement, target_measurement
 
 
-def parse_offset(args: dict) -> timedelta:
+def parse_offset(influxdb3_local, args: dict, task_id: str) -> timedelta:
     """
     Parses the offset string into a timedelta for scheduler-based downsampling.
 
     Args:
+        influxdb3_local: InfluxDB client instance for querying the database.
         args (dict): Dictionary containing the 'offset' key with a string in the format '<number><unit>' (e.g., '1h').
+        task_id (str): The task ID.
 
     Returns:
         timedelta: Time delta representing the offset (defaults to 0 if not provided).
@@ -494,15 +567,18 @@ def parse_offset(args: dict) -> timedelta:
         if number >= 1 and unit in valid_units:
             return timedelta(**{valid_units[unit]: number})
 
-    raise Exception(f"Invalid interval format: {offset}")
+    influxdb3_local.error(f"[{task_id}] Invalid interval format: {offset}.")
+    raise Exception(f"[{task_id}] Invalid interval format: {offset}.")
 
 
-def parse_window(args: dict) -> timedelta:
+def parse_window(influxdb3_local, args: dict, task_id: str) -> timedelta:
     """
     Parses the window string into a timedelta for scheduler-based downsampling.
 
     Args:
+        influxdb3_local: InfluxDB client instance for querying the database.
         args (dict): Dictionary containing the 'window' key with a string in the format '<number><unit>' (e.g., '1h').
+        task_id (str): The task ID.
 
     Returns:
         timedelta: Time delta representing the window.
@@ -521,7 +597,8 @@ def parse_window(args: dict) -> timedelta:
     window: str | None = args.get("window", None)
 
     if window is None:
-        raise Exception("Missing window parameter")
+        influxdb3_local.error(f"[{task_id}] Missing window parameter.")
+        raise Exception(f"[{task_id}] Missing window parameter.")
 
     match = re.fullmatch(r"(\d+)([a-zA-Z]+)", window)
 
@@ -532,16 +609,21 @@ def parse_window(args: dict) -> timedelta:
         if number >= 1 and unit in valid_units:
             return timedelta(**{valid_units[unit]: number})
 
-    raise Exception(f"Invalid interval format: {window}")
+    influxdb3_local.error(f"[{task_id}] Invalid interval format: {window}.")
+    raise Exception(f"[{task_id}] Invalid interval format: {window}.")
 
 
-def parse_backfill_window(args: dict) -> tuple[datetime | None, datetime]:
+def parse_backfill_window(
+    influxdb3_local, args: dict, task_id: str
+) -> tuple[datetime | None, datetime]:
     """
     Parses the backfill window for HTTP-based downsampling. Requires timezone-aware datetime strings
     in ISO 8601 format (e.g., '2025-05-01T00:00:00+03:00').
 
     Args:
+        influxdb3_local: InfluxDB client instance for querying the database.
         args (dict): Dictionary containing 'backfill_start' and 'backfill_end' keys.
+        task_id (str): The task ID.
 
     Returns:
         tuple[datetime | None, datetime]: Tuple of start and end datetimes in UTC.
@@ -549,13 +631,24 @@ def parse_backfill_window(args: dict) -> tuple[datetime | None, datetime]:
     Raises:
         Exception: If the datetime format is invalid, lacks timezone info, or if start ≥ end.
     """
+
     def parse_iso_datetime(name: str, value: str) -> datetime:
         try:
             dt = datetime.fromisoformat(value)
         except ValueError:
-            raise Exception(f"Invalid ISO 8601 datetime for {name}: '{value}'")
+            influxdb3_local.error(
+                f"[{task_id}] Invalid ISO 8601 datetime for {name}: '{value}'."
+            )
+            raise Exception(
+                f"[{task_id}] Invalid ISO 8601 datetime for {name}: '{value}'."
+            )
         if dt.tzinfo is None:
-            raise Exception(f"{name} must include timezone info (e.g., '+00:00')")
+            influxdb3_local.error(
+                f"[{task_id}] {name} must include timezone info (e.g., '+00:00')."
+            )
+            raise Exception(
+                f"[{task_id}] {name} must include timezone info (e.g., '+00:00')."
+            )
         return dt.astimezone(timezone.utc)
 
     start_str = args.get("backfill_start")
@@ -572,7 +665,12 @@ def parse_backfill_window(args: dict) -> tuple[datetime | None, datetime]:
     backfill_start = parse_iso_datetime("backfill_start", start_str)
 
     if backfill_start >= backfill_end:
-        raise Exception("backfill_start must be earlier than backfill_end")
+        influxdb3_local.error(
+            f"[{task_id}] backfill_start must be earlier than backfill_end."
+        )
+        raise Exception(
+            f"[{task_id}] backfill_start must be earlier than backfill_end."
+        )
 
     return backfill_start, backfill_end
 
@@ -654,7 +752,7 @@ def build_downsample_query(
     interval: tuple[int, str],
     tag_values: dict[str, list[str]] | None,
     start_time: datetime,
-    end_time: datetime
+    end_time: datetime,
 ) -> str:
     """
     Builds a downsampling SQL query for any mode (HTTP or scheduler), given explicit start/end.
@@ -704,6 +802,7 @@ def write_downsampled_data(
     max_retries: int,
     target_measurement: str,
     target_database: str | None,
+    task_id: str,
 ):
     """
     Writes downsampled data to the target measurement with retry logic.
@@ -714,6 +813,7 @@ def write_downsampled_data(
         max_retries (int): Maximum number of retry attempts for write operations.
         target_measurement (str): Name of the target measurement.
         target_database (str | None): Target database name, or None to use the default database.
+        task_id (str): The task ID.
 
     Returns:
         tuple[bool, str | None, int]: Tuple containing success status, error message (if any), and number of retries.
@@ -727,12 +827,16 @@ def write_downsampled_data(
                         influxdb3_local.write_to_db(target_database, row)
                     else:
                         influxdb3_local.write(row)
-                influxdb3_local.info(f"Successful write to {target_measurement}")
+                influxdb3_local.info(
+                    f"[{task_id}] Successful write to {target_measurement}."
+                )
                 return True, None, retry_count
 
             except Exception as e:
                 retry_count += 1
-                influxdb3_local.warn(f"Error write attempt {tries + 1}: {str(e)}")
+                influxdb3_local.warn(
+                    f"[{task_id}] Error write attempt {tries + 1}: {str(e)}."
+                )
                 wait_time = (2**tries) + random.random()
                 time.sleep(wait_time)
 
@@ -740,7 +844,7 @@ def write_downsampled_data(
                     raise
 
     except Exception as e:
-        influxdb3_local.error(f"Write failed with exception {str(e)}")
+        influxdb3_local.error(f"[{task_id}] Write failed with exception {str(e)}.")
         return False, str(e), retry_count
 
 
@@ -812,25 +916,31 @@ def process_scheduled_call(
     Raises:
         Exception: If no args are provided.
     """
-    influxdb3_local.info(f"Starting downsampling schedule for call_time: {call_time}")
+    task_id = str(uuid.uuid4())
+    influxdb3_local.info(
+        f"[{task_id}] Starting downsampling schedule for call_time: {call_time}."
+    )
 
     if args is None:
-        raise Exception("No args provided for plugin")
+        influxdb3_local.error(f"[{task_id}] No args provided for plugin.")
+        raise Exception(f"[{task_id}] No args provided for plugin.")
 
     start_time: float = time.time()
     source_measurement, target_measurement = parse_source_and_target_measurement(
-        influxdb3_local, args
+        influxdb3_local, args, task_id
     )
     target_database: str | None = args.get("target_database", None)
     tag_value_filters: dict | None = parse_tag_values_for_scheduler(
-        influxdb3_local, args, source_measurement
+        influxdb3_local, args, source_measurement, task_id
     )
-    tags: list = get_tag_names(influxdb3_local, source_measurement)
-    fields: list = parse_field_aggregations_for_scheduler(influxdb3_local, args)
-    interval: tuple = parse_time_interval(args, "interval")
+    tags: list = get_tag_names(influxdb3_local, source_measurement, task_id)
+    fields: list = parse_field_aggregations_for_scheduler(
+        influxdb3_local, args, task_id
+    )
+    interval: tuple = parse_time_interval(influxdb3_local, args, "interval", task_id)
     max_retries: int = parse_max_retries(args)
-    offset: timedelta = parse_offset(args)
-    window: timedelta = parse_window(args)
+    offset: timedelta = parse_offset(influxdb3_local, args, task_id)
+    window: timedelta = parse_window(influxdb3_local, args, task_id)
     call_time_: datetime = call_time.replace(tzinfo=timezone.utc)
 
     real_now = call_time_ - offset
@@ -858,17 +968,20 @@ def process_scheduled_call(
         max_retries,
         target_measurement,
         target_database,
+        task_id,
     )
 
     end_time = time.time()
     execution_time = end_time - start_time
     if not success:
         influxdb3_local.error(
-            f"Downsampling job failed with {error}, {retries} retries"
+            f"[{task_id}] Downsampling job failed with {error}, {retries} retries."
         )
         return
 
-    influxdb3_local.info(f"Downsampling job finished in {execution_time} seconds")
+    influxdb3_local.info(
+        f"[{task_id}] Downsampling job finished in {execution_time} seconds."
+    )
 
 
 def process_request(
@@ -887,29 +1000,34 @@ def process_request(
     Raises:
         Exception: If no request body is provided.)
     """
+    task_id = str(uuid.uuid4())
+
     if request_body:
         data = json.loads(request_body)
-        influxdb3_local.info(f"Request data: {data}")
+        influxdb3_local.info(f"[{task_id}] Request data: {data}.")
     else:
-        raise Exception("No request body provided")
+        influxdb3_local.error(f"[{task_id}] No request body provided.")
+        raise Exception(f"[{task_id}] No request body provided.")
 
-    influxdb3_local.info("Starting downsampling process")
+    influxdb3_local.info(f"[{task_id}] Starting downsampling process.")
     start_time = time.time()
 
     source_measurement, target_measurement = parse_source_and_target_measurement(
-        influxdb3_local, data
+        influxdb3_local, data, task_id
     )
     target_database: str | None = data.get("target_database", None)
     tag_value_filters: dict | None = parse_tag_values_for_http(
-        influxdb3_local, data, source_measurement
+        influxdb3_local, data, source_measurement, task_id
     )
-    tags: list = get_tag_names(influxdb3_local, source_measurement)
-    fields: list = parse_field_aggregations_for_http(influxdb3_local, data)
-    interval: tuple = parse_time_interval(data, "interval")
+    tags: list = get_tag_names(influxdb3_local, source_measurement, task_id)
+    fields: list = parse_field_aggregations_for_http(influxdb3_local, data, task_id)
+    interval: tuple = parse_time_interval(influxdb3_local, data, "interval", task_id)
     max_retries: int = parse_max_retries(data)
 
-    batch_size: tuple = parse_time_interval(data, "batch_size")
-    backfill_start, backfill_end = parse_backfill_window(data)
+    batch_size: tuple = parse_time_interval(
+        influxdb3_local, data, "batch_size", task_id
+    )
+    backfill_start, backfill_end = parse_backfill_window(influxdb3_local, data, task_id)
 
     if backfill_start is None:
         q = f"SELECT MIN(time) as _t FROM {source_measurement}"
@@ -917,9 +1035,13 @@ def process_request(
         oldest = res[0].get("_t")
 
         backfill_start: datetime = datetime.fromtimestamp(oldest / 1e9, tz=timezone.utc)
-        influxdb3_local.info(f"Full mode: from {backfill_start} to {backfill_end}")
+        influxdb3_local.info(
+            f"[{task_id}] Full mode: from {backfill_start} to {backfill_end}."
+        )
     else:
-        influxdb3_local.info(f"Window mode: from {backfill_start} to {backfill_end}")
+        influxdb3_local.info(
+            f"[{task_id}] Window mode: from {backfill_start} to {backfill_end}."
+        )
 
     cursor = backfill_start
     total_retries = 0
@@ -955,14 +1077,15 @@ def process_request(
             max_retries,
             target_measurement,
             target_database,
+            task_id,
         )
         if not success:
             influxdb3_local.warn(
-                f"Write failed for batch {cursor} → {batch_end}: {result} (retries={retries})"
+                f"[{task_id}] Write failed for batch {cursor} → {batch_end}: {result} (retries={retries})."
             )
         else:
             influxdb3_local.info(
-                f"Batch {cursor} → {batch_end} written successfully (retries={retries})"
+                f"[{task_id}] Batch {cursor} → {batch_end} written successfully (retries={retries})."
             )
 
             total_retries += retries
@@ -971,6 +1094,6 @@ def process_request(
 
     duration = time.time() - start_time
     influxdb3_local.info(
-        f"Downsampling completed on '{source_measurement}' → '{target_measurement}': "
-        f"{total_retries} retries, duration {duration:.2f}s"
+        f"[{task_id}] Downsampling completed on '{source_measurement}' → '{target_measurement}': "
+        f"{total_retries} retries, duration {duration:.2f}s."
     )
