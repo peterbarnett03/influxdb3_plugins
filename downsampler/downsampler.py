@@ -784,9 +784,9 @@ def build_downsample_query(
         SELECT
             {fields_clause}
         FROM
-            {measurement}
+            '{measurement}'
         WHERE
-            time > '{start_iso}'
+            time >= '{start_iso}'
         AND 
             time < '{end_iso}'
         {tag_filter}
