@@ -94,8 +94,14 @@ The plugin uses a compressed JSONL queue file to ensure reliable data delivery.
   ```bash
   influxdb3 serve --node-id node0 --object-store file --data-dir ~/.influxdb3 --plugin-dir ~/.plugins
   ```
+  
+### 2. Download & Install InfluxDB 3 python module used by plugin
+  ```bash
+  influxdb3 install package influxdb3-python
+  ```
 
-### 2. Configure & Create Trigger (Scheduler Mode)
+
+### 3. Configure & Create Trigger (Scheduler Mode)
 
 Create a trigger for the plugin using the `influxdb3 create trigger` command.
 
@@ -137,7 +143,7 @@ influxdb3 enable trigger --database mydb data_replicator_trigger
 
 
 
-### 3. Configure & Create Trigger (Data write Mode)
+### 4. Configure & Create Trigger (Data write Mode)
 
 The Data Replicator Plugin can be configured to automatically replicate data whenever data is written to the local InfluxDB database and the Write-Ahead Log (WAL) is flushed. This is achieved by creating a trigger, which executes the plugin each time a write operation is committed to the database.
 
