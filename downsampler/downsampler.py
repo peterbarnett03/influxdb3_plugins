@@ -62,7 +62,7 @@ def parse_time_interval(
     if key == "interval":
         interval: str = args.get(key, "10min")
     else:
-        interval: str = args.get(key, "30d")
+        interval = args.get(key, "30d")
 
     match = re.fullmatch(r"(\d+)([a-zA-Z]+)", interval)
     if match:
@@ -189,45 +189,53 @@ def parse_tag_values_for_scheduler(
     Args:
         influxdb3_local: InfluxDB client instance.
         args (dict): Dictionary containing the 'tag_values' key with a dot-separated string
-            of tag-value pairs (e.g., 'room:Kitchen-Bedroom-"Some other room"' ).
+            of tag-value pairs (e.g., 'room:Kitchen@Bedroom@"Some other room"').
         source_measurement (str): Name of the source measurement.
-        task_id (str): The task ID.
+        task_id (str): Task identifier.
 
     Returns:
-        dict[str, list[str]] | None: Dictionary mapping tag names to lists of values, or None if no tag values provided.
+        dict[str, list[str]] | None: Dictionary mapping tag names to lists of values,
+            or None if no tag values are provided.
 
     Raises:
-        Exception: If the 'tag_values' format is invalid (must match '^([^:.]+\:[^:.]+(?:\-[^:.]+)*)(\.[^:.]+\:[^:.]+(?:\-[^:.]+)*)*$').
+        Exception: If the tag-value pair format is invalid (e.g., missing ':' or invalid tag name).
     """
     tag_values: str | None = args.get("tag_values", None)
-    pattern: str = r"^([^:.]+\:[^:.]+(?:\-[^:.]+)*)(\.[^:.]+\:[^:.]+(?:\-[^:.]+)*)*$"
+    if tag_values is None:
+        return None
 
-    if tag_values is not None:
-        if not re.match(pattern, tag_values):
-            influxdb3_local.error(
-                f"[{task_id}] Invalid tag_values format: {tag_values}."
-            )
-            raise Exception(f"[{task_id}] Invalid tag_values format: {tag_values}.")
+    result: dict = {}
+    tag_names: list = get_tag_names(influxdb3_local, source_measurement, task_id)
+    tag_name_pattern = re.compile(r"^[a-zA-Z0-9_-]+$")
 
-        result: dict = {}
-        tag_names: list = get_tag_names(influxdb3_local, source_measurement, task_id)
-
-        pairs: list = tag_values.split(".")
-        for pair in pairs:
-            tag_name, value = pair.split(":")
-            if tag_name in tag_names:
-                values: list = value.split("-")
-                if tag_name in result:
-                    result[tag_name] += values
-                else:
-                    result[tag_name] = values
+    pairs: list = tag_values.split(".")
+    for pair in pairs:
+        if not pair:
+            continue  # Skip empty pairs
+        parts = pair.split(":")
+        if len(parts) != 2:
+            influxdb3_local.error(f"[{task_id}] Invalid tag-value pair: '{pair}' (must contain exactly one ':')")
+            raise Exception(f"[{task_id}] Invalid tag-value pair: '{pair}' (must contain exactly one ':')")
+        tag_name, value_str = parts
+        if not tag_name_pattern.match(tag_name):
+            influxdb3_local.error(f"[{task_id}] Invalid tag name: '{tag_name}' (must consist of letters, digits, '-', and '_')")
+            raise Exception(f"[{task_id}] Invalid tag name: '{tag_name}' (must consist of letters, digits, '-', and '_')")
+        values = value_str.split("@")
+        strip_values: list = []
+        for value in values:
+            if value[0] == value[-1] and value[0] in ('"', "'"):
+                strip_values.append(value[1:-1])
             else:
-                influxdb3_local.warn(
-                    f"[{task_id}] Tag '{tag_name}' does not exist in '{source_measurement}'."
-                )
+                strip_values.append(value)
+        if tag_name in tag_names:
+            if tag_name in result:
+                result[tag_name] += strip_values
+            else:
+                result[tag_name] = strip_values
+        else:
+            influxdb3_local.warn(f"[{task_id}] Tag '{tag_name}' does not exist in '{source_measurement}'.")
 
-        return result
-    return None
+    return result
 
 
 def parse_tag_values_for_http(
@@ -706,7 +714,7 @@ def generate_fields_string(
     return query
 
 
-def generate_group_by_string(tags_list):
+def generate_group_by_string(tags_list: list):
     """
     Generates the GROUP BY clause for downsampling queries.
 
@@ -722,7 +730,7 @@ def generate_group_by_string(tags_list):
     return group_by_clause
 
 
-def generate_tag_filter_clause(tag_values):
+def generate_tag_filter_clause(tag_values: dict | None):
     """
     Generates the WHERE clause for filtering by tag values.
 
@@ -1057,7 +1065,7 @@ def process_request(
     while cursor < backfill_end:
         batch_end = min(cursor + batch_delta, backfill_end)
 
-        query = build_downsample_query(
+        query: str = build_downsample_query(
             fields,
             source_measurement,
             tags,
