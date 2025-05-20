@@ -14,7 +14,6 @@ This plugin replicates data from a local InfluxDB 3 Core/Enterprise instance to 
 - **Data Replication**: Replicate data from a local InfluxDB 3 instance to a remote one.
 - **Filtering**: Specify which tables to replicate and which fields to exclude.
 - **Renaming**: Rename tables and fields during replication.
-- **Downsampling**: When enabled, downsample all data within the specified time window for scheduled triggers, or for each individual run for data writes triggers.
 - **Scheduler and Data write Support**: Run periodically or on data writes via InfluxDB triggers.
 - **Queue Management**: Use a compressed JSONL queue file for reliable delivery.
 - **Retry Logic**: Handle errors and rate limits with retry mechanisms.
