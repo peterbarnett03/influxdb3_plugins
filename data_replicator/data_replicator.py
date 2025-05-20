@@ -184,7 +184,7 @@ def parse_exclusions(influxdb3_local, args: dict, task_id: str) -> dict[str, lis
         return exclusions
 
     for block in string_input.split("."):
-        block: str = block.strip()
+        block = block.strip()
         if not block:
             continue
 
@@ -290,7 +290,7 @@ def parse_field_renames(
 
     table_renames = {}
     for table_block in mapping_str.split("."):
-        table_block: str = table_block.strip()
+        table_block = table_block.strip()
         if not table_block:
             continue  # skip empty blocks
 
