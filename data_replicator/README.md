@@ -112,7 +112,7 @@ influxdb3 create trigger \
   --database mydb \
   --plugin-filename data_replicator.py \
   --trigger-spec "every:10s" \
-  --trigger-arguments host=<remote_host>,token=<remote_token>,database=<remote_db>,tables=table1.table2 \
+  --trigger-arguments host=<remote_host>,token=<remote_token>,database=<remote_db>,source_measurement=table1 \
   data_replicator_trigger
 ```
 
@@ -130,9 +130,9 @@ The following arguments are supported in the `--trigger-arguments` string for sc
 | `port_override`       | Override the default write port (e.g., 8181).                  | Integer port number. Optional.                                                          | `443`   |
 | `max_retries`         | Maximum number of retries for write operations.                | Integer ≥ 0.                                                                            | `3`     |
 | `excluded_fields`     | String defining fields to exclude per table.                   | Format: `<table1>:<field1>@<field2>.<table2>:<field3>...`                               | `None`  |
-| `tables_rename`       | String defining table renames.                                 | Format: `<old_table1>:<new_table1>.<old_table2>:<new_table2>...`                        | `None`  |
-| `field_renames`       | String defining field renames per table.                       | Format: `table1:oldA@newA$oldB@newB.table2:oldX@newX$oldY@newY`                         | `None`  |
-| `offset`              | Time offset to apply to the window (e.g., `10min`, `1h`).      | Format: `<number><unit>` where unit is `min`, `h`, `d`, `w`. Number ≥ 1.                | `0`     |
+| `tables_rename`       | String defining table renames.                                 | Format: `<old_table1>:<new_table1>`                                                     | `None`  |
+| `field_renames`       | String defining field renames per table.                       | Format: `table1:oldA@newA oldB@newB`                                                    | `None`  |
+| `offset`              | Time offset to apply to the window (e.g., `10min`, `1h`).      | Format: `<number><unit>` where unit is `s`, `min`, `h`, `d`, `w`. Number ≥ 1.           | `0`     |
 | `window`              | Time window for each replication job (e.g., `1h`, `1d`).       | Format: `<number><unit>` where unit is `s`, `min`, `h`, `d`, `w`. Number ≥ 1. Required. | `None`  |
 
 #### Enable Trigger
@@ -155,26 +155,26 @@ influxdb3 create trigger \
   --database mydb \
   --trigger-spec "all_tables" \
   --plugin-filename data_replicator.py \
-  --trigger-arguments host=<remote_host>,token=<remote_token>,database=<remote_db>,tables=table1.table2,aggregate_interval=1m \
+  --trigger-arguments host=<remote_host>,token=<remote_token>,database=<remote_db>,tables=table1.table2,field_renames="home:hum@humidity temp@temperature" \
   data_replicator_trigger
 ```
 
 #### Arguments (Data write Mode)
 The following arguments are supported in the `--trigger-arguments` string for data write trigger:
 
-| Argument              | Description                                                      | Constraints                                                                  | Default  |
-|-----------------------|------------------------------------------------------------------|------------------------------------------------------------------------------|----------|
-| `host`                | Remote InfluxDB host URL.                                        | Required. (`http://127.0.0.1`, `12.4.0.1`, `https://12.4.0.1`)               | `None`   |
-| `token`               | Remote InfluxDB API token.                                       | Required.                                                                    | `None`   |
-| `database`            | Remote database name.                                            | Required.                                                                    | `None`   |
-| `tables`              | Dot-separated list of tables to replicate.                       | Optional. If not provided, all tables are replicated.                        | `None`   |
-| `verify_ssl`          | Whether to verify SSL certificates when connecting via HTTPS.    | True or False. Optional.                                                     | `true`   |
-| `port_override`       | Override the default write port (e.g., 8181).                    | Integer port number. Optional.                                               | `443`    |
-| `max_retries`         | Maximum number of retries for write operations.                  | Integer ≥ 0.                                                                 | `3`      | 
-| `max_size`            | Maximum size for the queue file in MB.                           | Integer ≥ 1.                                                                 | `1024`   |
-| `excluded_fields`     | String defining fields to exclude per table.                     | Format: `<table1>:<field1>@<field2>.<table2>:<field3>...`                    | `None`   |
-| `tables_rename`       | String defining table renames.                                   | Format: `<old_table1>:<new_table1>.<old_table2>:<new_table2>...`             | `None`   |
-| `field_renames`       | String defining field renames per table.                         | Format: `table1:oldA@newA$oldB@newB.table2:oldX@newX$oldY@newY`              | `None`   |
+| Argument              | Description                                                      | Constraints                                                      | Default  |
+|-----------------------|------------------------------------------------------------------|------------------------------------------------------------------|----------|
+| `host`                | Remote InfluxDB host URL.                                        | Required. (`http://127.0.0.1`, `12.4.0.1`, `https://12.4.0.1`)   | `None`   |
+| `token`               | Remote InfluxDB API token.                                       | Required.                                                        | `None`   |
+| `database`            | Remote database name.                                            | Required.                                                        | `None`   |
+| `tables`              | Dot-separated list of tables to replicate.                       | Optional. If not provided, all tables are replicated.            | `None`   |
+| `verify_ssl`          | Whether to verify SSL certificates when connecting via HTTPS.    | True or False. Optional.                                         | `true`   |
+| `port_override`       | Override the default write port (e.g., 8181).                    | Integer port number. Optional.                                   | `443`    |
+| `max_retries`         | Maximum number of retries for write operations.                  | Integer ≥ 0.                                                     | `3`      | 
+| `max_size`            | Maximum size for the queue file in MB.                           | Integer ≥ 1.                                                     | `1024`   |
+| `excluded_fields`     | String defining fields to exclude per table.                     | Format: `<table1>:<field1>@<field2>.<table2>:<field3>...`        | `None`   |
+| `tables_rename`       | String defining table renames.                                   | Format: `<old_table1>:<new_table1>.<old_table2>:<new_table2>...` | `None`   |
+| `field_renames`       | String defining field renames per table.                         | Format: `table1:oldA@newA oldB@newB.table2:oldX@newX oldY@newY`  | `None`   |
 
 #### Enable Trigger
 To start replication on WAL flush events, enable the trigger with the following command:

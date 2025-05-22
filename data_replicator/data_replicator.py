@@ -270,7 +270,7 @@ def parse_field_renames(
     Parse a complex mapping string for renaming fields in specific tables.
 
     Format example:
-        "table1:oldA@newA$oldB@newB.table2:oldX@newX$oldY@newY"
+        "table1:oldA@newA oldB@newB.table2:oldX@newX oldY@newY"
 
     Args:
         influxdb3_local: Logger for error messages.
@@ -310,7 +310,7 @@ def parse_field_renames(
 
         if fields_part:
             # split individual old@new mappings
-            for mapping in fields_part.split("$"):
+            for mapping in fields_part.split(" "):
                 if "@" not in mapping:
                     influxdb3_local.error(
                         f"[{task_id}] Invalid field mapping '{mapping}' in table '{table}': missing '@'"
@@ -581,9 +581,9 @@ def parse_offset(influxdb3_local, args: dict, task_id: str) -> timedelta:
         Exception: If the format is invalid or the unit is unsupported.
 
     Example input:
-        args = {"offset": "15min"}  # valid units: 'min', 'h', 'd', 'w'
+        args = {"offset": "15min"}  # valid units: 's', 'min', 'h', 'd', 'w'
     """
-    valid_units = {"min": "minutes", "h": "hours", "d": "days", "w": "weeks"}
+    valid_units = {"s": "seconds", "min": "minutes", "h": "hours", "d": "days", "w": "weeks"}
 
     offset: str | None = args.get("offset", None)
 
@@ -824,7 +824,6 @@ def _flush_queue_with_retries(
     for attempt in range(max_retries):
         try:
             lines: list = [entry["line"] for entry in queued_entries]
-            influxdb3_local.error(f"lines: {lines}")
             client.write(lines)
             successful_entries: list = queued_entries
             influxdb3_local.info(
