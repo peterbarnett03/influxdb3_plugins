@@ -153,7 +153,7 @@ The JSON body supports the following parameters:
 | `target_measurement`  | Name of the target measurement to write downsampled data.                              | **Required.**                                                                                                                     | `None`                            |
 | `interval`            | Time interval for downsampling (e.g., `10min`, `2h`, `1m`, `1y`).                      | Format: `<number><unit>` where unit is `s`, `min`, `h`, `d`, `w`, `m`, `q`, `y`. Number ≥ 1. `m`, `q`, `y` are converted to days. | `10min`                           |
 | `batch_size`          | Time interval for batch processing (e.g., `1h`, `1d`).                                 | Format: `<number><unit>` where unit is `s`, `min`, `h`, `d`. Number ≥ 1.                                                          | `30d`                             |
-| `calculations`        | Aggregation functions. Either `"avg"` or a list of `('field', 'aggregation')`.         | Valid aggregations: `avg`, `sum`, `min`, `max`, `derivative`, `median`.                                                           | `"avg"`                           |
+| `calculations`        | Aggregation functions. Either `"avg"` or a list of `['field', 'aggregation']`.         | Valid aggregations: `avg`, `sum`, `min`, `max`, `derivative`, `median`.                                                           | `"avg"`                           |
 | `specific_fields`     | List of fields to downsample (e.g., `["usage_user", "usage_system"]`).                 | Must be valid field names. Non-existent fields are ignored with a warning. Optional.                                              | All aggregatable fields           |
 | `excluded_fields`     | List of fields to exclude (e.g., `["usage_idle"]`).                                    | Must be valid field names. Non-existent fields are ignored with a warning. Optional.                                              | `None`                            |
 | `tag_values`          | Dictionary of tag names to lists of values (e.g., `{"host": ["server1", "server2"]}`). | Non-existent tags are ignored with a warning. Optional.                                                                           | `None`                            |
@@ -165,8 +165,8 @@ The JSON body supports the following parameters:
 
 #### Example HTTP Request  
 ```bash  
-curl -X POST http://localhost:8181/api/v3/engine/webhook \ 
--H "Authorization: Bearer YOUR_TOKEN" \ 
+curl -X POST http://localhost:8181/api/v3/engine/webhook \
+-H "Authorization: Bearer YOUR_TOKEN" \
 -d '{
     "source_measurement": "home",
     "target_measurement": "home_downsampled",
@@ -174,7 +174,7 @@ curl -X POST http://localhost:8181/api/v3/engine/webhook \
     "tag_values": {
       "room": ["Kitchen", "LivingRoom"]
     },
-    "calculations": [("co", "avg"), ("co", "max"), ("co", "min")],
+    "calculations": [["co", "avg"], ["co", "max"], ["co", "min"]],
     "specific_fields": ["co"],
     "interval": "10s",
     "batch_size": "1h",

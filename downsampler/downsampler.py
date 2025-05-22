@@ -359,7 +359,7 @@ def parse_field_aggregations_for_http(
     Args:
         influxdb3_local: InfluxDB client instance.
         data (dict): Dictionary containing 'source_measurement' and 'calculations' keys.
-            'calculations' can be 'avg' or a list of tuples with 'field' and 'aggregation' (e.g., [('co', 'avg')]).
+            'calculations' can be 'avg' or a list of list with 'field' and 'aggregation' (e.g., [['co', 'avg']]).
         task_id (str): The task ID.
 
     Returns:
@@ -369,7 +369,7 @@ def parse_field_aggregations_for_http(
         Exception: If no aggregatable fields are found, or if the aggregation format or type is invalid.
     """
     measurement: str = data["source_measurement"]
-    calculations_input: list[tuple[str, str]] | str = data.get("calculations", "avg")
+    calculations_input: list[list[str, str]] | str = data.get("calculations", "avg")
     excluded_fields: list = parse_fields_for_http(
         influxdb3_local, measurement, "excluded_fields", data, task_id
     )
@@ -1105,3 +1105,7 @@ def process_request(
         f"[{task_id}] Downsampling completed on '{source_measurement}' → '{target_measurement}': "
         f"{total_retries} retries, duration {duration:.2f}s."
     )
+
+    return {
+        "message": f"[{task_id}] Downsampling completed from '{source_measurement}' to '{target_measurement}'"
+    }
