@@ -112,7 +112,7 @@ influxdb3 create trigger \
   --database mydb \
   --plugin-filename data_replicator.py \
   --trigger-spec "every:10s" \
-  --trigger-arguments host=<remote_host>,token=<remote_token>,database=<remote_db>,source_measurement=table1 \
+  --trigger-arguments host=<remote_host>,token=<remote_token>,database=<remote_db>,source_measurement=<table>,window=10s \
   data_replicator_trigger
 ```
 
