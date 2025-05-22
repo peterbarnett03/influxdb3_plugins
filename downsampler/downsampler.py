@@ -558,9 +558,9 @@ def parse_offset(influxdb3_local, args: dict, task_id: str) -> timedelta:
         timedelta: Time delta representing the offset (defaults to 0 if not provided).
 
     Raises:
-        Exception: If the offset format is invalid or the unit is not supported ('min', 'h', 'd', 'w').
+        Exception: If the offset format is invalid or the unit is not supported ('s', 'min', 'h', 'd', 'w').
     """
-    valid_units = {"min": "minutes", "h": "hours", "d": "days", "w": "weeks"}
+    valid_units = {"s": "seconds", "min": "minutes", "h": "hours", "d": "days", "w": "weeks"}
 
     offset: str | None = args.get("offset", None)
 
@@ -836,7 +836,7 @@ def write_downsampled_data(
                     else:
                         influxdb3_local.write(row)
                 influxdb3_local.info(
-                    f"[{task_id}] Successful write to {target_measurement}."
+                    f"[{task_id}] Successful write to {target_measurement} {len(data)} rows."
                 )
                 return True, None, retry_count
 
