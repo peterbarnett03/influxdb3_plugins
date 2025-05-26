@@ -160,7 +160,7 @@ The JSON body supports the following parameters:
 | `backfill_start`      | Start time for backfill (e.g., `2025-05-01T00:00:00+03:00`).                           | Format: `YYYY-MM-DDTHH:MM:SS±HH:MM` (ISO 8601). Must be earlier than `backfill_end`. Optional.                                    | Earliest timestamp in measurement |
 | `backfill_end`        | End time for backfill (e.g., `2025-05-02T00:00:00+03:00`).                             | Format: `YYYY-MM-DDTHH:MM:SS±HH:MM` (ISO 8601). Optional.                                                                         | Current time                      |
 | `max_retries`         | Maximum number of retries for write operations.                                        | Integer ≥ 0.                                                                                                                      | `5`                               |
-| `target_database`     | Target database for writing downsampled data.                                          | Optional. If not provided, uses the same database.                                                                                | `None`                            |
+| `target_database`     | Target database for writing downsampled data.                                          | Optional. If not provided, uses the `default` database.                                                                             | `None`                            |
 
 
 #### Example HTTP Request  

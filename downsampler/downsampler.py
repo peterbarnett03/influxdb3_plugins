@@ -214,12 +214,20 @@ def parse_tag_values_for_scheduler(
             continue  # Skip empty pairs
         parts = pair.split(":")
         if len(parts) != 2:
-            influxdb3_local.error(f"[{task_id}] Invalid tag-value pair: '{pair}' (must contain exactly one ':')")
-            raise Exception(f"[{task_id}] Invalid tag-value pair: '{pair}' (must contain exactly one ':')")
+            influxdb3_local.error(
+                f"[{task_id}] Invalid tag-value pair: '{pair}' (must contain exactly one ':')"
+            )
+            raise Exception(
+                f"[{task_id}] Invalid tag-value pair: '{pair}' (must contain exactly one ':')"
+            )
         tag_name, value_str = parts
         if not tag_name_pattern.match(tag_name):
-            influxdb3_local.error(f"[{task_id}] Invalid tag name: '{tag_name}' (must consist of letters, digits, '-', and '_')")
-            raise Exception(f"[{task_id}] Invalid tag name: '{tag_name}' (must consist of letters, digits, '-', and '_')")
+            influxdb3_local.error(
+                f"[{task_id}] Invalid tag name: '{tag_name}' (must consist of letters, digits, '-', and '_')"
+            )
+            raise Exception(
+                f"[{task_id}] Invalid tag name: '{tag_name}' (must consist of letters, digits, '-', and '_')"
+            )
         values = value_str.split("@")
         strip_values: list = []
         for value in values:
@@ -233,7 +241,9 @@ def parse_tag_values_for_scheduler(
             else:
                 result[tag_name] = strip_values
         else:
-            influxdb3_local.warn(f"[{task_id}] Tag '{tag_name}' does not exist in '{source_measurement}'.")
+            influxdb3_local.warn(
+                f"[{task_id}] Tag '{tag_name}' does not exist in '{source_measurement}'."
+            )
 
     return result
 
@@ -560,7 +570,13 @@ def parse_offset(influxdb3_local, args: dict, task_id: str) -> timedelta:
     Raises:
         Exception: If the offset format is invalid or the unit is not supported ('s', 'min', 'h', 'd', 'w').
     """
-    valid_units = {"s": "seconds", "min": "minutes", "h": "hours", "d": "days", "w": "weeks"}
+    valid_units = {
+        "s": "seconds",
+        "min": "minutes",
+        "h": "hours",
+        "d": "days",
+        "w": "weeks",
+    }
 
     offset: str | None = args.get("offset", None)
 
@@ -699,10 +715,12 @@ def generate_fields_string(
     Returns:
         str: SQL SELECT clause string including DATE_BIN, aggregations, time_from, time_to, and tags.
     """
-    query = f"DATE_BIN(INTERVAL '{interval[0]} {interval[1]}', time, '1970-01-01T00:00:00Z') AS _time,\n \
+    query = (
+        f"DATE_BIN(INTERVAL '{interval[0]} {interval[1]}', time, '1970-01-01T00:00:00Z') AS _time,\n \
     \tcount(*) AS record_count,\n \
     \tMIN(time) AS time_from,\n \
     \tMAX(time) AS time_to"
+    )
 
     for field in fields_aggregate_list:
         query += ",\n"
@@ -827,23 +845,48 @@ def write_downsampled_data(
         tuple[bool, str | None, int]: Tuple containing success status, error message (if any), and number of retries.
     """
     retry_count = 0
+
+    # Calculate metrics for logging
+    record_count = len(data)
+    db_name = target_database if target_database else "default"
+    # Log the operation details
+    log_data = {
+        "records": record_count,
+        "database": db_name,
+        "measurement": target_measurement,
+        "max_retries": max_retries,
+    }
+    influxdb3_local.info(f"[{task_id}] Preparing to write downsampled data", log_data)
     try:
         for tries in range(max_retries):
             try:
                 for row in data:
-                    if target_database:
-                        influxdb3_local.write_to_db(target_database, row)
-                    else:
-                        influxdb3_local.write(row)
+                    influxdb3_local.write_to_db(db_name, row)
+                # Log successful write with metrics
+                success_log = {
+                    "records_written": record_count,
+                    "database": db_name,
+                    "measurement": target_measurement,
+                    "retries": retry_count,
+                }
                 influxdb3_local.info(
-                    f"[{task_id}] Successful write to {target_measurement} {len(data)} rows."
+                    f"[{task_id}] Successful write to {target_measurement}", success_log
                 )
                 return True, None, retry_count
 
             except Exception as e:
                 retry_count += 1
+                # Log retry attempt with error details
+                retry_log = {
+                    "attempt": tries + 1,
+                    "max_retries": max_retries,
+                    "records": record_count,
+                    "database": db_name,
+                    "error": str(e),
+                }
+
                 influxdb3_local.warn(
-                    f"[{task_id}] Error write attempt {tries + 1}: {str(e)}."
+                    f"[{task_id}] Error write attempt {tries + 1}", retry_log
                 )
                 wait_time = (2**tries) + random.random()
                 time.sleep(wait_time)
@@ -852,7 +895,16 @@ def write_downsampled_data(
                     raise
 
     except Exception as e:
-        influxdb3_local.error(f"[{task_id}] Write failed with exception {str(e)}.")
+        # Log failure with complete metrics
+        failure_log = {
+            "records": record_count,
+            "database": db_name,
+            "measurement": target_measurement,
+            "retries": retry_count,
+            "error": str(e),
+        }
+
+        influxdb3_local.error(f"[{task_id}] Write failed with exception, {failure_log}")
         return False, str(e), retry_count
 
 
@@ -966,9 +1018,90 @@ def process_scheduled_call(
 
     data = influxdb3_local.query(query)
 
+    # Log source data metrics
+    source_record_count = len(data)
+    source_columns = list(data[0].keys()) if source_record_count > 0 else []
+    source_data_log = {
+        "source_records": source_record_count,
+        "source_columns": source_columns,
+        "time_range": f"{real_then.isoformat()} to {real_now.isoformat()}",
+        "measurement": source_measurement,
+    }
+    influxdb3_local.info(f"[{task_id}] Source data retrieved: {source_data_log}")
+
+    # Check if we have data to process
+    if source_record_count == 0:
+        influxdb3_local.info(
+            f"[{task_id}] No source data to downsample in the specified time range."
+        )
+        return
+
     transformed_data: list = transform_to_influx_line(
         data, target_measurement, fields, tags
     )
+
+    # Log transformed data metrics
+    transformed_record_count = len(transformed_data)
+    field_counts: dict = {}
+    tag_counts: dict = {}
+
+    # Sample the first record to get field and tag names
+    # In both process_scheduled_call and process_request, replace the field_names and tag_names extraction:
+    if transformed_record_count > 0:
+        sample_record = transformed_data[0]
+
+    # Instead of accessing .key which might not exist on these objects
+    try:
+        # Try different ways to access field names based on LineBuilder implementation
+        if hasattr(sample_record, "fields"):
+            if isinstance(sample_record.fields, dict):
+                field_names = list(sample_record.fields.keys())
+            elif hasattr(sample_record.fields, "__iter__") and all(
+                hasattr(f, "key") for f in sample_record.fields
+            ):
+                field_names = [field.key for field in sample_record.fields]
+            else:
+                field_names = ["<field details unavailable>"]
+        else:
+            field_names = []
+
+        # Do the same for tags
+        if hasattr(sample_record, "tags") and sample_record.tags:
+            if isinstance(sample_record.tags, dict):
+                tag_names = list(sample_record.tags.keys())
+            elif hasattr(sample_record.tags, "__iter__") and all(
+                hasattr(t, "key") for t in sample_record.tags
+            ):
+                tag_names = [tag.key for tag in sample_record.tags]
+            else:
+                tag_names = ["<tag details unavailable>"]
+        else:
+            tag_names = []
+    except Exception:
+        # Fallback in case we can't determine details
+        field_names = ["<field extraction error>"]
+        tag_names = ["<tag extraction error>"]
+
+    # Define transform_data_log variable after field extraction
+    transform_data_log = {
+        "source_records": source_record_count,
+        "transformed_records": transformed_record_count,
+        "target_measurement": target_measurement,
+        "time_range": f"{real_then.isoformat()} to {real_now.isoformat()}",
+    }
+    # You can optionally add field info if available
+    if transformed_record_count > 0 and "field_names" in locals():
+        transform_data_log["field_names"] = field_names
+        if "tag_names" in locals():
+            transform_data_log["tag_names"] = tag_names
+
+    influxdb3_local.info(
+        f"[{task_id}] Data transformation complete", transform_data_log
+    )
+    # Check if we have data to write
+    if transformed_record_count == 0:
+        influxdb3_local.warn(f"[{task_id}] No data to write after transformation.")
+        return
 
     success, error, retries = write_downsampled_data(
         influxdb3_local,
@@ -987,9 +1120,16 @@ def process_scheduled_call(
         )
         return
 
-    influxdb3_local.info(
-        f"[{task_id}] Downsampling job finished in {execution_time} seconds."
-    )
+    # Final summary log
+    summary_log = {
+        "execution_time_seconds": round(execution_time, 2),
+        "source_records": source_record_count,
+        "written_records": transformed_record_count,
+        "source_measurement": source_measurement,
+        "target_measurement": target_measurement,
+        "retries": retries,
+    }
+    influxdb3_local.info(f"[{task_id}] Downsampling job finished", summary_log)
 
 
 def process_request(
@@ -1051,8 +1191,11 @@ def process_request(
             f"[{task_id}] Window mode: from {backfill_start} to {backfill_end}."
         )
 
-    cursor = backfill_start
-    total_retries = 0
+    cursor: datetime = backfill_start
+    total_retries: int = 0
+    total_source_records: int = 0
+    total_written_records: int = 0
+    batch_count: int = 0
 
     magnitude, unit = batch_size
     unit_mapping = {
@@ -1063,6 +1206,7 @@ def process_request(
     }
     batch_delta = unit_mapping[unit.lower()](magnitude)
     while cursor < backfill_end:
+        batch_count += 1
         batch_end = min(cursor + batch_delta, backfill_end)
 
         query: str = build_downsample_query(
@@ -1075,10 +1219,53 @@ def process_request(
             batch_end,
         )
 
-        data = influxdb3_local.query(query)
-        transformed_data = transform_to_influx_line(
-            data, target_measurement, fields, tags
+        batch_data = influxdb3_local.query(query)
+        batch_source_count = len(batch_data)
+        total_source_records += batch_source_count
+
+        # Log batch source data metrics
+        source_columns = list(batch_data[0].keys()) if batch_source_count > 0 else []
+        batch_source_log = {
+            "batch": batch_count,
+            "time_range": f"{cursor.isoformat()} to {batch_end.isoformat()}",
+            "source_records": batch_source_count,
+            "source_columns": source_columns[
+                :10
+            ],  # Limit to first 10 columns to avoid huge logs
+            "source_measurement": source_measurement,
+        }
+        influxdb3_local.info(
+            f"[{task_id}] Batch source data retrieved", batch_source_log
         )
+        if batch_source_count == 0:
+            influxdb3_local.info(
+                f"[{task_id}] No data in batch {batch_count}, skipping"
+            )
+            cursor = batch_end
+            continue
+
+        transformed_data = transform_to_influx_line(
+            batch_data, target_measurement, fields, tags
+        )
+
+        batch_transformed_count = len(transformed_data)
+        transform_log = {
+            "batch": batch_count,
+            "source_records": batch_source_count,
+            "transformed_records": batch_transformed_count,
+            "target_measurement": target_measurement,
+            "time_range": f"{cursor.isoformat()} to {batch_end.isoformat()}",
+        }
+        influxdb3_local.info(
+            f"[{task_id}] Batch data transformation complete", transform_log
+        )
+        if batch_transformed_count == 0:
+            influxdb3_local.warn(
+                f"[{task_id}] No data to write in batch {batch_count} after transformation."
+            )
+            cursor = batch_end
+            continue
+
         success, result, retries = write_downsampled_data(
             influxdb3_local,
             transformed_data,
@@ -1087,24 +1274,45 @@ def process_request(
             target_database,
             task_id,
         )
+
+        if success:
+            total_written_records += batch_transformed_count
+        batch_result_log = {
+            "batch": batch_count,
+            "success": success,
+            "source_records": batch_source_count,
+            "written_records": batch_transformed_count if success else 0,
+            "retries": retries,
+            "error": result if not success else None,
+        }
+
         if not success:
             influxdb3_local.warn(
-                f"[{task_id}] Write failed for batch {cursor} → {batch_end}: {result} (retries={retries})."
+                f"[{task_id}] Batch {batch_count} write failed", batch_result_log
             )
         else:
             influxdb3_local.info(
-                f"[{task_id}] Batch {cursor} → {batch_end} written successfully (retries={retries})."
+                f"[{task_id}] Batch {batch_count} completed", batch_result_log
             )
 
-            total_retries += retries
-
+        total_retries += retries
         cursor = batch_end
 
     duration = time.time() - start_time
-    influxdb3_local.info(
-        f"[{task_id}] Downsampling completed on '{source_measurement}' → '{target_measurement}': "
-        f"{total_retries} retries, duration {duration:.2f}s."
-    )
+
+    # Final summary log
+    final_summary = {
+        "total_batches": batch_count,
+        "execution_time_seconds": round(duration, 2),
+        "total_source_records": total_source_records,
+        "total_written_records": total_written_records,
+        "source_measurement": source_measurement,
+        "target_measurement": target_measurement,
+        "total_retries": total_retries,
+        "time_range": f"{backfill_start.isoformat()} to {backfill_end.isoformat()}",
+    }
+
+    influxdb3_local.info(f"[{task_id}] Downsampling process completed", final_summary)
 
     return {
         "message": f"[{task_id}] Downsampling completed from '{source_measurement}' to '{target_measurement}'"
