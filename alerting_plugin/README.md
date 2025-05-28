@@ -91,7 +91,7 @@ The following arguments are extracted from the `args` dictionary for the Schedul
 |------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|----------|---------------------------------------------------------------------------------|  
 | `measurement`          | The InfluxDB table (measurement) to monitor.                                                                                              | Yes      | `"cpu"`                                                                         |  
 | `senders`              | Dot-separated list of notification channels (e.g., `"slack.discord"`). Supported channels: `slack`, `discord`, `sms`, `whatsapp`, `http`. | Yes      | `"slack.discord"`                                                               |  
-| `influxdb3_auth_token` | API token for your Influxdb3.                                                                                                             | Yes      | `"YOUR_API_TOKEN"`                                                              |  
+| `influxdb3_auth_token` | API token for your Influxdb3.                                                                                                             | No       | `"YOUR_API_TOKEN"`                                                              |  
 | `window`               | Time window to check for missing data (e.g., `"5m"` for 5 minutes).                                                                       | Yes      | `"5m"`                                                                          |  
 | `trigger_count`        | Number of consecutive failed checks before sending an alert.                                                                              | No       | `3` (default: `1`)                                                              |  
 | `notification_text`    | Template for the notification message with variable `$table`, `$time_from`, `$time_to`.                                                   | No       | `"Deadman Alert: No data received from \$table from \$time_from to \$time_to."` |  
@@ -127,9 +127,9 @@ Each supported sender has its own required and optional parameters.
 
 #### HTTP (Custom Webhook)
 
-| Argument           | Description                           | Required | Example                          |
-|--------------------|---------------------------------------|----------|----------------------------------|
-| `http_webhook_url` | Target webhook URL for HTTP alerts.   | Yes      | `https://example.com/webhook`    |
+| Argument           | Description                                    | Required | Example                          |
+|--------------------|------------------------------------------------|----------|----------------------------------|
+| `http_webhook_url` | Target webhook URL for HTTP alerts.            | Yes      | `https://example.com/webhook`    |
 | `http_headers`     | Optional headers as **base64-encoded string**. | No       | `{"X-Custom": "value"}`          |
 
 > ⚠️ **Important:** Plugin send only POST requests with body {"message": "notification_text"}.
@@ -182,7 +182,7 @@ The following arguments are extracted from the `args` dictionary for the Data Wr
 | `measurement`           | The InfluxDB table (measurement) to monitor.                                                        | Yes      | `"cpu"`                                                                                     |  
 | `field_conditions`      | Conditions for triggering alerts (e.g., `temp>30:status==ok`).                                      | Yes      | `temp>30:status==ok`                                                                        |  
 | `senders`               | Dot-separated list of notification channels.                                                        | Yes      | `"slack.discord"`                                                                           |  
-| `influxdb3_auth_token`  | API token for your Influxdb3.                                                                       | Yes      | `"YOUR_API_TOKEN"`                                                                          |  
+| `influxdb3_auth_token`  | API token for your Influxdb3.                                                                       | No       | `"YOUR_API_TOKEN"`                                                                          |  
 | `trigger_count`         | Number of times the condition must be met before sending an alert.                                  | No       | `2` (default: 1)                                                                            |  
 | `notification_text`     | Template for the notification message with variable `$field`, `$op_sym`, `$compare_val`, `$actual`. | No       | `"InfluxDB 3 alert triggered. Condition \$field \$op_sym \$compare_val matched (\$actual)"` |  
 | `notification_path`     | URL path for your notification sending plugin (specified when creating an HTTP type trigger)        | No       | `some/path` (default: `notify`)                                                             |  

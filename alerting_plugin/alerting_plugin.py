@@ -319,10 +319,9 @@ def process_writes(influxdb3_local, table_batches: list, args: dict):
         or "measurement" not in args
         or "field_conditions" not in args
         or "senders" not in args
-        or "influxdb3_auth_token" not in args
     ):
         influxdb3_local.error(
-            f"[{task_id}] Missing required arguments: measurement, field_conditions, influxdb3_auth_token, or senders"
+            f"[{task_id}] Missing required arguments: measurement, field_conditions, or senders"
         )
         return
 
@@ -342,6 +341,11 @@ def process_writes(influxdb3_local, table_batches: list, args: dict):
     influxdb3_auth_token: str = os.getenv(
         "INFLUXDB3_AUTH_TOKEN", args.get("influxdb3_auth_token")
     )
+    if influxdb3_auth_token is None:
+        influxdb3_local.error(
+            f"[{task_id}] Missing required argument: influxdb3_auth_token"
+        )
+        return
     notification_tpl = args.get(
         "notification_text",
         "InfluxDB 3 alert triggered. Condition $field $op_sym $compare_val matched ($actual)",
@@ -760,11 +764,10 @@ def process_scheduled_call(influxdb3_local, call_time: datetime, args: dict):
         not args
         or "measurement" not in args
         or "senders" not in args
-        or "influxdb3_auth_token" not in args
         or "window" not in args
     ):
         influxdb3_local.error(
-            f"[{task_id}] Missing required arguments: measurement, senders, influxdb3_auth_token, or window"
+            f"[{task_id}] Missing required arguments: measurement, senders, or window"
         )
         return
 
@@ -783,6 +786,11 @@ def process_scheduled_call(influxdb3_local, call_time: datetime, args: dict):
     influxdb3_auth_token: str = os.getenv(
         "INFLUXDB3_AUTH_TOKEN", args.get("influxdb3_auth_token")
     )
+    if influxdb3_auth_token is None:
+        influxdb3_local.error(
+            f"[{task_id}] Missing required environment variable: INFLUXDB3_AUTH_TOKEN"
+        )
+        return
     notification_tpl = args.get(
         "notification_text",
         "Deadman Alert: No data received from $table from $time_from to $time_to.",
