@@ -203,6 +203,7 @@ def send_notification(
             influxdb3_local.info(
                 f"[{task_id}] Alert sent successfully to notification plugin with results: {resp.json()['results']}"
             )
+            break
         except requests.RequestException as e:
             influxdb3_local.warn(
                 f"[{task_id}] [Attempt {attempt}/{max_retries}] Error sending alert to notification plugin: {e}"
