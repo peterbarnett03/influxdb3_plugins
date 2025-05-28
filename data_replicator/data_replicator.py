@@ -17,13 +17,12 @@ def ensure_queue_file(queue_file: Path) -> None:
 
 
 def append_to_queue(
-    influxdb3_local, queue_file: Path, entries: list, max_size: int, task_id: str
+    queue_file: Path, entries: list, max_size: int, task_id: str
 ) -> None:
     """
     Append serialized entries to a compressed JSONL queue file.
 
     Args:
-        influxdb3_local: Logger or client object for error reporting.
         queue_file (Path): Path to the queue file.
         entries (list): List of dictionaries to append to the queue.
         max_size (int): Maximum size in MB for the queue file.
@@ -157,12 +156,11 @@ def row_to_line_protocol(
     return f"{new_table_name}{tag_str} {field_str} {row['time']}"
 
 
-def parse_exclusions(influxdb3_local, args: dict, task_id: str) -> dict[str, list[str]]:
+def parse_exclusions(args: dict, task_id: str) -> dict[str, list[str]]:
     """
     Parse a string defining fields to exclude or fields with str type from replication per table.
 
     Args:
-        influxdb3_local: Logger for error messages.
         args (dict): Dictionary of runtime arguments. Should contain the 'excluded_fields' key
                      in the format "<table1>:<field1>@<field2>.<table2>:<field3>..."
         task_id (str): Task identifier for logging.
@@ -210,12 +208,11 @@ def parse_exclusions(influxdb3_local, args: dict, task_id: str) -> dict[str, lis
     return exclusions
 
 
-def parse_table_renames(influxdb3_local, args: dict, task_id: str) -> dict[str, str]:
+def parse_table_renames(args: dict, task_id: str) -> dict[str, str]:
     """
     Parse table renaming rules from a dot-separated string.
 
     Args:
-        influxdb3_local: Logger instance for logging errors.
         args (dict): Dictionary of runtime arguments. Must contain the 'tables_rename' key with format:
                      "<old_table1>:<new_table1>.<old_table2>:<new_table2>..."
         task_id (str): Task identifier used for log messages.
@@ -251,7 +248,7 @@ def parse_table_renames(influxdb3_local, args: dict, task_id: str) -> dict[str, 
 
 
 def parse_field_renames(
-    influxdb3_local, args: dict, task_id: str
+    args: dict, task_id: str
 ) -> dict[str, dict[str, str]]:
     """
     Parse a complex mapping string for renaming fields in specific tables.
@@ -260,7 +257,6 @@ def parse_field_renames(
         "table1:oldA@newA oldB@newB.table2:oldX@newX oldY@newY"
 
     Args:
-        influxdb3_local: Logger for error messages.
         args (dict): Arguments containing the 'field_renames' key.
         task_id (str): Task identifier for logs.
 
@@ -314,12 +310,11 @@ def parse_field_renames(
     return table_renames
 
 
-def parse_max_retries(influxdb3_local, args: dict, task_id: str) -> int:
+def parse_max_retries(args: dict, task_id: str) -> int:
     """
     Parse and validate the 'max_retries' argument, converting it from string to int.
 
     Args:
-        influxdb3_local: Logger for error messages.
         args (dict): Runtime arguments containing 'max_retries'.
         task_id (str): Unique task identifier for logging context.
 
@@ -341,12 +336,11 @@ def parse_max_retries(influxdb3_local, args: dict, task_id: str) -> int:
     return max_retries
 
 
-def parse_port_override(influxdb3_local, args: dict, task_id: str) -> int:
+def parse_port_override(args: dict, task_id: str) -> int:
     """
     Parse and validate the 'port_override' argument, converting it from string to int.
 
     Args:
-        influxdb3_local: Logger for error messages.
         args (dict): Runtime arguments containing 'port_override'.
         task_id (str): Unique task identifier for logging context.
 
@@ -442,16 +436,16 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
         remote_token: str = args["token"]
         remote_db: str = args["database"]
         verify_ssl: bool = args.get("verify_ssl", "true").lower() == "true"
-        port_override: int = parse_port_override(influxdb3_local, args, task_id)
-        max_retries: int = parse_max_retries(influxdb3_local, args, task_id)
+        port_override: int = parse_port_override(args, task_id)
+        max_retries: int = parse_max_retries(args, task_id)
 
         tables_to_replicate: list | None = (
             args.get("tables").split(".") if args.get("tables") else None
         )
         max_size: int = args.get("max_size", 1024)
-        excluded_fields: dict = parse_exclusions(influxdb3_local, args, task_id)
-        tables_renames: dict = parse_table_renames(influxdb3_local, args, task_id)
-        field_renames: dict = parse_field_renames(influxdb3_local, args, task_id)
+        excluded_fields: dict = parse_exclusions(args, task_id)
+        tables_renames: dict = parse_table_renames(args, task_id)
+        field_renames: dict = parse_field_renames(args, task_id)
 
         try:
             client = InfluxDBClient3(
@@ -495,7 +489,7 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
 
         if lines_to_replicate:
             append_to_queue(
-                influxdb3_local, queue_file, lines_to_replicate, max_size, task_id
+                queue_file, lines_to_replicate, max_size, task_id
             )
             influxdb3_local.info(
                 f"[{task_id}] Queued {len(lines_to_replicate)} lines from {', '.join(set(p['table'] for p in lines_to_replicate))}"
@@ -530,13 +524,12 @@ def get_all_tables(influxdb3_local) -> list[str]:
     ]
 
 
-def parse_offset(influxdb3_local, args: dict, task_id: str) -> timedelta:
+def parse_offset(args: dict, task_id: str) -> timedelta:
     """
     Parses the 'offset' argument from args and converts it into a timedelta object.
     Used to shift the query time window backwards.
 
     Args:
-        influxdb3_local: InfluxDB client instance for logging.
         args (dict): Dictionary with the 'offset' key (e.g., {"offset": "1h"}).
         task_id (str): Unique identifier for the current task, used for logging.
 
@@ -567,13 +560,12 @@ def parse_offset(influxdb3_local, args: dict, task_id: str) -> timedelta:
     raise Exception(f"[{task_id}] Invalid offset format: {offset}.")
 
 
-def parse_window(influxdb3_local, args: dict, task_id: str) -> timedelta:
+def parse_window(args: dict, task_id: str) -> timedelta:
     """
     Parses the 'window' argument from args and converts it into a timedelta object.
     Represents the size of the query window.
 
     Args:
-        influxdb3_local: InfluxDB client instance for logging.
         args (dict): Dictionary with the 'window' key (e.g., {"window": "2h"}).
         task_id (str): Unique identifier for the current task, used for logging.
 
@@ -698,8 +690,8 @@ def process_scheduled_call(
         remote_db: str = args["database"]
         measurement: str = args["source_measurement"]
         verify_ssl: bool = args.get("verify_ssl", "true").lower() == "true"
-        port_override: int = parse_port_override(influxdb3_local, args, task_id)
-        max_retries: int = parse_max_retries(influxdb3_local, args, task_id)
+        port_override: int = parse_port_override(args, task_id)
+        max_retries: int = parse_max_retries(args, task_id)
 
         if measurement not in get_all_tables(influxdb3_local):
             influxdb3_local.error(
@@ -708,11 +700,11 @@ def process_scheduled_call(
             return
 
         max_size: int = args.get("max_size", 1024)
-        excluded_fields: dict = parse_exclusions(influxdb3_local, args, task_id)
-        tables_renames: dict = parse_table_renames(influxdb3_local, args, task_id)
-        field_renames: dict = parse_field_renames(influxdb3_local, args, task_id)
-        offset: timedelta = parse_offset(influxdb3_local, args, task_id)
-        window: timedelta = parse_window(influxdb3_local, args, task_id)
+        excluded_fields: dict = parse_exclusions(args, task_id)
+        tables_renames: dict = parse_table_renames(args, task_id)
+        field_renames: dict = parse_field_renames(args, task_id)
+        offset: timedelta = parse_offset(args, task_id)
+        window: timedelta = parse_window(args, task_id)
         call_time_: datetime = call_time.replace(tzinfo=timezone.utc)
 
         time_to: datetime = call_time_ - offset
@@ -757,7 +749,7 @@ def process_scheduled_call(
 
         if lines_to_replicate:
             append_to_queue(
-                influxdb3_local, queue_file, lines_to_replicate, max_size, task_id
+                queue_file, lines_to_replicate, max_size, task_id
             )
             influxdb3_local.info(
                 f"[{task_id}] Queued {len(lines_to_replicate)} lines from {', '.join(set(p['table'] for p in lines_to_replicate))}"
