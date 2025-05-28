@@ -35,9 +35,6 @@ def append_to_queue(
     ensure_queue_file(queue_file)
     max_size_bytes: int = max_size * 1024 * 1024  # Convert MB to bytes
     if os.path.exists(queue_file) and os.path.getsize(queue_file) >= max_size_bytes:
-        influxdb3_local.error(
-            f"[{task_id}] Queue file size exceeds the maximum limit of {max_size}MB."
-        )
         raise Exception(
             f"[{task_id}] Queue file size exceeds the maximum limit of {max_size}MB."
         )
@@ -189,13 +186,11 @@ def parse_exclusions(influxdb3_local, args: dict, task_id: str) -> dict[str, lis
             continue
 
         if ":" not in block:
-            influxdb3_local.error(f"[{task_id}] Invalid segment '{block}': missing ':'")
             raise Exception(f"[{task_id}] Invalid segment '{block}': missing ':'")
 
         table, fields_raw = block.split(":", 1)
 
         if not pattern.fullmatch(table):
-            influxdb3_local.error(f"[{task_id}] Invalid table name '{table}'")
             raise Exception(f"[{task_id}] Invalid table name '{table}'")
 
         if not fields_raw:
@@ -205,9 +200,6 @@ def parse_exclusions(influxdb3_local, args: dict, task_id: str) -> dict[str, lis
         fields: list = []
         for field in fields_raw.split("@"):
             if not pattern.fullmatch(field):
-                influxdb3_local.error(
-                    f"[{task_id}] Invalid field name '{field}' in table '{table}'"
-                )
                 raise Exception(
                     f"[{task_id}] Invalid field name '{field}' in table '{table}'"
                 )
@@ -244,18 +236,13 @@ def parse_table_renames(influxdb3_local, args: dict, task_id: str) -> dict[str, 
     pairs: list = mapping_str.split(".")
     for pair in pairs:
         if ":" not in pair:
-            influxdb3_local.error(
-                f"[{task_id}] Invalid mapping pair: '{pair}' (missing ':')"
-            )
             raise Exception(f"[{task_id}] Invalid mapping pair: '{pair}' (missing ':')")
 
         old, new = pair.split(":", 1)
 
         if not valid_name.match(old):
-            influxdb3_local.error(f"[{task_id}] Invalid table name: '{old}'")
             raise Exception(f"[{task_id}] Invalid table name: '{old}'")
         if not valid_name.match(new):
-            influxdb3_local.error(f"[{task_id}] Invalid table name: '{new}'")
             raise Exception(f"[{task_id}] Invalid table name: '{new}'")
 
         renames[old] = new
@@ -295,14 +282,10 @@ def parse_field_renames(
             continue  # skip empty blocks
 
         if ":" not in table_block:
-            influxdb3_local.error(
-                f"[{task_id}] Invalid segment '{table_block}': missing ':'"
-            )
             raise Exception(f"[{task_id}] Invalid segment '{table_block}': missing ':'")
 
         table, fields_part = table_block.split(":", 1)
         if not pattern.fullmatch(table):
-            influxdb3_local.error(f"[{task_id}] Invalid table name '{table}'")
             raise Exception(f"[{task_id}] Invalid table name '{table}'")
 
         # initialize inner mapping
@@ -312,24 +295,15 @@ def parse_field_renames(
             # split individual old@new mappings
             for mapping in fields_part.split(" "):
                 if "@" not in mapping:
-                    influxdb3_local.error(
-                        f"[{task_id}] Invalid field mapping '{mapping}' in table '{table}': missing '@'"
-                    )
                     raise Exception(
                         f"[{task_id}] Invalid field mapping '{mapping}' in table '{table}': missing '@'"
                     )
                 old_field, new_field = mapping.split("@", 1)
                 if not pattern.fullmatch(old_field):
-                    influxdb3_local.error(
-                        f"[{task_id}] Invalid old field name '{old_field}' in table '{table}'"
-                    )
                     raise Exception(
                         f"[{task_id}] Invalid old field name '{old_field}' in table '{table}'"
                     )
                 if not pattern.fullmatch(new_field):
-                    influxdb3_local.error(
-                        f"[{task_id}] Invalid new field name '{new_field}' in table '{table}'"
-                    )
                     raise Exception(
                         f"[{task_id}] Invalid new field name '{new_field}' in table '{table}'"
                     )
@@ -359,15 +333,9 @@ def parse_max_retries(influxdb3_local, args: dict, task_id: str) -> int:
     try:
         max_retries = int(raw)
     except (TypeError, ValueError):
-        influxdb3_local.error(
-            f"[{task_id}] Invalid max_retries, not an integer: {raw!r}"
-        )
         raise Exception(f"[{task_id}] Invalid max_retries, not an integer: {raw!r}")
 
     if max_retries < 1:
-        influxdb3_local.error(
-            f"[{task_id}] Invalid max_retries, must be >= 1: {max_retries}"
-        )
         raise Exception(f"[{task_id}] Invalid max_retries, must be >= 1: {max_retries}")
 
     return max_retries
@@ -393,16 +361,10 @@ def parse_port_override(influxdb3_local, args: dict, task_id: str) -> int:
     try:
         port = int(raw)
     except (TypeError, ValueError):
-        influxdb3_local.error(
-            f"[{task_id}] Invalid port_override, not an integer: {raw!r}"
-        )
         raise Exception(f"[{task_id}] Invalid port_override, not an integer: {raw!r}")
 
     # Validate port range
     if not (1 <= port <= 65535):
-        influxdb3_local.error(
-            f"[{task_id}] Invalid port_override, must be between 1 and 65535: {port}"
-        )
         raise Exception(
             f"[{task_id}] Invalid port_override, must be between 1 and 65535: {port}"
         )
@@ -472,80 +434,84 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
         )
         return
 
-    remote_host: str = args["host"]
-    if remote_host[0] == remote_host[-1] and remote_host[0] in ('"', "'"):
-        remote_host = remote_host[1:-1]
-
-    remote_token: str = args["token"]
-    remote_db: str = args["database"]
-    verify_ssl: bool = args.get("verify_ssl", "true").lower() == "true"
-    port_override: int = parse_port_override(influxdb3_local, args, task_id)
-    max_retries: int = parse_max_retries(influxdb3_local, args, task_id)
-
-    tables_to_replicate: list | None = (
-        args.get("tables").split(".") if args.get("tables") else None
-    )
-    max_size: int = args.get("max_size", 1024)
-    excluded_fields: dict = parse_exclusions(influxdb3_local, args, task_id)
-    tables_renames: dict = parse_table_renames(influxdb3_local, args, task_id)
-    field_renames: dict = parse_field_renames(influxdb3_local, args, task_id)
-
     try:
-        client = InfluxDBClient3(
-            write_port_overwrite=port_override,
-            host=remote_host,
-            token=remote_token,
-            database=remote_db,
-            verify_ssl=verify_ssl,
+        remote_host: str = args["host"]
+        if remote_host[0] == remote_host[-1] and remote_host[0] in ('"', "'"):
+            remote_host = remote_host[1:-1]
+
+        remote_token: str = args["token"]
+        remote_db: str = args["database"]
+        verify_ssl: bool = args.get("verify_ssl", "true").lower() == "true"
+        port_override: int = parse_port_override(influxdb3_local, args, task_id)
+        max_retries: int = parse_max_retries(influxdb3_local, args, task_id)
+
+        tables_to_replicate: list | None = (
+            args.get("tables").split(".") if args.get("tables") else None
         )
-    except Exception as e:
-        influxdb3_local.error(
-            f"[{task_id}] Failed to initialize remote client: {str(e)}"
-        )
-        return
+        max_size: int = args.get("max_size", 1024)
+        excluded_fields: dict = parse_exclusions(influxdb3_local, args, task_id)
+        tables_renames: dict = parse_table_renames(influxdb3_local, args, task_id)
+        field_renames: dict = parse_field_renames(influxdb3_local, args, task_id)
 
-    lines_to_replicate: list = []
-
-    for table_batch in table_batches:
-        table_name: str = table_batch["table_name"]
-        table_excluded_fields: list = excluded_fields.get(table_name, [])
-        all_tags: list = get_tag_names(influxdb3_local, table_name, task_id)
-        tables_fields_renames: dict = field_renames.get(table_name, {})
-        table_name_: str = tables_renames.get(table_name, table_name)
-
-        if tables_to_replicate and table_name not in tables_to_replicate:
-            continue
-
-        for row in table_batch["rows"]:
-            line: str = row_to_line_protocol(
-                influxdb3_local,
-                table_name,
-                table_name_,
-                row,
-                task_id,
-                table_excluded_fields,
-                tables_fields_renames,
-                all_tags,
+        try:
+            client = InfluxDBClient3(
+                write_port_overwrite=port_override,
+                host=remote_host,
+                token=remote_token,
+                database=remote_db,
+                verify_ssl=verify_ssl,
             )
-            if line:
-                lines_to_replicate.append({"table": table_name, "line": line})
+        except Exception as e:
+            influxdb3_local.error(
+                f"[{task_id}] Failed to initialize remote client: {str(e)}"
+            )
+            return
 
-    if lines_to_replicate:
-        append_to_queue(
-            influxdb3_local, queue_file, lines_to_replicate, max_size, task_id
+        lines_to_replicate: list = []
+
+        for table_batch in table_batches:
+            table_name: str = table_batch["table_name"]
+            table_excluded_fields: list = excluded_fields.get(table_name, [])
+            all_tags: list = get_tag_names(influxdb3_local, table_name, task_id)
+            tables_fields_renames: dict = field_renames.get(table_name, {})
+            table_name_: str = tables_renames.get(table_name, table_name)
+
+            if tables_to_replicate and table_name not in tables_to_replicate:
+                continue
+
+            for row in table_batch["rows"]:
+                line: str = row_to_line_protocol(
+                    influxdb3_local,
+                    table_name,
+                    table_name_,
+                    row,
+                    task_id,
+                    table_excluded_fields,
+                    tables_fields_renames,
+                    all_tags,
+                )
+                if line:
+                    lines_to_replicate.append({"table": table_name, "line": line})
+
+        if lines_to_replicate:
+            append_to_queue(
+                influxdb3_local, queue_file, lines_to_replicate, max_size, task_id
+            )
+            influxdb3_local.info(
+                f"[{task_id}] Queued {len(lines_to_replicate)} lines from {', '.join(set(p['table'] for p in lines_to_replicate))}"
+            )
+
+        queued_entries: list = read_queue(queue_file)
+        if not queued_entries:
+            influxdb3_local.info(f"[{task_id}] No data to replicate")
+            return
+
+        _flush_queue_with_retries(
+            influxdb3_local, client, queue_file, queued_entries, task_id, max_retries
         )
-        influxdb3_local.info(
-            f"[{task_id}] Queued {len(lines_to_replicate)} lines from {', '.join(set(p['table'] for p in lines_to_replicate))}"
-        )
 
-    queued_entries: list = read_queue(queue_file)
-    if not queued_entries:
-        influxdb3_local.info(f"[{task_id}] No data to replicate")
-        return
-
-    _flush_queue_with_retries(
-        influxdb3_local, client, queue_file, queued_entries, task_id, max_retries
-    )
+    except Exception as e:
+        influxdb3_local.error(str(e))
 
 
 def get_all_tables(influxdb3_local) -> list[str]:
@@ -598,7 +564,6 @@ def parse_offset(influxdb3_local, args: dict, task_id: str) -> timedelta:
         if number >= 1 and unit in valid_units:
             return timedelta(**{valid_units[unit]: number})
 
-    influxdb3_local.error(f"[{task_id}] Invalid offset format: {offset}.")
     raise Exception(f"[{task_id}] Invalid offset format: {offset}.")
 
 
@@ -632,7 +597,6 @@ def parse_window(influxdb3_local, args: dict, task_id: str) -> timedelta:
     window: str | None = args.get("window", None)
 
     if window is None:
-        influxdb3_local.error(f"[{task_id}] Missing window parameter.")
         raise Exception(f"[{task_id}] Missing window parameter.")
 
     match = re.fullmatch(r"(\d+)([a-zA-Z]+)", window)
@@ -644,7 +608,6 @@ def parse_window(influxdb3_local, args: dict, task_id: str) -> timedelta:
         if number >= 1 and unit in valid_units:
             return timedelta(**{valid_units[unit]: number})
 
-    influxdb3_local.error(f"[{task_id}] Invalid interval format: {window}.")
     raise Exception(f"[{task_id}] Invalid interval format: {window}.")
 
 
@@ -726,88 +689,92 @@ def process_scheduled_call(
         )
         return
 
-    remote_host: str = args["host"]
-    if remote_host[0] == remote_host[-1] and remote_host[0] in ('"', "'"):
-        remote_host = remote_host[1:-1]
-
-    remote_token: str = args["token"]
-    remote_db: str = args["database"]
-    measurement: str = args["source_measurement"]
-    verify_ssl: bool = args.get("verify_ssl", "true").lower() == "true"
-    port_override: int = parse_port_override(influxdb3_local, args, task_id)
-    max_retries: int = parse_max_retries(influxdb3_local, args, task_id)
-
-    if measurement not in get_all_tables(influxdb3_local):
-        influxdb3_local.error(
-            f"[{task_id}] Measurement {measurement} not found in current database"
-        )
-        return
-
-    max_size: int = args.get("max_size", 1024)
-    excluded_fields: dict = parse_exclusions(influxdb3_local, args, task_id)
-    tables_renames: dict = parse_table_renames(influxdb3_local, args, task_id)
-    field_renames: dict = parse_field_renames(influxdb3_local, args, task_id)
-    offset: timedelta = parse_offset(influxdb3_local, args, task_id)
-    window: timedelta = parse_window(influxdb3_local, args, task_id)
-    call_time_: datetime = call_time.replace(tzinfo=timezone.utc)
-
-    time_to: datetime = call_time_ - offset
-    time_from: datetime = time_to - window
-
-    query: str = build_query(measurement, time_from, time_to)
-    data: list = influxdb3_local.query(query)
-
-    table_excluded_fields: list = excluded_fields.get(measurement, [])
-    table_fields_renames: dict = field_renames.get(measurement, {})
-    all_tags: list = get_tag_names(influxdb3_local, measurement, task_id)
-    table_name_: str = tables_renames.get(measurement, measurement)
-
-    lines_to_replicate: list = []
-    for row in data:
-        line: str = row_to_line_protocol(
-            influxdb3_local,
-            measurement,
-            table_name_,
-            row,
-            task_id,
-            table_excluded_fields,
-            table_fields_renames,
-            all_tags,
-        )
-        if line:
-            lines_to_replicate.append({"table": measurement, "line": line})
-
     try:
-        client = InfluxDBClient3(
-            write_port_overwrite=port_override,
-            host=remote_host,
-            token=remote_token,
-            database=remote_db,
-            verify_ssl=verify_ssl,
+        remote_host: str = args["host"]
+        if remote_host[0] == remote_host[-1] and remote_host[0] in ('"', "'"):
+            remote_host = remote_host[1:-1]
+
+        remote_token: str = args["token"]
+        remote_db: str = args["database"]
+        measurement: str = args["source_measurement"]
+        verify_ssl: bool = args.get("verify_ssl", "true").lower() == "true"
+        port_override: int = parse_port_override(influxdb3_local, args, task_id)
+        max_retries: int = parse_max_retries(influxdb3_local, args, task_id)
+
+        if measurement not in get_all_tables(influxdb3_local):
+            influxdb3_local.error(
+                f"[{task_id}] Measurement {measurement} not found in current database"
+            )
+            return
+
+        max_size: int = args.get("max_size", 1024)
+        excluded_fields: dict = parse_exclusions(influxdb3_local, args, task_id)
+        tables_renames: dict = parse_table_renames(influxdb3_local, args, task_id)
+        field_renames: dict = parse_field_renames(influxdb3_local, args, task_id)
+        offset: timedelta = parse_offset(influxdb3_local, args, task_id)
+        window: timedelta = parse_window(influxdb3_local, args, task_id)
+        call_time_: datetime = call_time.replace(tzinfo=timezone.utc)
+
+        time_to: datetime = call_time_ - offset
+        time_from: datetime = time_to - window
+
+        query: str = build_query(measurement, time_from, time_to)
+        data: list = influxdb3_local.query(query)
+
+        table_excluded_fields: list = excluded_fields.get(measurement, [])
+        table_fields_renames: dict = field_renames.get(measurement, {})
+        all_tags: list = get_tag_names(influxdb3_local, measurement, task_id)
+        table_name_: str = tables_renames.get(measurement, measurement)
+
+        lines_to_replicate: list = []
+        for row in data:
+            line: str = row_to_line_protocol(
+                influxdb3_local,
+                measurement,
+                table_name_,
+                row,
+                task_id,
+                table_excluded_fields,
+                table_fields_renames,
+                all_tags,
+            )
+            if line:
+                lines_to_replicate.append({"table": measurement, "line": line})
+
+        try:
+            client = InfluxDBClient3(
+                write_port_overwrite=port_override,
+                host=remote_host,
+                token=remote_token,
+                database=remote_db,
+                verify_ssl=verify_ssl,
+            )
+        except Exception as e:
+            influxdb3_local.error(
+                f"[{task_id}] Failed to initialize remote client: {str(e)}"
+            )
+            return
+
+        if lines_to_replicate:
+            append_to_queue(
+                influxdb3_local, queue_file, lines_to_replicate, max_size, task_id
+            )
+            influxdb3_local.info(
+                f"[{task_id}] Queued {len(lines_to_replicate)} lines from {', '.join(set(p['table'] for p in lines_to_replicate))}"
+            )
+
+        queued_entries: list = read_queue(queue_file)
+
+        if not queued_entries:
+            influxdb3_local.info(f"[{task_id}] No data to replicate")
+            return
+
+        _flush_queue_with_retries(
+            influxdb3_local, client, queue_file, queued_entries, task_id, max_retries
         )
+
     except Exception as e:
-        influxdb3_local.error(
-            f"[{task_id}] Failed to initialize remote client: {str(e)}"
-        )
-        return
-
-    if lines_to_replicate:
-        append_to_queue(
-            influxdb3_local, queue_file, lines_to_replicate, max_size, task_id
-        )
-        influxdb3_local.info(
-            f"[{task_id}] Queued {len(lines_to_replicate)} lines from {', '.join(set(p['table'] for p in lines_to_replicate))}"
-        )
-
-    queued_entries: list = read_queue(queue_file)
-
-    if not queued_entries:
-        influxdb3_local.info(f"[{task_id}] No data to replicate")
-        return
-
-    _flush_queue_with_retries(
-        influxdb3_local, client, queue_file, queued_entries, task_id, max_retries
-    )
+        influxdb3_local.error(str(e))
 
 
 def _flush_queue_with_retries(
