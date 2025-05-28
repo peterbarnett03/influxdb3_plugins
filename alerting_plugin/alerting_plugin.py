@@ -123,7 +123,7 @@ def _coerce_value(raw: str) -> str | int | float | bool:
     return raw
 
 
-def parse_field_conditions(influxdb3_local, args: dict, task_id: str) -> list:
+def parse_field_conditions(args: dict, task_id: str) -> list:
     """
     Parse a semicolon-separated list of field conditions into a list of triples.
 
@@ -133,7 +133,6 @@ def parse_field_conditions(influxdb3_local, args: dict, task_id: str) -> list:
     Multiple conditions are separated by semicolons ':'.
 
     Args:
-        influxdb3_local: InfluxDB client instance.
         args (dict): Input arguments containing "field_conditions".
         task_id (str): Unique task identifier.
 
@@ -220,12 +219,11 @@ def send_notification(
                 )
 
 
-def parse_port_override(influxdb3_local, args: dict, task_id: str) -> int:
+def parse_port_override(args: dict, task_id: str) -> int:
     """
     Parse and validate the 'port_override' argument, converting it from string to int.
 
     Args:
-        influxdb3_local: Logger for error messages.
         args (dict): Runtime arguments containing 'port_override'.
         task_id (str): Unique task identifier for logging context.
 
@@ -322,8 +320,8 @@ def process_writes(influxdb3_local, table_batches: list, args: dict):
     try:
         trigger_count: int = int(args.get("trigger_count", 1))
         senders_config: dict = parse_senders(influxdb3_local, args, task_id)
-        field_conditions: list = parse_field_conditions(influxdb3_local, args, task_id)
-        port_override: int = parse_port_override(influxdb3_local, args, task_id)
+        field_conditions: list = parse_field_conditions(args, task_id)
+        port_override: int = parse_port_override(args, task_id)
         notification_path: str = args.get("notification_path", "notify")
         influxdb3_auth_token: str = os.getenv(
             "INFLUXDB3_AUTH_TOKEN", args.get("influxdb3_auth_token")
@@ -657,13 +655,12 @@ def process_request(
     return {"status": "success", "message": "Request processed", "results": results}
 
 
-def parse_window(influxdb3_local, args: dict, task_id: str) -> timedelta:
+def parse_window(args: dict, task_id: str) -> timedelta:
     """
     Parses the 'window' argument from args and converts it into a timedelta object.
     Represents the size of the query window.
 
     Args:
-        influxdb3_local: InfluxDB client instance.
         args (dict): Dictionary with the 'window' key (e.g., {"window": "2h"}).
         task_id (str): Unique identifier for the current task, used for logging.
 
@@ -769,7 +766,7 @@ def process_scheduled_call(influxdb3_local, call_time: datetime, args: dict):
     try:
         trigger_count: int = int(args.get("trigger_count", 1))
         senders_config: dict = parse_senders(influxdb3_local, args, task_id)
-        port_override: int = parse_port_override(influxdb3_local, args, task_id)
+        port_override: int = parse_port_override(args, task_id)
         notification_path: str = args.get("notification_path", "notify")
         influxdb3_auth_token: str = os.getenv(
             "INFLUXDB3_AUTH_TOKEN", args.get("influxdb3_auth_token")
@@ -784,7 +781,7 @@ def process_scheduled_call(influxdb3_local, call_time: datetime, args: dict):
             "Deadman Alert: No data received from $table from $time_from to $time_to.",
         )
 
-        window: timedelta = parse_window(influxdb3_local, args, task_id)
+        window: timedelta = parse_window(args, task_id)
         time_to: datetime = call_time.replace(tzinfo=timezone.utc)
         time_from: datetime = time_to - window
 
