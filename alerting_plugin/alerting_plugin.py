@@ -96,7 +96,6 @@ def parse_senders(influxdb3_local, args: dict, task_id: str) -> dict:
             senders_config[sender][key] = args[key]
 
     if not senders_config:
-        influxdb3_local.error(f"[{task_id}] No valid senders configured")
         raise Exception(f"[{task_id}] No valid senders configured")
     return senders_config
 
@@ -151,9 +150,6 @@ def parse_field_conditions(influxdb3_local, args: dict, task_id: str) -> list:
     """
     cond_str: str | None = args.get("field_conditions", None)
     if not cond_str:
-        influxdb3_local.error(
-            f"[{task_id}] Missing required argument: field_conditions"
-        )
         raise Exception(f"[{task_id}] Missing required argument: field_conditions")
 
     conditions: list = []
@@ -165,13 +161,9 @@ def parse_field_conditions(influxdb3_local, args: dict, task_id: str) -> list:
         # find operator
         m = re.match(r"^([A-Za-z0-9_-]+)\s*(>=|<=|==|!=|>|<)\s*(.+)$", part)
         if not m:
-            influxdb3_local.error(f"[{task_id}] Invalid condition format: '{part}'")
             raise Exception(f"[{task_id}] Invalid condition format: '{part}'")
         field, op, raw_val = m.groups()
         if op not in _OP_FUNCS:
-            influxdb3_local.error(
-                f"[{task_id}] Unsupported operator '{op}' in condition '{part}'"
-            )
             raise Exception(
                 f"[{task_id}] Unsupported operator '{op}' in condition '{part}'"
             )
@@ -248,16 +240,10 @@ def parse_port_override(influxdb3_local, args: dict, task_id: str) -> int:
     try:
         port = int(raw)
     except (TypeError, ValueError):
-        influxdb3_local.error(
-            f"[{task_id}] Invalid port_override, not an integer: {raw!r}"
-        )
         raise Exception(f"[{task_id}] Invalid port_override, not an integer: {raw!r}")
 
     # Validate port range
     if not (1 <= port <= 65535):
-        influxdb3_local.error(
-            f"[{task_id}] Invalid port_override, must be between 1 and 65535: {port}"
-        )
         raise Exception(
             f"[{task_id}] Invalid port_override, must be between 1 and 65535: {port}"
         )
@@ -333,84 +319,87 @@ def process_writes(influxdb3_local, table_batches: list, args: dict):
         )
         return
 
-    trigger_count: int = int(args.get("trigger_count", 1))
-    senders_config: dict = parse_senders(influxdb3_local, args, task_id)
-    field_conditions: list = parse_field_conditions(influxdb3_local, args, task_id)
-    port_override: int = parse_port_override(influxdb3_local, args, task_id)
-    notification_path: str = args.get("notification_path", "notify")
-    influxdb3_auth_token: str = os.getenv(
-        "INFLUXDB3_AUTH_TOKEN", args.get("influxdb3_auth_token")
-    )
-    if influxdb3_auth_token is None:
-        influxdb3_local.error(
-            f"[{task_id}] Missing required argument: influxdb3_auth_token"
+    try:
+        trigger_count: int = int(args.get("trigger_count", 1))
+        senders_config: dict = parse_senders(influxdb3_local, args, task_id)
+        field_conditions: list = parse_field_conditions(influxdb3_local, args, task_id)
+        port_override: int = parse_port_override(influxdb3_local, args, task_id)
+        notification_path: str = args.get("notification_path", "notify")
+        influxdb3_auth_token: str = os.getenv(
+            "INFLUXDB3_AUTH_TOKEN", args.get("influxdb3_auth_token")
         )
-        return
-    notification_tpl = args.get(
-        "notification_text",
-        "InfluxDB 3 alert triggered. Condition $field $op_sym $compare_val matched ($actual)",
-    )
+        if influxdb3_auth_token is None:
+            influxdb3_local.error(
+                f"[{task_id}] Missing required argument: influxdb3_auth_token"
+            )
+            return
+        notification_tpl = args.get(
+            "notification_text",
+            "InfluxDB 3 alert triggered. Condition $field $op_sym $compare_val matched ($actual)",
+        )
 
-    for table_batch in table_batches:
-        table_name: str = table_batch["table_name"]
-        if table_name != measurement:
-            continue
+        for table_batch in table_batches:
+            table_name: str = table_batch["table_name"]
+            if table_name != measurement:
+                continue
 
-        for row in table_batch["rows"]:
-            for field, compare_fn, compare_val in field_conditions:
-                if field not in row:
-                    influxdb3_local.warn(
-                        f"[{task_id}] Field '{field}' not found in row: {row}"
-                    )
-                    continue
-
-                actual = row[field]
-                if compare_fn(actual, compare_val):
-                    cache_value = influxdb3_local.cache.get(f"{measurement}:{field}")
-                    current_count = int(cache_value) if cache_value is not None else 0
-
-                    # reconstruct operator symbol from function
-                    op_sym = next(
-                        sym for sym, fn in _OP_FUNCS.items() if fn is compare_fn
-                    )
-
-                    if current_count >= (trigger_count - 1):
-                        notification_text = interpolate_notification_text(
-                            notification_tpl,
-                            {
-                                "field": field,
-                                "op_sym": op_sym,
-                                "compare_val": compare_val,
-                                "actual": actual,
-                            },
-                        )
-
-                        payload: dict = {
-                            "notification_text": notification_text,
-                            "senders_config": senders_config,
-                        }
-
-                        influxdb3_local.error(
-                            f"[{task_id}] Condition {field} {op_sym} {compare_val!r} matched {trigger_count} times \
-                            ({actual!r}), sending alert"
-                        )
-                        send_notification(
-                            influxdb3_local,
-                            port_override,
-                            notification_path,
-                            influxdb3_auth_token,
-                            payload,
-                            task_id,
-                        )
-                        influxdb3_local.cache.put(f"{measurement}:{field}", "0")
-                    else:
+            for row in table_batch["rows"]:
+                for field, compare_fn, compare_val in field_conditions:
+                    if field not in row:
                         influxdb3_local.warn(
-                            f"[{task_id}] Condition {field} {op_sym} {compare_val!r} matched ({actual!r}) for \
-                            the {current_count}/{trigger_count} time. Skipping alert."
+                            f"[{task_id}] Field '{field}' not found in row: {row}"
                         )
-                        influxdb3_local.cache.put(
-                            f"{measurement}:{field}", str(current_count + 1)
+                        continue
+
+                    actual = row[field]
+                    if compare_fn(actual, compare_val):
+                        cache_value = influxdb3_local.cache.get(f"{measurement}:{field}")
+                        current_count = int(cache_value) if cache_value is not None else 0
+
+                        # reconstruct operator symbol from function
+                        op_sym = next(
+                            sym for sym, fn in _OP_FUNCS.items() if fn is compare_fn
                         )
+
+                        if current_count >= (trigger_count - 1):
+                            notification_text = interpolate_notification_text(
+                                notification_tpl,
+                                {
+                                    "field": field,
+                                    "op_sym": op_sym,
+                                    "compare_val": compare_val,
+                                    "actual": actual,
+                                },
+                            )
+
+                            payload: dict = {
+                                "notification_text": notification_text,
+                                "senders_config": senders_config,
+                            }
+
+                            influxdb3_local.error(
+                                f"[{task_id}] Condition {field} {op_sym} {compare_val!r} matched {trigger_count} times \
+                                ({actual!r}), sending alert"
+                            )
+                            send_notification(
+                                influxdb3_local,
+                                port_override,
+                                notification_path,
+                                influxdb3_auth_token,
+                                payload,
+                                task_id,
+                            )
+                            influxdb3_local.cache.put(f"{measurement}:{field}", "0")
+                        else:
+                            influxdb3_local.warn(
+                                f"[{task_id}] Condition {field} {op_sym} {compare_val!r} matched ({actual!r}) for \
+                                the {current_count}/{trigger_count} time. Skipping alert."
+                            )
+                            influxdb3_local.cache.put(
+                                f"{measurement}:{field}", str(current_count + 1)
+                            )
+    except Exception as e:
+        influxdb3_local.error(str(e))
 
 
 def send_sms_via_twilio(influxdb3_local, params: dict, task_id: str) -> bool:
@@ -698,7 +687,6 @@ def parse_window(influxdb3_local, args: dict, task_id: str) -> timedelta:
     window: str | None = args.get("window", None)
 
     if window is None:
-        influxdb3_local.error(f"[{task_id}] Missing window parameter.")
         raise Exception(f"[{task_id}] Missing window parameter.")
 
     match = re.fullmatch(r"(\d+)([a-zA-Z]+)", window)
@@ -710,7 +698,6 @@ def parse_window(influxdb3_local, args: dict, task_id: str) -> timedelta:
         if number >= 1 and unit in valid_units:
             return timedelta(**{valid_units[unit]: number})
 
-    influxdb3_local.error(f"[{task_id}] Invalid interval format: {window}.")
     raise Exception(f"[{task_id}] Invalid interval format: {window}.")
 
 
@@ -779,67 +766,71 @@ def process_scheduled_call(influxdb3_local, call_time: datetime, args: dict):
         )
         return
 
-    trigger_count: int = int(args.get("trigger_count", 1))
-    senders_config: dict = parse_senders(influxdb3_local, args, task_id)
-    port_override: int = parse_port_override(influxdb3_local, args, task_id)
-    notification_path: str = args.get("notification_path", "notify")
-    influxdb3_auth_token: str = os.getenv(
-        "INFLUXDB3_AUTH_TOKEN", args.get("influxdb3_auth_token")
-    )
-    if influxdb3_auth_token is None:
-        influxdb3_local.error(
-            f"[{task_id}] Missing required environment variable: INFLUXDB3_AUTH_TOKEN"
+    try:
+        trigger_count: int = int(args.get("trigger_count", 1))
+        senders_config: dict = parse_senders(influxdb3_local, args, task_id)
+        port_override: int = parse_port_override(influxdb3_local, args, task_id)
+        notification_path: str = args.get("notification_path", "notify")
+        influxdb3_auth_token: str = os.getenv(
+            "INFLUXDB3_AUTH_TOKEN", args.get("influxdb3_auth_token")
         )
-        return
-    notification_tpl = args.get(
-        "notification_text",
-        "Deadman Alert: No data received from $table from $time_from to $time_to.",
-    )
-
-    window: timedelta = parse_window(influxdb3_local, args, task_id)
-    time_to: datetime = call_time.replace(tzinfo=timezone.utc)
-    time_from: datetime = time_to - window
-
-    query = build_query(measurement, time_from, time_to)
-    results = influxdb3_local.query(query)
-
-    if results:
-        influxdb3_local.info(
-            f"[{task_id}] Data exists in '{measurement}' from {time_from} to {time_to}."
-        )
-        return
-
-    cache_value = influxdb3_local.cache.get(measurement)
-    current_count = int(cache_value) if cache_value is not None else 0
-
-    if current_count >= (trigger_count - 1):
-        influxdb3_local.error(
-            f"[{task_id}] No data found in '{measurement}' from {time_from} to {time_to} for \
-            {trigger_count} times. Sending alert."
+        if influxdb3_auth_token is None:
+            influxdb3_local.error(
+                f"[{task_id}] Missing required environment variable: INFLUXDB3_AUTH_TOKEN"
+            )
+            return
+        notification_tpl = args.get(
+            "notification_text",
+            "Deadman Alert: No data received from $table from $time_from to $time_to.",
         )
 
-        notification_text = interpolate_notification_text(
-            notification_tpl,
-            {"table": measurement, "time_from": time_from, "time_to": time_to},
-        )
+        window: timedelta = parse_window(influxdb3_local, args, task_id)
+        time_to: datetime = call_time.replace(tzinfo=timezone.utc)
+        time_from: datetime = time_to - window
 
-        payload = {
-            "notification_text": notification_text,
-            "senders_config": senders_config,
-        }
+        query = build_query(measurement, time_from, time_to)
+        results = influxdb3_local.query(query)
 
-        send_notification(
-            influxdb3_local,
-            port_override,
-            notification_path,
-            influxdb3_auth_token,
-            payload,
-            task_id,
-        )
-        influxdb3_local.cache.put(measurement, "0")
-    else:
-        influxdb3_local.warn(
-            f"[{task_id}] No data found in '{measurement}' from {time_from} to {time_to} for \
-            {current_count + 1}/{trigger_count} times. Skipping alert."
-        )
-        influxdb3_local.cache.put(measurement, str(current_count + 1))
+        if results:
+            influxdb3_local.info(
+                f"[{task_id}] Data exists in '{measurement}' from {time_from} to {time_to}."
+            )
+            return
+
+        cache_value = influxdb3_local.cache.get(measurement)
+        current_count = int(cache_value) if cache_value is not None else 0
+
+        if current_count >= (trigger_count - 1):
+            influxdb3_local.error(
+                f"[{task_id}] No data found in '{measurement}' from {time_from} to {time_to} for \
+                {trigger_count} times. Sending alert."
+            )
+
+            notification_text = interpolate_notification_text(
+                notification_tpl,
+                {"table": measurement, "time_from": time_from, "time_to": time_to},
+            )
+
+            payload = {
+                "notification_text": notification_text,
+                "senders_config": senders_config,
+            }
+
+            send_notification(
+                influxdb3_local,
+                port_override,
+                notification_path,
+                influxdb3_auth_token,
+                payload,
+                task_id,
+            )
+            influxdb3_local.cache.put(measurement, "0")
+        else:
+            influxdb3_local.warn(
+                f"[{task_id}] No data found in '{measurement}' from {time_from} to {time_to} for \
+                {current_count + 1}/{trigger_count} times. Skipping alert."
+            )
+            influxdb3_local.cache.put(measurement, str(current_count + 1))
+
+    except Exception as e:
+        influxdb3_local.error(str(e))
