@@ -61,28 +61,28 @@ The Scheduler Plugin performs periodic checks, including deadman alerts and aggr
 #### Arguments (Scheduler Mode)
 The following arguments are extracted from the `args` dictionary for the Scheduler Plugin:
 
-| Argument                      | Description                                                                                                                                  | Required | Example                                                                                                                          |
-|-------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|----------|----------------------------------------------------------------------------------------------------------------------------------|
-| `measurement`                 | The InfluxDB table (measurement) to monitor.                                                                                                 | Yes      | `"cpu"`                                                                                                                          |
-| `senders`                     | Dot-separated list of notification channels (e.g., `"slack.discord"`). Supported channels: `slack`, `discord`, `sms`, `whatsapp`, `http`.    | Yes      | `"slack.discord"`                                                                                                                |
-| `influxdb3_auth_token`        | API token for your InfluxDB 3 instance. Can be set via environment variable `INFLUXDB3_AUTH_TOKEN`.                                          | Yes      | `"YOUR_API_TOKEN"`                                                                                                               |
-| `window`                      | Time window to check for data (e.g., `"5m"` for 5 minutes).                                                                                  | Yes      | `"5m"`                                                                                                                           |
-| `interval`                    | Time interval for aggregation (e.g., `10min`, `2s`, `1h`). Used in `DATE_BIN` for aggregation-based checks.                                  | No       | `10min` (default: `5min`)                                                                                                        |
-| `trigger_count`               | Number of consecutive failed checks before sending an alert.                                                                                 | No       | `3` (default: `1`)                                                                                                               |
-| `notification_deadman_text`   | Template for deadman notification message with variables `$table`, `$time_from`, `$time_to`.                                                 | No       | `"Deadman Alert: No data received from \$table from \$time_from to \$time_to."`                                                  |
-| `notification_threshold_text` | Template for threshold notification message with variables `$table`, `$field`, `$aggregation`, `$op_sym`, `$compare_val`, `$actual`, `$row`. | No       | `"Threshold Alert on table \$table: \$aggregation of \$field \$op_sym \$compare_val (actual: \$actual) — matched in row \$row."` |
-| `notification_path`           | URL path for the notification sending plugin (specified when creating an HTTP type trigger).                                                 | No       | `some/path` (default: `notify`)                                                                                                  |
-| `port_override`               | The port number where InfluxDB accepts requests.                                                                                             | No       | `8182` (default: `8181`)                                                                                                         |
-| `deadman_check`               | Boolean flag to enable deadman checks. If `True`, the plugin will check for the absence of data. Default is False.                           | No       | `True` or `False`                                                                                                                |
-| `field_aggregation_values`    | Aggregation conditions for threshold checks (e.g., `field:avg@">=10"$field2:min@"<5.0"`).                                                    | No       | `field:avg@">=10"\$field2:min@"<5.0"`                                                                                            |
+| Argument                      | Description                                                                                                                                            | Required | Example                                                                                                                                   |
+|-------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|----------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| `measurement`                 | The InfluxDB table (measurement) to monitor.                                                                                                           | Yes      | `"cpu"`                                                                                                                                   |
+| `senders`                     | Dot-separated list of notification channels (e.g., `"slack.discord"`). Supported channels: `slack`, `discord`, `sms`, `whatsapp`, `http`.              | Yes      | `"slack.discord"`                                                                                                                         |
+| `influxdb3_auth_token`        | API token for your InfluxDB 3 instance. Can be set via environment variable `INFLUXDB3_AUTH_TOKEN`.                                                    | Yes      | `"YOUR_API_TOKEN"`                                                                                                                        |
+| `window`                      | Time window to check for data (e.g., `"5m"` for 5 minutes).                                                                                            | Yes      | `"5m"`                                                                                                                                    |
+| `interval`                    | Time interval for aggregation (e.g., `10min`, `2s`, `1h`). Used in `DATE_BIN` for aggregation-based checks.                                            | No       | `10min` (default: `5min`)                                                                                                                 |
+| `trigger_count`               | Number of consecutive failed checks before sending an alert.                                                                                           | No       | `3` (default: `1`)                                                                                                                        |
+| `notification_deadman_text`   | Template for deadman notification message with variables `$table`, `$time_from`, `$time_to`.                                                           | No       | `"Deadman Alert: No data received from \$table from \$time_from to \$time_to."`                                                           |
+| `notification_threshold_text` | Template for threshold notification message with variables `$level`, `$table`, `$field`, `$aggregation`, `$op_sym`, `$compare_val`, `$actual`, `$row`. | No       | `"[$level] Threshold Alert on table \$table: \$aggregation of \$field \$op_sym \$compare_val (actual: \$actual) — matched in row \$row."` |
+| `notification_path`           | URL path for the notification sending plugin (specified when creating an HTTP type trigger).                                                           | No       | `some/path` (default: `notify`)                                                                                                           |
+| `port_override`               | The port number where InfluxDB accepts requests.                                                                                                       | No       | `8182` (default: `8181`)                                                                                                                  |
+| `deadman_check`               | Boolean flag to enable deadman checks. If `True`, the plugin will check for the absence of data. Default is False.                                     | No       | `True` or `False`                                                                                                                         |
+| `field_aggregation_values`    | Aggregation conditions for threshold checks (e.g., `field:avg@">=10-INFO"$field2:min@"<5.0-WARN"`).                                                    | No       | `field:avg@">=10-ERROR"\$field2:min@"<5.0-INFO"`                                                                                          |
 
 #### Aggregation-Based Checks
-The Scheduler Plugin supports aggregation-based threshold checks. Use the `field_aggregation_values` parameter to define conditions on aggregated values (e.g., `avg`, `min`, `max`). The format is:
-- `field:aggregation@"operator value"` (e.g., `temp:avg@">=30"`).
-- Multiple conditions are separated by `$` (e.g., `temp:avg@">=30"$status:count@">=5"`).
+The Scheduler Plugin supports aggregation-based threshold checks. Use the `field_aggregation_values` parameter to define conditions on aggregated values (e.g., `avg`, `min`, `max`, `count`, `sum`, `derivative`, `median`. The format is:
+- `field:aggregation@"operator value-level"` (e.g., `temp:avg@">=30-INFO"`).
+- Multiple conditions are separated by `$` (e.g., `temp:avg@">=30-INFO"$status:count@">=5-ERROR"`).
 
 #### The `row` Parameter in Notifications
-In threshold notifications, the `row` variable represents a unique combination of the table name, tag names, and tag values (e.g., `cpu:host=server1:region=eu`). This ensures that alerts are triggered only when the condition is met for a specific combination of tags, and the `trigger_count` threshold must be reached independently for each unique `row`.
+In threshold notifications, the `row` variable represents a unique combination of the table name, level, tag names, and tag values (e.g., `cpu:level:host=server1:region=eu`). This ensures that alerts are triggered only when the condition is met for a specific combination of tags, and the `trigger_count` threshold must be reached independently for each unique `row`.
 
 #### Sender-Specific Configurations in `senders_config`
 Depending on the channels specified in `senders`, additional arguments are required to configure each notification sender. These arguments are passed as part of the trigger configuration and are used by the Notification Sender Plugin to dispatch notifications.
@@ -133,16 +133,16 @@ The Data Write Plugin triggers on data writes to the database and checks for thr
 #### Arguments (Data Write Mode)
 The following arguments are extracted from the `args` dictionary for the Data Write Plugin:
 
-| Argument                | Description                                                                                         | Required | Example                                                                                     |
-|-------------------------|-----------------------------------------------------------------------------------------------------|----------|---------------------------------------------------------------------------------------------|
-| `measurement`           | The InfluxDB table (measurement) to monitor.                                                        | Yes      | `"cpu"`                                                                                     |
-| `field_conditions`      | Conditions for triggering alerts (e.g., `temp>30:status==ok`).                                      | Yes      | `temp>30:status==ok`                                                                        |
-| `senders`               | Dot-separated list of notification channels.                                                        | Yes      | `"slack.discord"`                                                                           |
-| `influxdb3_auth_token`  | API token for your InfluxDB 3 instance. Can be set via environment variable `INFLUXDB3_AUTH_TOKEN`. | Yes      | `"YOUR_API_TOKEN"`                                                                          |
-| `trigger_count`         | Number of times the condition must be met before sending an alert.                                  | No       | `2` (default: 1)                                                                            |
-| `notification_text`     | Template for the notification message with variables `$field`, `$op_sym`, `$compare_val`, `$actual`.| No       | `"InfluxDB 3 alert triggered. Condition \$field \$op_sym \$compare_val matched (\$actual)"` |
-| `notification_path`     | URL path for the notification sending plugin.                                                       | No       | `some/path` (default: `notify`)                                                             |
-| `port_override`         | The port number where InfluxDB accepts requests.                                                    | No       | `8182` (default: `8181`)                                                                    |
+| Argument                | Description                                                                                                    | Required | Example                                                                                              |
+|-------------------------|----------------------------------------------------------------------------------------------------------------|----------|------------------------------------------------------------------------------------------------------|
+| `measurement`           | The InfluxDB table (measurement) to monitor.                                                                   | Yes      | `"cpu"`                                                                                              |
+| `field_conditions`      | Conditions for triggering alerts (e.g., `temp>'30.0'-WARN:status=='ok'-INFO`).                                 | Yes      | `temp>'30.0'-WARN:status=='ok'-INFO`                                                                 |
+| `senders`               | Dot-separated list of notification channels.                                                                   | Yes      | `"slack.discord"`                                                                                    |
+| `influxdb3_auth_token`  | API token for your InfluxDB 3 instance. Can be set via environment variable `INFLUXDB3_AUTH_TOKEN`.            | Yes      | `"YOUR_API_TOKEN"`                                                                                   |
+| `trigger_count`         | Number of times the condition must be met before sending an alert.                                             | No       | `2` (default: 1)                                                                                     |
+| `notification_text`     | Template for the notification message with variables `$level`, `$field`, `$op_sym`, `$compare_val`, `$actual`. | No       | `"[$level] InfluxDB 3 alert triggered. Condition \$field \$op_sym \$compare_val matched (\$actual)"` |
+| `notification_path`     | URL path for the notification sending plugin.                                                                  | No       | `some/path` (default: `notify`)                                                                      |
+| `port_override`         | The port number where InfluxDB accepts requests.                                                               | No       | `8182` (default: `8181`)                                                                             |
 
 #### Sender-Specific Configurations in `senders_config`
 The same sender-specific arguments as described in the Scheduler Plugin section apply here.
@@ -153,14 +153,14 @@ influxdb3 create trigger \
   --database mydb \
   --plugin-filename threshold_deadman_checks_plugin.py \
   --trigger-spec "all_tables" \
-  --trigger-arguments measurement=cpu,field_conditions="temp>30:status==ok",senders=slack,trigger_count=3,slack_webhook_url="https://hooks.slack.com/services/..." \
+  --trigger-arguments measurement=cpu,field_conditions="temp>30-INFO:status==ok-ERROR",senders=slack,trigger_count=3,slack_webhook_url="https://hooks.slack.com/services/..." \
   data_write_trigger
 ```
 
 ## Important Notes
 - **Environment Variables**: Sensitive data like API tokens can be set via environment variables (e.g., `INFLUXDB3_AUTH_TOKEN`).
 - **Retries**: The plugin retries failed notifications with exponential backoff.
-- **Row in Notifications**: The `row` variable in threshold notifications uniquely identifies the combination of table and tags, ensuring alerts are specific to each tag set.
+- **Row in Notifications**: The `row` variable in threshold notifications uniquely identifies the combination of message level, table and tags, ensuring alerts are specific to each tag set.
 
 ## Questions/Comments
 For support, open a GitHub issue or contact us via [Discord](https://discord.com/invite/vZe2w2Ds8B) in the `#influxdb3_core` channel, [Slack](https://influxcommunity.slack.com/) in the `#influxdb3_core` channel, or the [Community Forums](https://community.influxdata.com/).
