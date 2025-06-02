@@ -83,12 +83,12 @@ def parse_senders(influxdb3_local, args: dict, task_id: str) -> dict:
                 influxdb3_local.warn(
                     f"[{task_id}] Missing required argument for {sender}: {key}"
                 )
-                del senders_config[sender]
+                senders_config.pop(sender, None)
                 break
             if "url" in key and not validate_webhook_url(
                 influxdb3_local, sender, args[key], task_id
             ):
-                del senders_config[sender]
+                senders_config.pop(sender, None)
                 break
 
             if key not in args:
