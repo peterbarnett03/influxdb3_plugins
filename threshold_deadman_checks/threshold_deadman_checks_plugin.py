@@ -348,9 +348,7 @@ def process_writes(influxdb3_local, table_batches: list, args: dict):
         field_conditions: list = parse_field_conditions(influxdb3_local, args, task_id)
         port_override: int = parse_port_override(args, task_id)
         notification_path: str = args.get("notification_path", "notify")
-        influxdb3_auth_token: str = os.getenv(
-            "INFLUXDB3_AUTH_TOKEN", args.get("influxdb3_auth_token")
-        )
+        influxdb3_auth_token: str = os.getenv("INFLUXDB3_AUTH_TOKEN") or args.get("influxdb3_auth_token")
         if influxdb3_auth_token is None:
             influxdb3_local.error(
                 f"[{task_id}] Missing required argument: influxdb3_auth_token"
@@ -824,9 +822,7 @@ def process_scheduled_call(influxdb3_local, call_time: datetime, args: dict):
 
         port_override: int = parse_port_override(args, task_id)
         notification_path: str = args.get("notification_path", "notify")
-        influxdb3_auth_token: str = os.getenv(
-            "INFLUXDB3_AUTH_TOKEN", args.get("influxdb3_auth_token")
-        )
+        influxdb3_auth_token: str = os.getenv("INFLUXDB3_AUTH_TOKEN") or args.get("influxdb3_auth_token")
         if influxdb3_auth_token is None:
             influxdb3_local.error(
                 f"[{task_id}] Missing required environment variable: INFLUXDB3_AUTH_TOKEN"
