@@ -908,9 +908,6 @@ def process_scheduled_call(
         query: str = build_query(measurement, start_time, end_time)
         results: list = influxdb3_local.query(query)
 
-        influxdb3_local.error(f"results: {results}")
-        influxdb3_local.error(f"field_counts: {field_counts}")
-
         if not results:
             influxdb3_local.info(
                 f"[{task_id}] No data found in '{measurement}' from {start_time} to {end_time}."
