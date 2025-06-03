@@ -77,25 +77,25 @@ The following arguments are extracted from the `args` dictionary for the Schedul
 Depending on the channels specified in `senders`, additional arguments are required:
 
 - **Slack**:
-  - `slack_webhook_url` (string): Webhook URL from Slack.
-  - `slack_headers` (string, optional): Base64-encoded HTTP headers.
+  - `slack_webhook_url` (string): Webhook URL from Slack (required).
+  - `slack_headers` (string, optional): Base64-encoded HTTP headers (optional).
   - Example: `"slack_webhook_url=https://hooks.slack.com/services/..."`.
 
 - **Discord**:
-  - `discord_webhook_url` (string): Webhook URL from Discord.
-  - `discord_headers` (string, optional): Base64-encoded HTTP headers.
+  - `discord_webhook_url` (string): Webhook URL from Discord (required).
+  - `discord_headers` (string, optional): Base64-encoded HTTP headers (optional).
   - Example: `"discord_webhook_url=https://discord.com/api/webhooks/..."`.
 
 - **HTTP**:
-  - `http_webhook_url` (string): Custom webhook URL for POST requests.
-  - `http_headers` (string, optional): Base64-encoded HTTP headers.
+  - `http_webhook_url` (string): Custom webhook URL for POST requests (required).
+  - `http_headers` (string, optional): Base64-encoded HTTP headers (optional).
   - Example: `"http_webhook_url=https://example.com/webhook"`.
 
 - **SMS** (via Twilio`):
-  - `twilio_service_id` (string): Twilio ID, or via `TWILIO_SID` env var.
-  - `twilio_token` (string): Twilio Auth Token, or via `TWILIO_TOKEN` env var.
-  - `twilio_from_number` (string): Twilio sender number (e.g., `+1234567890`).
-  - `twilio_to_number` (string): Recipient number (e.g., `+0987654321`).
+  - `twilio_service_id` (string): Twilio ID, or via `TWILIO_SID` env var (required).
+  - `twilio_token` (string): Twilio Auth Token, or via `TWILIO_TOKEN` env var (required).
+  - `twilio_from_number` (string): Twilio sender number (e.g., `+1234567890`) (required).
+  - `twilio_to_number` (string): Recipient number (e.g., `+0987654321`) (required).
   - Example: `"twilio_service_id=ACxxx,twilio_token=xxx,twilio_from_number=+1234567890,twilio_to_number=+0987654321"`.
 
 - **WhatsApp** (via Twilio):
