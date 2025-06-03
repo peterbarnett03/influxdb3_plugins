@@ -431,7 +431,7 @@ def process_writes(influxdb3_local, table_batches: list, args: dict):
                         influxdb3_local.cache.put(cache_key, "0")
 
     except Exception as e:
-        influxdb3_local.error(str(e))
+        influxdb3_local.error(f"[{task_id}] Error: {str(e)}")
 
 
 def parse_window(influxdb3_local, args: dict, task_id: str) -> timedelta:
@@ -951,4 +951,4 @@ def process_scheduled_call(influxdb3_local, call_time: datetime, args: dict):
                         influxdb3_local.cache.put(cache_key, "0")
 
     except Exception as e:
-        influxdb3_local.error(str(e))
+        influxdb3_local.error(f"[{task_id}] Error: {str(e)}")
