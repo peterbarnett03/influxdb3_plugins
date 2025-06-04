@@ -165,7 +165,7 @@ The JSON body supports the following parameters:
 
 #### Example HTTP Request  
 ```bash  
-curl -X POST http://localhost:8181/api/v3/engine/webhook \
+curl -X POST http://localhost:8181/api/v3/engine/downsample \
 -H "Authorization: Bearer YOUR_TOKEN" \
 -d '{
     "source_measurement": "home",
