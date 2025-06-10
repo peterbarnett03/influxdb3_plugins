@@ -1,13 +1,13 @@
 """
 {
     "plugin_name": "influxdb_to_iceberg",
-    "plugin_type": "Scheduled",
+    "plugin_type": ["scheduled"],
     "dependencies": ["pandas", "pyarrow", "pyiceberg"],
     "required_plugins": [],
     "category": "Data Transfer",
     "description": "This plugin transfers data from InfluxDB 3 to Apache Iceberg tables. It periodically queries specified measurement within a time window, transforming the data, and appending it to an Iceberg table.",
     "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/influxdb_to_iceberg/README.md",
-    "args_config": [
+    "scheduled_args_config": [
         {
             "name": "measurement",
             "example": "cpu",
