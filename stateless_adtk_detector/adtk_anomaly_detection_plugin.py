@@ -1,3 +1,148 @@
+"""
+{
+    "plugin_name": "Adtk anomaly detection",
+    "plugin_type": ["scheduled"],
+    "dependencies": ["pandas", "adtk", "requests"],
+    "required_plugins": ["Notification sender"],
+    "category": "Alerting",
+    "description": "This plugin provides anomaly detection capabilities for time series data in InfluxDB 3 using the ADTK library through a `scheduler` trigger. It leverages the Notification Sender plugin for InfluxDB 3 to send notifications via various channels when anomalies are detected.",
+    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/adtk_anomaly_detection_plugin.md",
+    "scheduled_args_config": [
+        {
+            "name": "measurement",
+            "example": "cpu",
+            "description": "The InfluxDB measurement (table) to query.",
+            "required": true
+        },
+        {
+            "name": "field",
+            "example": "usage",
+            "description": "The numeric field to evaluate for anomalies.",
+            "required": true
+        },
+        {
+            "name": "detectors",
+            "example": "QuantileAD.LevelShiftAD",
+            "description": "Dot-separated list of ADTK detectors (e.g., `QuantileAD.LevelShiftAD`).",
+            "required": true
+        },
+        {
+            "name": "detector_params",
+            "example": "eyJRdWFudGlsZUFKIjogeyJsb3dfcXVhbnRpbGUiOiA...",
+            "description": "Base64-encoded JSON string specifying parameters for each detector.",
+            "required": true
+        },
+        {
+            "name": "min_consensus",
+            "example": "2",
+            "description": "Minimum number of detectors that must agree to flag a point as anomalous. Default: 1.",
+            "required": false
+        },
+        {
+            "name": "window",
+            "example": "1h",
+            "description": "Time window for data analysis (e.g., `1h` for 1 hour). Units: `s`, `min`, `h`, `d`, `w`.",
+            "required": true
+        },
+        {
+            "name": "senders",
+            "example": "slack.discord",
+            "description": "Dot-separated list of notification channels. Supported channels: slack, discord, http, sms, whatsapp.",
+            "required": true
+        },
+        {
+            "name": "influxdb3_auth_token",
+            "example": "YOUR_API_TOKEN",
+            "description": "API token for InfluxDB 3. Can be set via `INFLUXDB3_AUTH_TOKEN` environment variable.",
+            "required": false
+        },
+        {
+            "name": "min_condition_duration",
+            "example": "5m",
+            "description": "Minimum duration for an anomaly condition to persist before triggering a notification (e.g., `5m`). Units: `s`, `min`, `h`, `d`, `w`. Default: `0s`.",
+            "required": false
+        },
+        {
+            "name": "notification_text",
+            "example": "Anomaly detected in $table.$field with value $value by $detectors. Tags: $tags",
+            "description": "Template for notification message with variables `$table`, `$field`, `$value`, `$detectors`, `$tags`.",
+            "required": false
+        },
+        {
+            "name": "notification_path",
+            "example": "some/path",
+            "description": "URL path for the notification sending plugin. Default: `notify`.",
+            "required": false
+        },
+        {
+            "name": "port_override",
+            "example": "8182",
+            "description": "Port number where InfluxDB accepts requests. Default: `8181`.",
+            "required": false
+        },
+        {
+            "name": "slack_webhook_url",
+            "example": "https://hooks.slack.com/services/...",
+            "description": "Incoming webhook URL for Slack notifications. Required if using the slack sender.",
+            "required": false
+        },
+        {
+            "name": "slack_headers",
+            "example": "",
+            "description": "Optional headers as base64-encoded string for Slack notifications.",
+            "required": false
+        },
+        {
+            "name": "discord_webhook_url",
+            "example": "https://discord.com/api/webhooks/...",
+            "description": "Incoming webhook URL for Discord notifications. Required if using the discord sender.",
+            "required": false
+        },
+        {
+            "name": "discord_headers",
+            "example": "",
+            "description": "Optional headers as base64-encoded string for Discord notifications.",
+            "required": false
+        },
+        {
+            "name": "http_webhook_url",
+            "example": "https://example.com/webhook",
+            "description": "Webhook URL for HTTP notifications. Required if using the http sender.",
+            "required": false
+        },
+        {
+            "name": "http_headers",
+            "example": "",
+            "description": "Optional headers as base64-encoded string for HTTP notifications.",
+            "required": false
+        },
+        {
+            "name": "twilio_sid",
+            "example": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "description": "Twilio Account SID. Required if using the sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_token",
+            "example": "your_auth_token",
+            "description": "Twilio Auth Token. Required if using the sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_to_number",
+            "example": "+1234567890",
+            "description": "Recipient phone number. Required if using the sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_from_number",
+            "example": "+19876543210",
+            "description": "Twilio sender phone number (verified). Required if using the sms or whatsapp sender.",
+            "required": false
+        }
+    ]
+}
+"""
 import base64
 import json
 import os
