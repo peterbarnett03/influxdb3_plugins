@@ -1,3 +1,28 @@
+"""
+{
+    "plugin_name": "Notification sender",
+    "plugin_type": ["http"],
+    "dependencies": ["httpx", "requests", "twilio"],
+    "required_plugins": [],
+    "category": "Alerting",
+    "description": "This plugin sends notifications through various channels (Slack, Discord, HTTP, SMS, WhatsApp) based on incoming HTTP POST requests. It acts as a standalone notification dispatcher, receiving data from other plugins or external systems.",
+    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/notifier_plugin.md",
+    "request_body_config": [
+        {
+            "name": "notification_text",
+            "example": "Test alert",
+            "description": "The text of the notification message.",
+            "required": true
+        },
+        {
+            "name": "senders_config",
+            "example": {"slack": {"slack_webhook_url": "https://hooks.slack.com/services/..."}},
+            "description": "A dictionary where keys are sender names (slack, discord, http, sms, whatsapp) and values are their configurations.",
+            "required": true
+        }
+    ]
+}
+"""
 import asyncio
 import base64
 import json
