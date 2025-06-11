@@ -1,3 +1,246 @@
+"""
+{
+    "plugin_name": "State Change Monitoring",
+    "plugin_type": ["scheduled", "onwrite"],
+    "dependencies": ["requests"],
+    "required_plugins": ["Notification sender"],
+    "category": "Anomaly Detection",
+    "description": "This plugin provides field change and threshold monitoring for InfluxDB 3 using scheduler and data write triggers, with notifications via multiple channels.",
+    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/state_change_check_plugin.md",
+    "scheduled_args_config": [
+        {
+            "name": "measurement",
+            "example": "cpu",
+            "description": "The InfluxDB table (measurement) to monitor.",
+            "required": true
+        },
+        {
+            "name": "field_change_count",
+            "example": "temp:3.load:2",
+            "description": "Dot-separated list of field thresholds (e.g., field:count).",
+            "required": true
+        },
+        {
+            "name": "senders",
+            "example": "slack.discord",
+            "description": "Dot-separated list of notification channels (e.g., slack.discord).",
+            "required": true
+        },
+        {
+            "name": "window",
+            "example": "1h",
+            "description": "Time window for data analysis (e.g., '1h' for 1 hour). Units: 's', 'min', 'h', 'd', 'w'.",
+            "required": true
+        },
+        {
+            "name": "influxdb3_auth_token",
+            "example": "YOUR_API_TOKEN",
+            "description": "API token for InfluxDB 3. Can be set via INFLUXDB3_AUTH_TOKEN environment variable.",
+            "required": false
+        },
+        {
+            "name": "notification_text",
+            "example": "Field $field in table $table changed $changes times in window $window for tags $tags",
+            "description": "Template for notification message with variables $table, $field, $changes, $window, $tags.",
+            "required": false
+        },
+        {
+            "name": "notification_path",
+            "example": "some/path",
+            "description": "URL path for the notification sending plugin. Default: 'notify'.",
+            "required": false
+        },
+        {
+            "name": "port_override",
+            "example": "8182",
+            "description": "Port number where InfluxDB accepts requests. Default: 8181.",
+            "required": false
+        },
+        {
+            "name": "slack_webhook_url",
+            "example": "https://hooks.slack.com/services/...",
+            "description": "Webhook URL for Slack notifications. Required if using slack sender.",
+            "required": false
+        },
+        {
+            "name": "slack_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for Slack notifications.",
+            "required": false
+        },
+        {
+            "name": "discord_webhook_url",
+            "example": "https://discord.com/api/webhooks/...",
+            "description": "Webhook URL for Discord notifications. Required if using discord sender.",
+            "required": false
+        },
+        {
+            "name": "discord_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for Discord notifications.",
+            "required": false
+        },
+        {
+            "name": "http_webhook_url",
+            "example": "https://example.com/webhook",
+            "description": "Webhook URL for HTTP POST notifications. Required if using http sender.",
+            "required": false
+        },
+        {
+            "name": "http_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for HTTP notifications.",
+            "required": false
+        },
+        {
+            "name": "twilio_sid",
+            "example": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "description": "Twilio Service ID. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_token",
+            "example": "your_auth_token",
+            "description": "Twilio Auth Token. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_to_number",
+            "example": "+1234567890",
+            "description": "Recipient phone number. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_from_number",
+            "example": "+19876543210",
+            "description": "Twilio sender phone number (verified). Required if using sms or whatsapp sender.",
+            "required": false
+        }
+    ],
+    "onwrite_args_config": [
+        {
+            "name": "measurement",
+            "example": "cpu",
+            "description": "The InfluxDB table (measurement) to monitor.",
+            "required": true
+        },
+        {
+            "name": "field_thresholds",
+            "example": "temp:'30.1':10@humidity:'true':2h",
+            "description": "Threshold conditions (e.g., field:value:count or field:value:time). Multiple conditions separated by '@'.",
+            "required": true
+        },
+        {
+            "name": "senders",
+            "example": "slack.discord",
+            "description": "Dot-separated list of notification channels.",
+            "required": true
+        },
+        {
+            "name": "influxdb3_auth_token",
+            "example": "YOUR_API_TOKEN",
+            "description": "API token for InfluxDB 3. Can be set via INFLUXDB3_AUTH_TOKEN environment variable.",
+            "required": false
+        },
+        {
+            "name": "state_change_window",
+            "example": "5",
+            "description": "Number of recent values to check for stability. Default: 1.",
+            "required": false
+        },
+        {
+            "name": "state_change_count",
+            "example": "2",
+            "description": "Maximum allowed changes within state_change_window to allow notifications. Default: 1.",
+            "required": false
+        },
+        {
+            "name": "notification_count_text",
+            "example": "State change detected: Field $field in table $table changed to $value during last $duration times. Row: $row",
+            "description": "Template for notification message (when condition with count) with variables $table, $field, $value, $duration, $row.",
+            "required": false
+        },
+        {
+            "name": "notification_time_text",
+            "example": "State change detected: Field $field in table $table changed to $value during $duration. Row: $row",
+            "description": "Template for notification message (when condition with time) with variables $table, $field, $value, $duration, $row.",
+            "required": false
+        },
+        {
+            "name": "notification_path",
+            "example": "some/path",
+            "description": "URL path for the notification sending plugin. Default: 'notify'.",
+            "required": false
+        },
+        {
+            "name": "port_override",
+            "example": "8182",
+            "description": "Port number where InfluxDB accepts requests. Default: 8181.",
+            "required": false
+        },
+        {
+            "name": "slack_webhook_url",
+            "example": "https://hooks.slack.com/services/...",
+            "description": "Webhook URL for Slack notifications. Required if using slack sender.",
+            "required": false
+        },
+        {
+            "name": "slack_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for Slack notifications.",
+            "required": false
+        },
+        {
+            "name": "discord_webhook_url",
+            "example": "https://discord.com/api/webhooks/...",
+            "description": "Webhook URL for Discord notifications. Required if using discord sender.",
+            "required": false
+        },
+        {
+            "name": "discord_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for Discord notifications.",
+            "required": false
+        },
+        {
+            "name": "http_webhook_url",
+            "example": "https://example.com/webhook",
+            "description": "Webhook URL for HTTP POST notifications. Required if using http sender.",
+            "required": false
+        },
+        {
+            "name": "http_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for HTTP notifications.",
+            "required": false
+        },
+        {
+            "name": "twilio_sid",
+            "example": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "description": "Twilio Service ID. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_token",
+            "example": "your_auth_token",
+            "description": "Twilio Auth Token. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_to_number",
+            "example": "+1234567890",
+            "description": "Recipient phone number. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_from_number",
+            "example": "+19876543210",
+            "description": "Twilio sender phone number (verified). Required if using sms or whatsapp sender.",
+            "required": false
+        }
+    ]
+}
+"""
 import json
 import os
 import random
