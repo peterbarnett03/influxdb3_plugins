@@ -1,3 +1,130 @@
+"""
+{
+    "plugin_name": "MAD-Based Anomaly Detection",
+    "plugin_type": ["onwrite"],
+    "dependencies": ["requests"],
+    "required_plugins": ["Notification sender"],
+    "category": "Anomaly Detection",
+    "description": "This plugin provides Median Absolute Deviation (MAD)-based anomaly detection for InfluxDB 3 using the data writes trigger.",
+    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/mad_check_plugin.md",
+    "onwrite_args_config": [
+        {
+            "name": "measurement",
+            "example": "cpu",
+            "description": "The InfluxDB table (measurement) to monitor.",
+            "required": true
+        },
+        {
+            "name": "mad_thresholds",
+            "example": "temp:'2.5':20:5@load:3:10:2m",
+            "description": "Threshold conditions for MAD-based anomaly detection (e.g., field:k:window_count:threshold). Multiple conditions separated by '@'.",
+            "required": true
+        },
+        {
+            "name": "senders",
+            "example": "slack.discord",
+            "description": "Dot-separated list of notification channels (e.g., slack.discord).",
+            "required": true
+        },
+        {
+            "name": "influxdb3_auth_token",
+            "example": "YOUR_API_TOKEN",
+            "description": "API token for InfluxDB 3. Can be set via INFLUXDB3_AUTH_TOKEN environment variable.",
+            "required": false
+        },
+        {
+            "name": "state_change_count",
+            "example": "2",
+            "description": "Maximum allowed flips (changes) in recent values before suppressing notifications. If 0, suppression is disabled. Default: 0.",
+            "required": false
+        },
+        {
+            "name": "notification_count_text",
+            "example": "MAD count alert: Field $field in $table outlier for $threshold_count consecutive points. Tags: $tags",
+            "description": "Template for count-based notification messages with variables $table, $field, $threshold_count, $tags.",
+            "required": false
+        },
+        {
+            "name": "notification_time_text",
+            "example": "MAD duration alert: Field $field in $table outlier for $threshold_time. Tags: $tags",
+            "description": "Template for duration-based notification messages with variables $table, $field, $threshold_time, $tags.",
+            "required": false
+        },
+        {
+            "name": "notification_path",
+            "example": "some/path",
+            "description": "URL path for the notification sending plugin. Default: 'notify'.",
+            "required": false
+        },
+        {
+            "name": "port_override",
+            "example": "8182",
+            "description": "Port number where InfluxDB accepts requests. Default: 8181.",
+            "required": false
+        },
+        {
+            "name": "slack_webhook_url",
+            "example": "https://hooks.slack.com/services/...",
+            "description": "Webhook URL for Slack notifications. Required if using slack sender.",
+            "required": false
+        },
+        {
+            "name": "slack_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for Slack notifications.",
+            "required": false
+        },
+        {
+            "name": "discord_webhook_url",
+            "example": "https://discord.com/api/webhooks/...",
+            "description": "Webhook URL for Discord notifications. Required if using discord sender.",
+            "required": false
+        },
+        {
+            "name": "discord_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for Discord notifications.",
+            "required": false
+        },
+        {
+            "name": "http_webhook_url",
+            "example": "https://example.com/webhook",
+            "description": "Webhook URL for HTTP POST notifications. Required if using http sender.",
+            "required": false
+        },
+        {
+            "name": "http_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for HTTP notifications.",
+            "required": false
+        },
+        {
+            "name": "twilio_sid",
+            "example": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "description": "Twilio Account SID. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_token",
+            "example": "your_auth_token",
+            "description": "Twilio Auth Token. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_to_number",
+            "example": "+1234567890",
+            "description": "Recipient phone number. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_from_number",
+            "example": "+19876543210",
+            "description": "Twilio sender phone number (verified). Required if using sms or whatsapp sender.",
+            "required": false
+        }
+    ]
+}
+"""
 import json
 import os
 import random
