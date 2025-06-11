@@ -1,3 +1,160 @@
+"""
+{
+    "plugin_name": "Forecast Error Evaluator",
+    "plugin_type": ["scheduled"],
+    "dependencies": ["pandas", "requests"],
+    "required_plugins": ["Notification sender"],
+    "category": "Alerting",
+    "description": "This plugin evaluates the accuracy of forecasting models in InfluxDB 3 by comparing predicted values with actual observations and detecting anomalies based on error rates, sending alerts when anomalies occur.",
+    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/forecast_error_evaluator.md",
+    "scheduled_args_config": [
+        {
+            "name": "forecast_measurement",
+            "example": "forecast_data",
+            "description": "The InfluxDB measurement containing forecasted values.",
+            "required": true
+        },
+        {
+            "name": "actual_measurement",
+            "example": "actual_data",
+            "description": "The InfluxDB measurement containing actual (ground truth) values.",
+            "required": true
+        },
+        {
+            "name": "forecast_field",
+            "example": "predicted_temp",
+            "description": "The field name in forecast_measurement for forecasted values.",
+            "required": true
+        },
+        {
+            "name": "actual_field",
+            "example": "temp",
+            "description": "The field name in actual_measurement for actual values.",
+            "required": true
+        },
+        {
+            "name": "error_metric",
+            "example": "rmse",
+            "description": "The error metric to use (mse, mae, rmse).",
+            "required": true
+        },
+        {
+            "name": "error_thresholds",
+            "example": "INFO-'0.5':WARN-'0.9':ERROR-'1.2':CRITICAL-'1.5'",
+            "description": "The threshold value for the error metric to trigger an anomaly with levels.",
+            "required": true
+        },
+        {
+            "name": "window",
+            "example": "1h",
+            "description": "Time window for data analysis (e.g., '1h' for 1 hour). Units: 's', 'min', 'h', 'd', 'w'.",
+            "required": true
+        },
+        {
+            "name": "senders",
+            "example": "slack",
+            "description": "Dot-separated list of notification channels (e.g., slack.discord).",
+            "required": true
+        },
+        {
+            "name": "influxdb3_auth_token",
+            "example": "YOUR_API_TOKEN",
+            "description": "API token for InfluxDB 3. Can be set via INFLUXDB3_AUTH_TOKEN environment variable.",
+            "required": true
+        },
+        {
+            "name": "min_condition_duration",
+            "example": "5min",
+            "description": "Minimum duration for an anomaly condition to persist before triggering a notification (e.g., '5m'). Units: 's', 'min', 'h', 'd', 'w'.",
+            "required": false
+        },
+        {
+            "name": "rounding_freq",
+            "example": "1s",
+            "description": "Frequency to round timestamps for alignment (e.g., '1s').",
+            "required": false
+        },
+        {
+            "name": "notification_text",
+            "example": "[$level] Forecast error alert in $measurement.$field: $metric=$error. Tags: $tags",
+            "description": "Template for notification message with variables $measurement, $level, $field, $error, $metric, $tags.",
+            "required": false
+        },
+        {
+            "name": "notification_path",
+            "example": "some/path",
+            "description": "URL path for the notification sending plugin. Default: 'notify'.",
+            "required": false
+        },
+        {
+            "name": "port_override",
+            "example": "8182",
+            "description": "Port number where InfluxDB accepts requests. Default: 8181.",
+            "required": false
+        },
+        {
+            "name": "slack_webhook_url",
+            "example": "https://hooks.slack.com/...",
+            "description": "Webhook URL for Slack notifications. Required if using slack sender.",
+            "required": false
+        },
+        {
+            "name": "slack_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for HTTP notifications.",
+            "required": false
+        },
+        {
+            "name": "discord_webhook_url",
+            "example": "https://discord.com/api/webhooks/...",
+            "description": "Webhook URL for Discord notifications. Required if using discord sender.",
+            "required": false
+        },
+        {
+            "name": "slack_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for HTTP notifications.",
+            "required": false
+        },
+        {
+            "name": "http_webhook_url",
+            "example": "https://example.com/webhook",
+            "description": "Webhook URL for HTTP POST notifications. Required if using http sender.",
+            "required": false
+        },
+        {
+            "name": "http_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for HTTP notifications.",
+            "required": false
+        },
+        {
+            "name": "twilio_sid",
+            "example": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "description": "Twilio Account SID. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_token",
+            "example": "your_auth_token",
+            "description": "Twilio Auth Token. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_to_number",
+            "example": "+1234567890",
+            "description": "Recipient phone number. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_from_number",
+            "example": "+19876543210",
+            "description": "Twilio sender phone number (verified). Required if using sms or whatsapp sender.",
+            "required": false
+        }
+    ]
+}
+"""
 import json
 import os
 import random
