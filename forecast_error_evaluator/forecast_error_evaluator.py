@@ -60,7 +60,7 @@
             "name": "influxdb3_auth_token",
             "example": "YOUR_API_TOKEN",
             "description": "API token for InfluxDB 3. Can be set via INFLUXDB3_AUTH_TOKEN environment variable.",
-            "required": true
+            "required": false
         },
         {
             "name": "min_condition_duration",
