@@ -1,12 +1,12 @@
 """
 {
     "plugin_name": "influxdb_to_iceberg",
-    "plugin_type": ["scheduled"],
+    "plugin_type": ["scheduled", "http"],
     "dependencies": ["pandas", "pyarrow", "pyiceberg"],
     "required_plugins": [],
     "category": "Data Transfer",
-    "description": "This plugin transfers data from InfluxDB 3 to Apache Iceberg tables. It periodically queries specified measurement within a time window, transforming the data, and appending it to an Iceberg table.",
-    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/influxdb_to_iceberg/README.md",
+    "description": "This plugin transfers data from InfluxDB 3 to Apache Iceberg tables using scheduler or HTTP triggers.",
+    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/influxdb_to_iceberg.md",
     "scheduled_args_config": [
         {
             "name": "measurement",
@@ -17,37 +17,93 @@
         {
             "name": "window",
             "example": "1h",
-            "description": "Time window for data analysis (e.g., '1h' for 1 hour). Supported units: s, min, h, d, w.",
+            "description": "Time window for data analysis (e.g., '1h' for 1 hour). Units: 's', 'min', 'h', 'd', 'w'.",
             "required": true
         },
         {
             "name": "catalog_configs",
             "example": "eyJ1cmkiOiAiaHR0cDovL25lc3NpZTo5MDAwIn0=",
-            "description": "Base64-encoded JSON string containing Iceberg catalog configuration (e.g., URI, credentials).",
+            "description": "Base64-encoded JSON string containing Iceberg catalog configuration.",
             "required": true
         },
         {
             "name": "included_fields",
             "example": "usage_user.usage_idle",
-            "description": "Dot-separated list of field names to include in the query.",
+            "description": "Dot-separated list of field names to include in the query (optional).",
             "required": false
         },
         {
             "name": "excluded_fields",
-            "example": "usage_system.usage_idle",
-            "description": "Dot-separated list of field names to exclude from the query.",
+            "example": "usage_system",
+            "description": "Dot-separated list of field names to exclude from the query (optional).",
             "required": false
         },
         {
             "name": "namespace",
-            "example": "monitoring",
-            "description": "Iceberg namespace for the table (default: 'default').",
+            "example": "production",
+            "description": "Iceberg namespace for the table (optional, default: 'default').",
             "required": false
         },
         {
             "name": "table_name",
-            "example": "metrics",
-            "description": "Iceberg table name (default: same as measurement).",
+            "example": "cpu_metrics",
+            "description": "Iceberg table name (optional, default: same as measurement).",
+            "required": false
+        }
+    ],
+    "request_body_config": [
+        {
+            "name": "measurement",
+            "example": "cpu",
+            "description": "The InfluxDB measurement to replicate.",
+            "required": true
+        },
+        {
+            "name": "catalog_configs",
+            "example": {"type": "sql", "uri": "http://nessie:9000"},
+            "description": "Configuration dictionary for Iceberg catalog loading.",
+            "required": true
+        },
+        {
+            "name": "included_fields",
+            "example": ["usage_user", "usage_idle"],
+            "description": "List of field names to include in replication (optional).",
+            "required": false
+        },
+        {
+            "name": "excluded_fields",
+            "example": ["usage_system"],
+            "description": "List of field names to exclude from replication (optional).",
+            "required": false
+        },
+        {
+            "name": "namespace",
+            "example": "production",
+            "description": "Target Iceberg namespace (optional, default: 'default').",
+            "required": false
+        },
+        {
+            "name": "table_name",
+            "example": "cpu_metrics",
+            "description": "Target Iceberg table name (optional, default: same as measurement).",
+            "required": false
+        },
+        {
+            "name": "batch_size",
+            "example": "1d",
+            "description": "Batch size duration for processing (e.g., '1d', '12h'). Units: 's', 'min', 'h', 'd', 'w'. Default: '1d'.",
+            "required": false
+        },
+        {
+            "name": "backfill_start",
+            "example": "2023-01-01T00:00:00+00:00",
+            "description": "ISO 8601 datetime string with timezone for the start of the backfill window. If not provided, uses the oldest available data.",
+            "required": false
+        },
+        {
+            "name": "backfill_end",
+            "example": "2023-01-02T00:00:00+00:00",
+            "description": "ISO 8601 datetime string with timezone for the end of the backfill window. If not provided, uses the current UTC time.",
             "required": false
         }
     ]
@@ -55,6 +111,7 @@
 """
 import base64
 import json
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -297,6 +354,28 @@ def df_to_iceberg_schema(df: pd.DataFrame) -> Schema:
     return Schema(*fields)
 
 
+def infer_unit_from_dtype(dtype_str: str) -> str:
+    """
+    Return time unit string ('ns', 'us', 'ms', 's') based on dtype description.
+
+    Args:
+        dtype_str: String describing timestamp dtype.
+
+    Returns:
+        Corresponding time unit string.
+    """
+    if "Nanosecond" in dtype_str:
+        return "ns"
+    elif "Microsecond" in dtype_str:
+        return "us"
+    elif "Millisecond" in dtype_str:
+        return "ms"
+    elif "Second" in dtype_str:
+        return "s"
+    else:
+        raise ValueError(f"Unknown timestamp precision: {dtype_str}")
+
+
 def process_scheduled_call(
     influxdb3_local, call_time: datetime, args: dict | None = None
 ):
@@ -381,11 +460,17 @@ def process_scheduled_call(
             )
             return
 
+        # Recognize time format
+        time_type: str = influxdb3_local.query(
+            f"SELECT data_type FROM information_schema.columns WHERE table_name = '{measurement}' AND column_name = 'time'"
+        )[0]["data_type"]
+        time_unit: str = infer_unit_from_dtype(time_type)
+
         # Convert to DataFrame and convert 'time' to datetime
         df: pd.DataFrame = pd.DataFrame.from_records(results)
         try:
             df["time"] = pd.to_datetime(
-                df["time"]
+                df["time"], unit=time_unit
             )  # Assuming 'time' column exists and is the timestamp
             influxdb3_local.info(
                 f"[{task_id}] Successfully converted 'time' column to datetime."
@@ -395,6 +480,7 @@ def process_scheduled_call(
                 f"[{task_id}] Error while converting 'time' to datetime: {e}"
             )
             return
+        df["time"] = df["time"].dt.tz_localize(None)
         df["time"] = df["time"].astype(
             "datetime64[us]"
         )  # Ensure time is microsecond datetime for Iceberg
@@ -427,3 +513,323 @@ def process_scheduled_call(
     except Exception as e:
         influxdb3_local.error(f"Error: {e}")
         return
+
+
+def parse_backfill_window(data: dict, task_id: str) -> tuple[datetime | None, datetime]:
+    """
+    Parses and validates the backfill window from input data.
+
+    Extracts 'backfill_start' and 'backfill_end' values from the given dictionary,
+    converts them from ISO 8601 strings to timezone-aware UTC datetimes, and
+    ensures that the window is valid.
+
+    If 'backfill_start' is not provided, returns (None, backfill_end), using the
+    current UTC time as the end time if 'backfill_end' is also not provided.
+
+    Args:
+        data (dict): A dictionary expected to contain 'backfill_start' and/or 'backfill_end' keys.
+        task_id (str): An identifier used for error context in exception messages.
+
+    Returns:
+        tuple[datetime | None, datetime]: A tuple containing the parsed start and end datetimes.
+            The start can be None if not provided, but the end is always a datetime.
+
+    Raises:
+        Exception: If the provided datetime strings are invalid, lack timezone info,
+                   or if the start is not earlier than the end.
+    """
+
+    def parse_iso_datetime(name: str, value: str) -> datetime:
+        try:
+            dt = datetime.fromisoformat(value)
+        except ValueError:
+            raise Exception(
+                f"[{task_id}] Invalid ISO 8601 datetime for {name}: '{value}'."
+            )
+        if dt.tzinfo is None:
+            raise Exception(
+                f"[{task_id}] {name} must include timezone info (e.g., '+00:00')."
+            )
+        return dt.astimezone(timezone.utc)
+
+    start_str = data.get("backfill_start")
+    end_str = data.get("backfill_end")
+
+    if end_str:
+        backfill_end: datetime = parse_iso_datetime("backfill_end", end_str)
+    else:
+        backfill_end = datetime.now(timezone.utc)
+
+    if start_str is None:
+        return None, backfill_end
+
+    backfill_start = parse_iso_datetime("backfill_start", start_str)
+
+    if backfill_start >= backfill_end:
+        raise Exception(
+            f"[{task_id}] backfill_start must be earlier than backfill_end."
+        )
+
+    return backfill_start, backfill_end
+
+
+def process_request(
+    influxdb3_local, query_parameters, request_headers, request_body, args=None
+):
+    """
+    Process a data replication request from InfluxDB to Iceberg catalog.
+
+    Parses and validates input JSON, retrieves measurement data in batches,
+    converts timestamps, manages catalog and table creation, appends data
+    in batches, and logs progress and errors.
+
+    Args:
+        influxdb3_local: InfluxDB client instance with logging methods.
+        query_parameters: Query parameters from the request (unused internally).
+        request_headers: Request headers (unused internally).
+        request_body: JSON string containing replication parameters with the following structure:
+            {
+                "measurement": str,               # Required. Name of the measurement to replicate.
+                "catalog_configs": dict,          # Required. Configuration for catalog loading, e.g.:
+                                                 #   {
+                                                 #       "type": "sql",
+                                                 #       "uri": "...",
+                                                 #       "warehouse": "...",
+                                                 #       "s3.endpoint": "...",
+                                                 #       "s3.region": "...",
+                                                 #       "s3.path-style-access": "true",
+                                                 #       "s3.access-key-id": "...",
+                                                 #       "s3.secret-access-key": "...",
+                                                 #       "supportedAPIVersion": "2"
+                                                 #   }
+                "included_fields": list[str],     # Optional. List of field names to include in replication.
+                "excluded_fields": list[str],     # Optional. List of field names to exclude from replication.
+                "namespace": str,                 # Optional. Target namespace for the Iceberg catalog (default: "default").
+                "table_name": str,                # Optional. Target table name in the Iceberg catalog (default: measurement name).
+                "batch_size": str,                # Optional. Batch size duration for processing, e.g. "1d", "12h" (default: "1d").
+                "backfill_start": str,            # Optional. ISO 8601 datetime string with timezone for start of backfill window.
+                "backfill_end": str               # Optional. ISO 8601 datetime string with timezone for end of backfill window.
+            }
+        args: Optional additional arguments.
+
+    Returns:
+        dict: Result message with success or error information.
+    """
+    task_id = str(uuid.uuid4())
+
+    if request_body:
+        data: dict = json.loads(request_body)
+    else:
+        influxdb3_local.error(f"[{task_id}] No request body provided.")
+        return {"message": f"[{task_id}] Error: No request body provided."}
+
+    # Validate required arguments
+    required_keys: list = ["measurement", "catalog_configs"]
+    if any(key not in data for key in required_keys):
+        influxdb3_local.error(
+            f"[{task_id}] Missing some of the required arguments: {', '.join(required_keys)}"
+        )
+        return {
+            "message": f"[{task_id}] Missing some of the required arguments: {', '.join(required_keys)}"
+        }
+
+    measurement: str = data["measurement"]
+    all_measurements: list = get_all_measurements(influxdb3_local)
+    if measurement not in all_measurements:
+        influxdb3_local.error(
+            f"[{task_id}] Measurement '{measurement}' not found in database"
+        )
+        return {
+            "message": f"[{task_id}] Measurement '{measurement}' not found in database"
+        }
+
+    try:
+        influxdb3_local.info(f"[{task_id}] Starting data replication process.")
+        start_process_time: float = time.time()
+
+        catalog_configs: dict = data["catalog_configs"]
+        included_fields: list | None = data.get("included_fields", None)
+        excluded_fields: list = data.get("excluded_fields", [])
+        namespace: str = data.get("namespace", "default")
+        table_name: str = data.get("table_name", measurement)
+        full_table_name: str = f"{namespace}.{table_name}"
+
+        # Get data
+        tags: list = get_tag_names(influxdb3_local, measurement, task_id)
+        fields: list = get_fields_names(influxdb3_local, measurement, task_id)
+
+        # Recognize fields to query
+        if included_fields:
+            fields_to_query: list = [
+                field for field in fields if field in included_fields or field == "time"
+            ]
+        elif excluded_fields:
+            fields_to_query = [
+                field for field in fields if field not in excluded_fields
+            ]
+        else:
+            fields_to_query = fields
+
+        batch_size: timedelta = parse_time_duration(
+            data.get("batch_size", "1d"), task_id
+        )
+        backfill_start, backfill_end = parse_backfill_window(data, task_id)
+
+        if backfill_start is None:
+            q: str = f"SELECT MIN(time) as _t FROM {measurement}"
+            res: list = influxdb3_local.query(q)
+            oldest: int = res[0].get("_t")
+            backfill_start: datetime = datetime.fromtimestamp(
+                oldest / 1e9, tz=timezone.utc
+            )
+
+        influxdb3_local.info(
+            f"[{task_id}] Data will be replicated from {backfill_start} to {backfill_end}."
+        )
+
+        # Recognize time format
+        time_type: str = influxdb3_local.query(
+            f"SELECT data_type FROM information_schema.columns WHERE table_name = '{measurement}' AND column_name = 'time'"
+        )[0]["data_type"]
+        time_unit: str = infer_unit_from_dtype(time_type)
+
+        # Load catalog
+        try:
+            catalog = load_catalog("iceberg", **catalog_configs)
+            influxdb3_local.info(f"[{task_id}] Catalog loaded successfully.")
+        except Exception as e:
+            influxdb3_local.error(f"[{task_id}] Error while loading catalog: {e}")
+            return {"message": f"[{task_id}] Error while loading catalog: {e}"}
+
+        # Create the namespace if it doesn't exist
+        catalog.create_namespace_if_not_exists(namespace)
+
+        # Process data
+        cursor: datetime = backfill_start
+        total_source_records: int = 0
+        total_written_records: int = 0
+        batch_count: int = 0
+        is_first_valid_batch: bool = True
+        table: Table | None = None
+        pa_schema: pa.Schema | None = None
+
+        while cursor < backfill_end:
+            batch_count += 1
+            batch_end = min(cursor + batch_size, backfill_end)
+
+            query: str = generate_query(
+                measurement,
+                tags,
+                fields_to_query,
+                cursor,
+                batch_end,
+            )
+
+            batch_data: list = influxdb3_local.query(query)
+            batch_source_count = len(batch_data)
+            total_source_records += batch_source_count
+
+            # Log batch source data metrics
+            source_columns = (
+                list(batch_data[0].keys()) if batch_source_count > 0 else []
+            )
+            batch_source_log: dict = {
+                "batch": batch_count,
+                "time_range": f"{cursor.isoformat()} to {batch_end.isoformat()}",
+                "source_records": batch_source_count,
+                "source_columns": source_columns[
+                    :10
+                ],  # Limit to first 10 columns to avoid huge logs
+                "source_measurement": measurement,
+            }
+            influxdb3_local.info(
+                f"[{task_id}] Batch source data retrieved", batch_source_log
+            )
+            if batch_source_count == 0:
+                influxdb3_local.info(
+                    f"[{task_id}] No data in batch {batch_count}, skipping"
+                )
+                cursor = batch_end
+                continue
+
+            success: bool = False
+            error: str | None = None
+
+            # Transform and replicate data
+            try:
+                # Convert to DataFrame and convert 'time' to datetime
+                batch_df: pd.DataFrame = pd.DataFrame.from_records(batch_data)
+                batch_df["time"] = pd.to_datetime(
+                    batch_df["time"], unit=time_unit
+                )  # Assuming 'time' column exists and is the timestamp
+                influxdb3_local.info(
+                    f"[{task_id}] Successfully converted 'time' column to datetime on batch {batch_count}."
+                )
+
+                batch_df["time"] = batch_df["time"].dt.tz_localize(None)
+                batch_df["time"] = batch_df["time"].astype(
+                    "datetime64[us]"
+                )  # Ensure time is microsecond datetime for Iceberg
+
+                if is_first_valid_batch:
+                    # Create the table if it doesn't exist
+                    if not catalog.table_exists(full_table_name):
+                        schema: Schema = df_to_iceberg_schema(batch_df)
+                        catalog.create_table(full_table_name, schema)
+                        influxdb3_local.info(
+                            f"[{task_id}] Table {full_table_name} created successfully."
+                        )
+
+                    table = catalog.load_table(full_table_name)
+                    pa_schema = table.schema().as_arrow()
+                    is_first_valid_batch = False
+
+                result_arrows: pa.Table = pa.Table.from_pandas(
+                    batch_df, schema=pa_schema
+                )
+                table.append(result_arrows)
+                success = True
+                total_written_records += batch_source_count
+                influxdb3_local.info(
+                    f"[{task_id}] Data from {cursor.isoformat()} to {batch_end.isoformat()} on batch {batch_count} appended to table {full_table_name} successfully ({batch_source_count} rows)."
+                )
+            except Exception as e:
+                error = str(e)
+                influxdb3_local.error(
+                    f"[{task_id}] Error while appending data from {cursor.isoformat()} to {batch_end.isoformat()} on batch {batch_count} to table {full_table_name}: {e}"
+                )
+
+            cursor = batch_end
+
+            batch_result_log = {
+                "batch": batch_count,
+                "success": success,
+                "source_records": batch_source_count,
+                "written_records": batch_source_count if success else 0,
+                "error": error or None,
+            }
+            influxdb3_local.info(f"[{task_id}] Batch processed", batch_result_log)
+
+        duration: float = time.time() - start_process_time
+
+        # Final summary log
+        final_summary: dict = {
+            "total_batches": batch_count,
+            "execution_time_seconds": round(duration, 2),
+            "total_source_records": total_source_records,
+            "total_written_records": total_written_records,
+            "source_measurement": measurement,
+            "target_table": full_table_name,
+            "time_range": f"{backfill_start.isoformat()} to {backfill_end.isoformat()}",
+        }
+        influxdb3_local.info(
+            f"[{task_id}] Replication to Iceberg completed", final_summary
+        )
+
+        return {
+            "message": f"[{task_id}] Replication to Iceberg completed with summary: {final_summary}"
+        }
+
+    except Exception as e:
+        influxdb3_local.error(str(e))
+        return {"message": str(e)}
