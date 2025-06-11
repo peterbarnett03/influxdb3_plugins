@@ -88,7 +88,7 @@
         },
         {
             "name": "slack_headers",
-            "example": "",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
             "description": "Optional headers as base64-encoded string for Slack notifications.",
             "required": false
         },
@@ -100,7 +100,7 @@
         },
         {
             "name": "discord_headers",
-            "example": "",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
             "description": "Optional headers as base64-encoded string for Discord notifications.",
             "required": false
         },
@@ -112,7 +112,7 @@
         },
         {
             "name": "http_headers",
-            "example": "",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
             "description": "Optional headers as base64-encoded string for HTTP notifications.",
             "required": false
         },
