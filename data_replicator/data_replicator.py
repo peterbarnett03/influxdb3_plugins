@@ -1,3 +1,162 @@
+"""
+{
+    "plugin_name": "Data Replicator",
+    "plugin_type": ["scheduled", "onwrite"],
+    "dependencies": ["influxdb3-python"],
+    "required_plugins": [],
+    "category": "Data Replication",
+    "description": "This plugin replicates data from a local InfluxDB 3 instance to a remote InfluxDB 3 instance, supporting filtering, renaming, and reliable delivery via scheduler or data write triggers.",
+    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/data_replicator.md",
+    "scheduled_args_config": [
+        {
+            "name": "host",
+            "example": "https://remote-influxdb.com",
+            "description": "Remote InfluxDB host URL.",
+            "required": true
+        },
+        {
+            "name": "token",
+            "example": "remote_api_token",
+            "description": "Remote InfluxDB API token.",
+            "required": true
+        },
+        {
+            "name": "database",
+            "example": "remote_db",
+            "description": "Remote database name.",
+            "required": true
+        },
+        {
+            "name": "source_measurement",
+            "example": "table1",
+            "description": "The name of table to replicate.",
+            "required": true
+        },
+        {
+            "name": "window",
+            "example": "10s",
+            "description": "Time window for each replication job (e.g., '1h', '1d'). Units: 's', 'min', 'h', 'd', 'w'.",
+            "required": true
+        },
+        {
+            "name": "max_size",
+            "example": "1024",
+            "description": "Maximum size for the queue file in MB.",
+            "required": false
+        },
+        {
+            "name": "verify_ssl",
+            "example": "true",
+            "description": "Whether to verify SSL certificates when connecting via HTTPS.",
+            "required": false
+        },
+        {
+            "name": "port_override",
+            "example": "8181",
+            "description": "Override the default write port.",
+            "required": false
+        },
+        {
+            "name": "max_retries",
+            "example": "3",
+            "description": "Maximum number of retries for write operations.",
+            "required": false
+        },
+        {
+            "name": "excluded_fields",
+            "example": "table1:field1@field2.table2:field3",
+            "description": "String defining fields to exclude per table (e.g., '<table1>:<field1>@<field2>.<table2>:<field3>').",
+            "required": false
+        },
+        {
+            "name": "tables_rename",
+            "example": "table1:new_table1",
+            "description": "String defining table renames (e.g., '<old_table1>:<new_table1>').",
+            "required": false
+        },
+        {
+            "name": "field_renames",
+            "example": "table1:hum@humidity temp@temperature",
+            "description": "String defining field renames per table (e.g., 'table1:oldA@newA oldB@newB').",
+            "required": false
+        },
+        {
+            "name": "offset",
+            "example": "10min",
+            "description": "Time offset to apply to the window (e.g., '10min', '1h'). Units: 's', 'min', 'h', 'd', 'w'.",
+            "required": false
+        }
+    ],
+    "onwrite_args_config": [
+        {
+            "name": "host",
+            "example": "https://remote-influxdb.com",
+            "description": "Remote InfluxDB host URL.",
+            "required": true
+        },
+        {
+            "name": "token",
+            "example": "remote_api_token",
+            "description": "Remote InfluxDB API token.",
+            "required": true
+        },
+        {
+            "name": "database",
+            "example": "remote_db",
+            "description": "Remote database name.",
+            "required": true
+        },
+        {
+            "name": "tables",
+            "example": "table1.table2",
+            "description": "Dot-separated list of tables to replicate. If not provided, all tables are replicated.",
+            "required": false
+        },
+        {
+            "name": "verify_ssl",
+            "example": "true",
+            "description": "Whether to verify SSL certificates when connecting via HTTPS.",
+            "required": false
+        },
+        {
+            "name": "port_override",
+            "example": "8181",
+            "description": "Override the default write port.",
+            "required": false
+        },
+        {
+            "name": "max_retries",
+            "example": "3",
+            "description": "Maximum number of retries for write operations.",
+            "required": false
+        },
+        {
+            "name": "max_size",
+            "example": "1024",
+            "description": "Maximum size for the queue file in MB.",
+            "required": false
+        },
+        {
+            "name": "excluded_fields",
+            "example": "table1:field1@field2.table2:field3",
+            "description": "String defining fields to exclude per table (e.g., '<table1>:<field1>@<field2>.<table2>:<field3>').",
+            "required": false
+        },
+        {
+            "name": "tables_rename",
+            "example": "table1:new_table1.table2:new_table2",
+            "description": "String defining table renames (e.g., '<old_table1>:<new_table1>.<old_table2>:<new_table2>').",
+            "required": false
+        },
+        {
+            "name": "field_renames",
+            "example": "table1:hum@humidity temp@temperature.table2:oldX@newX",
+            "description": "String defining field renames per table (e.g., 'table1:oldA@newA oldB@newB.table2:oldX@newX').",
+            "required": false
+        }
+    ]
+}
+"""
 import gzip
 import json
 import os

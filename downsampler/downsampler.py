@@ -1,3 +1,156 @@
+"""
+{
+    "plugin_name": "Downsampler",
+    "plugin_type": ["scheduled", "http"],
+    "dependencies": [],
+    "required_plugins": [],
+    "category": "Data Processing",
+    "description": "This plugin enables downsampling of data in InfluxDB 3, supporting periodic scheduling and on-demand HTTP requests with flexible aggregation and filtering.",
+    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/downsampler.md",
+    "scheduled_args_config": [
+        {
+            "name": "source_measurement",
+            "example": "home",
+            "description": "Name of the source measurement to downsample.",
+            "required": true
+        },
+        {
+            "name": "target_measurement",
+            "example": "home_downsampled",
+            "description": "Name of the target measurement to write downsampled data.",
+            "required": true
+        },
+        {
+            "name": "interval",
+            "example": "7min",
+            "description": "Time interval for downsampling (e.g., '10min', '2h'). Units: 's', 'min', 'h', 'd', 'w', 'm', 'q', 'y'.",
+            "required": false
+        },
+        {
+            "name": "window",
+            "example": "10s",
+            "description": "Time window for each downsampling job (e.g., '1h', '1d'). Units: 's', 'min', 'h', 'd', 'w'.",
+            "required": true
+        },
+        {
+            "name": "offset",
+            "example": "10min",
+            "description": "Time offset to apply to the window (e.g., '10min', '1h'). Units: 's', 'min', 'h', 'd', 'w'.",
+            "required": false
+        },
+        {
+            "name": "calculations",
+            "example": "avg",
+            "description": "Aggregation functions (e.g., 'avg' or 'field1:avg.field2:sum'). Valid functions: avg, sum, min, max, derivative, median.",
+            "required": false
+        },
+        {
+            "name": "specific_fields",
+            "example": "hum.co",
+            "description": "Dot-separated field names to downsample (e.g., 'co.temperature').",
+            "required": false
+        },
+        {
+            "name": "excluded_fields",
+            "example": "field1.field2",
+            "description": "Dot-separated field names to exclude from downsampling.",
+            "required": false
+        },
+        {
+            "name": "tag_values",
+            "example": "room:Kitchen@LivingRoom@Bedroom@'Some value string'",
+            "description": "Dot-separated tag filters (e.g., 'tag:value1@value2').",
+            "required": false
+        },
+        {
+            "name": "max_retries",
+            "example": "5",
+            "description": "Maximum number of retries for write operations.",
+            "required": false
+        },
+        {
+            "name": "target_database",
+            "example": "mydb",
+            "description": "Target database for writing downsampled data. If not provided, uses 'default' database.",
+            "required": false
+        }
+    ],
+    "request_body_config": [
+        {
+            "name": "source_measurement",
+            "example": "home",
+            "description": "Name of the source measurement to downsample.",
+            "required": true
+        },
+        {
+            "name": "target_measurement",
+            "example": "home_downsampled",
+            "description": "Name of the target measurement to write downsampled data.",
+            "required": true
+        },
+        {
+            "name": "interval",
+            "example": "10s",
+            "description": "Time interval for downsampling (e.g., '10min', '2h'). Units: 's', 'min', 'h', 'd', 'w', 'm', 'q', 'y'.",
+            "required": false
+        },
+        {
+            "name": "batch_size",
+            "example": "1h",
+            "description": "Time interval for batch processing (e.g., '1h', '1d'). Units: 's', 'min', 'h', 'd'.",
+            "required": false
+        },
+        {
+            "name": "calculations",
+            "example": [["co", "avg"], ["co", "max"], ["co", "min"]],
+            "description": "Aggregation functions. Either 'avg' or a list of ['field', 'aggregation']. Valid aggregations: avg, sum, min, max, derivative, median.",
+            "required": false
+        },
+        {
+            "name": "specific_fields",
+            "example": ["usage_user", "usage_system"],
+            "description": "List of fields to downsample (e.g., ['usage_user', 'usage_system']).",
+            "required": false
+        },
+        {
+            "name": "excluded_fields",
+            "example": ["usage_idle"],
+            "description": "List of fields to exclude from downsampling.",
+            "required": false
+        },
+        {
+            "name": "tag_values",
+            "example": {"host": ["server1", "server2"]},
+            "description": "Dictionary of tag names to lists of values (e.g., {'host': ['server1', 'server2']}).",
+            "required": false
+        },
+        {
+            "name": "backfill_start",
+            "example": "2025-05-01T00:00:00+03:00",
+            "description": "Start time for backfill in ISO 8601 format (e.g., '2025-05-01T00:00:00+03:00').",
+            "required": false
+        },
+        {
+            "name": "backfill_end",
+            "example": "2025-05-02T00:00:00+03:00",
+            "description": "End time for backfill in ISO 8601 format (e.g., '2025-05-02T00:00:00+03:00').",
+            "required": false
+        },
+        {
+            "name": "max_retries",
+            "example": "5",
+            "description": "Maximum number of retries for write operations.",
+            "required": false
+        },
+        {
+            "name": "target_database",
+            "example": "mydb",
+            "description": "Target database for writing downsampled data. If not provided, uses 'default' database.",
+            "required": false
+        }
+    ]
+}
+"""
 import json
 import random
 import re
@@ -32,11 +185,11 @@ def parse_time_interval(
         Exception: If the interval format is invalid, the unit is not supported, or the magnitude is less than 1.
 
     Example:
-        >>> parse_time_interval(influxdb3_local, {'interval': '10min'}, 'interval', 'task_id')
+        parse_time_interval(influxdb3_local, {'interval': '10min'}, 'interval', 'task_id')
         (10, 'minutes')
-        >>> parse_time_interval(influxdb3_local, {'interval': '2m'}, 'interval', 'task_id')
+        parse_time_interval(influxdb3_local, {'interval': '2m'}, 'interval', 'task_id')
         (60, 'days')  # 2 months ≈ 60.84 days, rounded to 60
-        >>> parse_time_interval(influxdb3_local, {'interval': '1y'}, 'interval', 'task_id')
+        parse_time_interval(influxdb3_local, {'interval': '1y'}, 'interval', 'task_id')
         (365, 'days')
     """
     unit_mapping = {
