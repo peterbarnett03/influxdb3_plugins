@@ -33,13 +33,11 @@ This plugin is designed to send notifications through various channels (Slack, D
 ### 2. Install Required Python Packages
 The plugin requires the following Python packages:
 - `httpx`: For asynchronous HTTP requests.
-- `requests`: For synchronous HTTP operations.
 - `twilio`: For SMS and WhatsApp notifications.
 
 Install them using:
 ```bash
 influxdb3 install package httpx
-influxdb3 install package requests
 influxdb3 install package twilio
 ```
 
