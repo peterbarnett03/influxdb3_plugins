@@ -1,3 +1,258 @@
+"""
+{
+    "plugin_name": "Threshold and deadman checks",
+    "plugin_type": ["scheduled", "onwrite"],
+    "dependencies": ["requests"],
+    "required_plugins": ["Notification sender"],
+    "category": "Anomaly Detection",
+    "description": "This plugin provides threshold and deadman checks for InfluxDB 3 using scheduler and data write triggers, with notifications via multiple channels.",
+    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/threshold_deadman_checks_plugin.md",
+    "scheduled_args_config": [
+        {
+            "name": "measurement",
+            "example": "cpu",
+            "description": "The InfluxDB table (measurement) to monitor.",
+            "required": true
+        },
+        {
+            "name": "senders",
+            "example": "slack.discord",
+            "description": "Dot-separated list of notification channels (e.g., slack.discord). Supported channels: slack, discord, sms, whatsapp, http.",
+            "required": true
+        },
+        {
+            "name": "influxdb3_auth_token",
+            "example": "YOUR_API_TOKEN",
+            "description": "API token for InfluxDB 3. Can be set via INFLUXDB3_AUTH_TOKEN environment variable.",
+            "required": false
+        },
+        {
+            "name": "window",
+            "example": "5m",
+            "description": "Time window to check for data (e.g., '5m' for 5 minutes).",
+            "required": true
+        },
+        {
+            "name": "interval",
+            "example": "10min",
+            "description": "Time interval for aggregation (e.g., '10min'). Used in DATE_BIN for aggregation-based checks. Default: '5min'.",
+            "required": false
+        },
+        {
+            "name": "trigger_count",
+            "example": "3",
+            "description": "Number of consecutive failed checks before sending an alert. Default: 1.",
+            "required": false
+        },
+        {
+            "name": "notification_deadman_text",
+            "example": "Deadman Alert: No data received from $table from $time_from to $time_to.",
+            "description": "Template for deadman notification message with variables $table, $time_from, $time_to.",
+            "required": false
+        },
+        {
+            "name": "notification_threshold_text",
+            "example": "[$level] Threshold Alert on table $table: $aggregation of $field $op_sym $compare_val (actual: $actual) — matched in row $row.",
+            "description": "Template for threshold notification message with variables $level, $table, $field, $aggregation, $op_sym, $compare_val, $actual, $row.",
+            "required": false
+        },
+        {
+            "name": "notification_path",
+            "example": "some/path",
+            "description": "URL path for the notification sending plugin. Default: 'notify'.",
+            "required": false
+        },
+        {
+            "name": "port_override",
+            "example": "8182",
+            "description": "Port number where InfluxDB accepts requests. Default: 8181.",
+            "required": false
+        },
+        {
+            "name": "deadman_check",
+            "example": "True",
+            "description": "Boolean flag to enable deadman checks. If True, checks for absence of data. Default: False.",
+            "required": false
+        },
+        {
+            "name": "field_aggregation_values",
+            "example": "temp:avg@>=30-ERROR$field2:min@'<5.0-INFO'",
+            "description": "Aggregation conditions for threshold checks (e.g., field:aggregation@\\\"operator value-level\\\"). Multiple conditions separated by '$'.",
+            "required": false
+        },
+        {
+            "name": "slack_webhook_url",
+            "example": "https://hooks.slack.com/services/...",
+            "description": "Webhook URL for Slack notifications. Required if using slack sender.",
+            "required": false
+        },
+        {
+            "name": "slack_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for Slack notifications.",
+            "required": false
+        },
+        {
+            "name": "discord_webhook_url",
+            "example": "https://discord.com/api/webhooks/...",
+            "description": "Webhook URL for Discord notifications. Required if using discord sender.",
+            "required": false
+        },
+        {
+            "name": "discord_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for Discord notifications.",
+            "required": false
+        },
+        {
+            "name": "http_webhook_url",
+            "example": "https://example.com/webhook",
+            "description": "Webhook URL for HTTP POST notifications. Required if using http sender.",
+            "required": false
+        },
+        {
+            "name": "http_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for HTTP notifications.",
+            "required": false
+        },
+        {
+            "name": "twilio_sid",
+            "example": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "description": "Twilio Account SID. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_token",
+            "example": "your_auth_token",
+            "description": "Twilio Auth Token. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_to_number",
+            "example": "+1234567890",
+            "description": "Recipient phone number. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_from_number",
+            "example": "+19876543210",
+            "description": "Twilio sender phone number (verified). Required if using sms or whatsapp sender.",
+            "required": false
+        }
+    ],
+    "onwrite_args_config": [
+        {
+            "name": "measurement",
+            "example": "cpu",
+            "description": "The InfluxDB table (measurement) to monitor.",
+            "required": true
+        },
+        {
+            "name": "field_conditions",
+            "example": "temp>'30.0'-WARN:status=='ok'-INFO",
+            "description": "Conditions for triggering alerts (e.g., field operator value-level).",
+            "required": true
+        },
+        {
+            "name": "senders",
+            "example": "slack.discord",
+            "description": "Dot-separated list of notification channels.",
+            "required": true
+        },
+        {
+            "name": "influxdb3_auth_token",
+            "example": "YOUR_API_TOKEN",
+            "description": "API token for InfluxDB 3. Can be set via INFLUXDB3_AUTH_TOKEN environment variable.",
+            "required": false
+        },
+        {
+            "name": "trigger_count",
+            "example": "2",
+            "description": "Number of times the condition must be met before sending an alert. Default: 1.",
+            "required": false
+        },
+        {
+            "name": "notification_text",
+            "example": "[$level] InfluxDB 3 alert triggered. Condition $field $op_sym $compare_val matched ($actual)",
+            "description": "Template for the notification message with variables $level, $field, $op_sym, $compare_val, $actual.",
+            "required": false
+        },
+        {
+            "name": "notification_path",
+            "example": "some/path",
+            "description": "URL path for the notification sending plugin. Default: 'notify'.",
+            "required": false
+        },
+        {
+            "name": "port_override",
+            "example": "8182",
+            "description": "Port number where InfluxDB accepts requests. Default: 8181.",
+            "required": false
+        },
+        {
+            "name": "slack_webhook_url",
+            "example": "https://hooks.slack.com/services/...",
+            "description": "Webhook URL for Slack notifications. Required if using slack sender.",
+            "required": false
+        },
+        {
+            "name": "slack_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for Slack notifications.",
+            "required": false
+        },
+        {
+            "name": "discord_webhook_url",
+            "example": "https://discord.com/api/webhooks/...",
+            "description": "Webhook URL for Discord notifications. Required if using discord sender.",
+            "required": false
+        },
+        {
+            "name": "discord_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for Discord notifications.",
+            "required": false
+        },
+        {
+            "name": "http_webhook_url",
+            "example": "https://example.com/webhook",
+            "description": "Webhook URL for HTTP POST notifications. Required if using http sender.",
+            "required": false
+        },
+        {
+            "name": "http_headers",
+            "example": "eyJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiJ9",
+            "description": "Optional headers as base64-encoded string for HTTP notifications.",
+            "required": false
+        },
+        {
+            "name": "twilio_sid",
+            "example": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "description": "Twilio Account SID. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_token",
+            "example": "your_auth_token",
+            "description": "Twilio Auth Token. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_to_number",
+            "example": "+1234567890",
+            "description": "Recipient phone number. Required if using sms or whatsapp sender.",
+            "required": false
+        },
+        {
+            "name": "twilio_from_number",
+            "example": "+19876543210",
+            "description": "Twilio sender phone number (verified). Required if using sms or whatsapp sender.",
+            "required": false
+        }
+    ]
+}
+"""
 import json
 import operator
 import os
