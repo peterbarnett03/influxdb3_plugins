@@ -241,6 +241,7 @@
     ]
 }
 """
+
 import json
 import os
 import random
@@ -255,7 +256,7 @@ from urllib.parse import urlparse
 import requests
 
 # Supported sender types with their required arguments
-AVAILABLE_SENDERS: dict = {
+AVAILABLE_SENDERS = {
     "slack": ["slack_webhook_url", "slack_headers"],
     "discord": ["discord_webhook_url", "discord_headers"],
     "http": ["http_webhook_url", "http_headers"],
@@ -300,7 +301,7 @@ def get_tag_names(influxdb3_local, measurement: str, task_id: str) -> list[str]:
     Returns:
         list[str]: List of tag names with 'Dictionary(Int32, Utf8)' data type.
     """
-    query = """
+    query: str = """
         SELECT column_name
         FROM information_schema.columns
         WHERE table_name = $measurement
@@ -408,9 +409,12 @@ def send_notification(
     Raises:
         requests.RequestException: If all retries fail or a non-2xx response is received.
     """
-    url = f"http://localhost:{port}/api/v3/engine/{path}"
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
-    data = json.dumps(payload)
+    url: str = f"http://localhost:{port}/api/v3/engine/{path}"
+    headers: dict = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}",
+    }
+    data: str = json.dumps(payload)
 
     max_retries: int = 3
     timeout: float = 5.0
@@ -453,7 +457,7 @@ def parse_port_override(args: dict, task_id: str) -> int:
     Raises:
         Exception: If 'port_override' is provided but is not a valid integer in the range 1–65535.
     """
-    raw = args.get("port_override", 8181)
+    raw: str | int = args.get("port_override", 8181)
 
     try:
         port = int(raw)
@@ -611,7 +615,7 @@ def parse_field_thresholds(
 
         # Parse raw_third: integer or duration
         if re.fullmatch(r"-?\d+", raw_third):
-            third_converted: object = int(raw_third)
+            third_converted: int | timedelta = int(raw_third)
         else:
             # Attempt duration parsing: <number><unit>
             num_part: str = ""
@@ -664,7 +668,7 @@ def check_state_changes(cached_values: deque, state_change_count: int) -> bool:
     if len(cached_values) < 2:
         return True
 
-    changes = 0
+    changes: int = 0
     prev = None
     first = True
 
@@ -801,7 +805,7 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
                         continue
 
                     # Check if the condition is satisfied: row[field_name] == target_value
-                    condition_met = current_val == target_value
+                    condition_met: bool = current_val == target_value
 
                     # Get cache keys
                     values_cache_key: str = generate_cache_key(
@@ -841,7 +845,7 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
                                     f"[{task_id}] State change detected: {field_name} in table {measurement} changed to {target_value} during last {threshold_param} values. Row: {duration_cache_key}, sending alert"
                                 )
                                 # Send notification
-                                payload = {
+                                payload: dict = {
                                     "notification_text": interpolate_notification_text(
                                         notification_count_tpl,
                                         {
@@ -918,7 +922,7 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
                                         f"[{task_id}] Threshold duration reached for row: {duration_cache_key}, target_value={target_value} (required {required_duration})"
                                     )
                                     # Send notification
-                                    payload = {
+                                    payload: dict = {
                                         "notification_text": interpolate_notification_text(
                                             notification_time_tpl,
                                             {
@@ -1057,8 +1061,8 @@ def build_query(measurement: str, start_time: datetime, end_time: datetime) -> s
     Returns:
         str: SQL query string selecting all data between start_time and end_time.
     """
-    start_iso = start_time.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    end_iso = end_time.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    start_iso: str = start_time.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    end_iso: str = end_time.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     query = f"""
         SELECT *
@@ -1099,7 +1103,7 @@ def process_scheduled_call(
     Raises:
         No exceptions are raised directly; all errors are caught and logged.
     """
-    task_id = str(uuid.uuid4())
+    task_id: str = str(uuid.uuid4())
 
     # Check for required arguments
     if (
@@ -1167,7 +1171,7 @@ def process_scheduled_call(
         for tag_values, rows in tag_combinations.items():
             for field, count_threshold in field_counts.items():
                 # Count changes
-                changes = 0
+                changes: int = 0
                 prev_value = None
                 for row in rows:
                     current_value = row.get(field)
