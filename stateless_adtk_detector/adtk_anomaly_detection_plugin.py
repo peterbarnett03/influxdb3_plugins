@@ -645,7 +645,7 @@ def process_scheduled_call(
         end_time: datetime = call_time
         start_time: datetime = end_time - window
         query: str = f"""
-                SELECT *
+                SELECT {field}, time
                 FROM {measurement}
                 WHERE time >= $start_time AND time < $end_time
                 ORDER BY time

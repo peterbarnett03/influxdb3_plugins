@@ -321,6 +321,7 @@ def generate_query(
                 time >= '{start_time}'
             AND 
                 time < '{end_time}'
+            ORDER BY time
         """
     return query
 

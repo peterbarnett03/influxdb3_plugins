@@ -557,7 +557,7 @@ def generate_query(
         # Add tags to the SELECT clause, ensuring proper escaping
         select_clause += ", " + ", ".join([f"{tag}" for tag in tags])
 
-    return f"SELECT {select_clause} FROM {measurement} WHERE time >= '{start_time.isoformat()}' AND time < '{end_time.isoformat()}'"
+    return f"SELECT {select_clause} FROM {measurement} WHERE time >= '{start_time.isoformat()}' AND time < '{end_time.isoformat()}' ORDER BY time"
 
 
 def process_scheduled_call(
