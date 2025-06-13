@@ -354,28 +354,6 @@ def df_to_iceberg_schema(df: pd.DataFrame) -> Schema:
     return Schema(*fields)
 
 
-def infer_unit_from_dtype(dtype_str: str) -> str:
-    """
-    Return time unit string ('ns', 'us', 'ms', 's') based on dtype description.
-
-    Args:
-        dtype_str: String describing timestamp dtype.
-
-    Returns:
-        Corresponding time unit string.
-    """
-    if "Nanosecond" in dtype_str:
-        return "ns"
-    elif "Microsecond" in dtype_str:
-        return "us"
-    elif "Millisecond" in dtype_str:
-        return "ms"
-    elif "Second" in dtype_str:
-        return "s"
-    else:
-        raise ValueError(f"Unknown timestamp precision: {dtype_str}")
-
-
 def process_scheduled_call(
     influxdb3_local, call_time: datetime, args: dict | None = None
 ):
@@ -460,17 +438,11 @@ def process_scheduled_call(
             )
             return
 
-        # Recognize time format
-        time_type: str = influxdb3_local.query(
-            f"SELECT data_type FROM information_schema.columns WHERE table_name = '{measurement}' AND column_name = 'time'"
-        )[0]["data_type"]
-        time_unit: str = infer_unit_from_dtype(time_type)
-
         # Convert to DataFrame and convert 'time' to datetime
         df: pd.DataFrame = pd.DataFrame.from_records(results)
         try:
             df["time"] = pd.to_datetime(
-                df["time"], unit=time_unit
+                df["time"], unit="ns"
             )  # Assuming 'time' column exists and is the timestamp
             influxdb3_local.info(
                 f"[{task_id}] Successfully converted 'time' column to datetime."
@@ -687,12 +659,6 @@ def process_request(
             f"[{task_id}] Data will be replicated from {backfill_start} to {backfill_end}."
         )
 
-        # Recognize time format
-        time_type: str = influxdb3_local.query(
-            f"SELECT data_type FROM information_schema.columns WHERE table_name = '{measurement}' AND column_name = 'time'"
-        )[0]["data_type"]
-        time_unit: str = infer_unit_from_dtype(time_type)
-
         # Load catalog
         try:
             catalog = load_catalog("iceberg", **catalog_configs)
@@ -760,7 +726,7 @@ def process_request(
                 # Convert to DataFrame and convert 'time' to datetime
                 batch_df: pd.DataFrame = pd.DataFrame.from_records(batch_data)
                 batch_df["time"] = pd.to_datetime(
-                    batch_df["time"], unit=time_unit
+                    batch_df["time"], unit="ns"
                 )  # Assuming 'time' column exists and is the timestamp
                 influxdb3_local.info(
                     f"[{task_id}] Successfully converted 'time' column to datetime on batch {batch_count}."

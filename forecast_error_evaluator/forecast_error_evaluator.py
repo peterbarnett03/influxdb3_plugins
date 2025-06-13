@@ -560,28 +560,6 @@ def generate_query(
     return f"SELECT {select_clause} FROM {measurement} WHERE time >= '{start_time.isoformat()}' AND time < '{end_time.isoformat()}'"
 
 
-def infer_unit_from_dtype(dtype_str: str) -> str:
-    """
-    Return time unit string ('ns', 'us', 'ms', 's') based on dtype description.
-
-    Args:
-        dtype_str: String describing timestamp dtype.
-
-    Returns:
-        Corresponding time unit string.
-    """
-    if "Nanosecond" in dtype_str:
-        return "ns"
-    elif "Microsecond" in dtype_str:
-        return "us"
-    elif "Millisecond" in dtype_str:
-        return "ms"
-    elif "Second" in dtype_str:
-        return "s"
-    else:
-        raise ValueError(f"Unknown timestamp precision: {dtype_str}")
-
-
 def process_scheduled_call(
     influxdb3_local, call_time: datetime, args: dict | None = None
 ):
@@ -664,11 +642,7 @@ def process_scheduled_call(
             "notification_text",
             "[$level] Forecast error alert in $measurement.$field: $metric=$error. Tags: $tags",
         )
-        min_condition_duration: timedelta = (
-            parse_time_duration(args["min_condition_duration"], task_id)
-            if args.get("min_condition_duration")
-            else timedelta(seconds=0)
-        )
+        min_condition_duration: timedelta = parse_time_duration(args.get("min_condition_duration", "0s"), task_id)
         influxdb3_auth_token: str | None = os.getenv(
             "INFLUXDB3_AUTH_TOKEN"
         ) or args.get("influxdb3_auth_token")
@@ -726,28 +700,17 @@ def process_scheduled_call(
         df_fore = df_fore.rename(columns={forecast_field: "forecast"})
         df_act = df_act.rename(columns={actual_field: "actual"})
 
-        # Recognize time format
-        actual_time_type: str = influxdb3_local.query(
-            f"SELECT data_type FROM information_schema.columns WHERE table_name = '{actual_measurement}' AND column_name = 'time'"
-        )[0]["data_type"]
-        actual_time_unit: str = infer_unit_from_dtype(actual_time_type)
-
-        fore_time_type: str = influxdb3_local.query(
-            f"SELECT data_type FROM information_schema.columns WHERE table_name = '{forecast_measurement}' AND column_name = 'time'"
-        )[0]["data_type"]
-        fore_time_unit: str = infer_unit_from_dtype(fore_time_type)
-
         # Parse timestamps and round to nearest second for alignment
         if rounding_freq is None:
-            df_fore["time"] = pd.to_datetime(df_fore["time"], unit=fore_time_unit)
-            df_act["time"] = pd.to_datetime(df_act["time"], unit=actual_time_unit)
+            df_fore["time"] = pd.to_datetime(df_fore["time"], unit="ns")
+            df_act["time"] = pd.to_datetime(df_act["time"], unit="ns")
         else:
             try:
                 df_fore["time"] = pd.to_datetime(
-                    df_fore["time"], unit=fore_time_unit
+                    df_fore["time"], unit="ns"
                 ).dt.round(rounding_freq)
                 df_act["time"] = pd.to_datetime(
-                    df_act["time"], unit=actual_time_unit
+                    df_act["time"], unit="ns"
                 ).dt.round(rounding_freq)
             except Exception as e:
                 influxdb3_local.error(
