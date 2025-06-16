@@ -151,6 +151,7 @@
     ]
 }
 """
+
 import json
 import random
 import re
@@ -192,7 +193,7 @@ def parse_time_interval(
         parse_time_interval(influxdb3_local, {'interval': '1y'}, 'interval', 'task_id')
         (365, 'days')
     """
-    unit_mapping = {
+    unit_mapping: dict = {
         "s": "seconds",
         "min": "minutes",
         "h": "hours",
@@ -204,7 +205,7 @@ def parse_time_interval(
     }
 
     # Conversion factors to days for month, quarter, and year
-    day_conversions = {
+    day_conversions: dict = {
         "m": 30.42,  # Average days in a month (365 ÷ 12)
         "q": 91.25,  # Average days in a quarter (365 ÷ 4)
         "y": 365.0,  # Days in a year (non-leap)
@@ -220,11 +221,11 @@ def parse_time_interval(
     match = re.fullmatch(r"(\d+)([a-zA-Z]+)", interval)
     if match:
         number_part, unit = match.groups()
-        magnitude = int(number_part)
+        magnitude: int = int(number_part)
         if unit in valid_units and magnitude >= 1:
             if unit in day_conversions:
                 # Convert months, quarters, or years to days
-                days = int(magnitude * day_conversions[unit])
+                days: int = int(magnitude * day_conversions[unit])
                 return days, "days"
             return magnitude, unit_mapping[unit]
 
@@ -248,7 +249,7 @@ def get_aggregatable_fields(
     Raises:
         Exception: If no aggregatable fields are found for the measurement.
     """
-    query = """
+    query: str = """
         SELECT column_name
         FROM information_schema.columns
         WHERE table_name = $measurement
@@ -311,7 +312,7 @@ def get_tag_names(influxdb3_local, measurement: str, task_id: str) -> list[str]:
     Returns:
         list[str]: List of tag names with 'Dictionary(Int32, Utf8)' data type.
     """
-    query = """
+    query: str = """
         SELECT column_name
         FROM information_schema.columns
         WHERE table_name = $measurement
@@ -361,7 +362,7 @@ def parse_tag_values_for_scheduler(
     for pair in pairs:
         if not pair:
             continue  # Skip empty pairs
-        parts = pair.split(":")
+        parts: list = pair.split(":")
         if len(parts) != 2:
             raise Exception(
                 f"[{task_id}] Invalid tag-value pair: '{pair}' (must contain exactly one ':')"
@@ -371,7 +372,7 @@ def parse_tag_values_for_scheduler(
             raise Exception(
                 f"[{task_id}] Invalid tag name: '{tag_name}' (must consist of letters, digits, '-', and '_')"
             )
-        values = value_str.split("@")
+        values: list = value_str.split("@")
         strip_values: list = []
         for value in values:
             if value[0] == value[-1] and value[0] in ('"', "'"):
@@ -451,7 +452,7 @@ def parse_field_aggregations_for_scheduler(
     all_fields: list = get_aggregatable_fields(influxdb3_local, measurement, task_id)
 
     if specific_fields:
-        fields_to_use = []
+        fields_to_use: list = []
         for field in specific_fields:
             if field in all_fields:
                 fields_to_use.append(field)
@@ -524,7 +525,7 @@ def parse_field_aggregations_for_http(
     available_calculations: list = ["avg", "sum", "min", "max", "derivative", "median"]
 
     if specific_fields:
-        fields_to_use = []
+        fields_to_use: list = []
         for field in specific_fields:
             if field in all_fields and field not in excluded_fields:
                 fields_to_use.append(field)
@@ -535,7 +536,7 @@ def parse_field_aggregations_for_http(
     else:
         fields_to_use = [field for field in all_fields if field not in excluded_fields]
 
-    result = []
+    result: list = []
 
     if calculations_input == "avg":
         result = [(field, calculations_input) for field in fields_to_use]
@@ -584,7 +585,7 @@ def parse_fields_for_scheduler(
     fields: str | None = args.get(key, None)
     # Field names must start with letter or digit, may contain letters, digits, dashes or underscores,
     # and are separated by dots.
-    pattern = r"^[A-Za-z0-9][A-Za-z0-9_-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)*$"
+    pattern: str = r"^[A-Za-z0-9][A-Za-z0-9_-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)*$"
 
     if fields is None:
         return []
@@ -592,9 +593,11 @@ def parse_fields_for_scheduler(
     if not re.fullmatch(pattern, fields):
         raise Exception(f"[{task_id}] Invalid specific_fields format: {fields!r}.")
 
-    requested = fields.split(".")
-    measurement_fields = get_aggregatable_fields(influxdb3_local, measurement, task_id)
-    valid = []
+    requested: list = fields.split(".")
+    measurement_fields: list = get_aggregatable_fields(
+        influxdb3_local, measurement, task_id
+    )
+    valid: list = []
 
     for field in requested:
         if field not in measurement_fields:
@@ -617,7 +620,7 @@ def parse_max_retries(args: dict) -> int:
     Returns:
         int: Maximum number of retries (defaults to 5 if not provided).
     """
-    max_retries = args.get("max_retries", 5)
+    max_retries: int = args.get("max_retries", 5)
     return int(max_retries)
 
 
@@ -686,7 +689,7 @@ def parse_offset(args: dict, task_id: str) -> timedelta:
     Raises:
         Exception: If the offset format is invalid or the unit is not supported ('s', 'min', 'h', 'd', 'w').
     """
-    valid_units = {
+    valid_units: dict = {
         "s": "seconds",
         "min": "minutes",
         "h": "hours",
@@ -724,7 +727,7 @@ def parse_window(args: dict, task_id: str) -> timedelta:
     Raises:
         Exception: If the window parameter is missing or the format is invalid.
     """
-    valid_units = {
+    valid_units: dict = {
         "s": "seconds",
         "min": "minutes",
         "h": "hours",
@@ -749,9 +752,7 @@ def parse_window(args: dict, task_id: str) -> timedelta:
     raise Exception(f"[{task_id}] Invalid interval format: {window}.")
 
 
-def parse_backfill_window(
-    args: dict, task_id: str
-) -> tuple[datetime | None, datetime]:
+def parse_backfill_window(args: dict, task_id: str) -> tuple[datetime | None, datetime]:
     """
     Parses the backfill window for HTTP-based downsampling. Requires timezone-aware datetime strings
     in ISO 8601 format (e.g., '2025-05-01T00:00:00+03:00').
@@ -769,7 +770,7 @@ def parse_backfill_window(
 
     def parse_iso_datetime(name: str, value: str) -> datetime:
         try:
-            dt = datetime.fromisoformat(value)
+            dt: datetime = datetime.fromisoformat(value)
         except ValueError:
             raise Exception(
                 f"[{task_id}] Invalid ISO 8601 datetime for {name}: '{value}'."
@@ -780,18 +781,18 @@ def parse_backfill_window(
             )
         return dt.astimezone(timezone.utc)
 
-    start_str = args.get("backfill_start")
-    end_str = args.get("backfill_end")
+    start_str: str | None = args.get("backfill_start")
+    end_str: str | None = args.get("backfill_end")
 
     if end_str:
-        backfill_end = parse_iso_datetime("backfill_end", end_str)
+        backfill_end: datetime = parse_iso_datetime("backfill_end", end_str)
     else:
         backfill_end = datetime.now(timezone.utc)
 
     if start_str is None:
         return None, backfill_end
 
-    backfill_start = parse_iso_datetime("backfill_start", start_str)
+    backfill_start: datetime = parse_iso_datetime("backfill_start", start_str)
 
     if backfill_start >= backfill_end:
         raise Exception(
@@ -803,7 +804,7 @@ def parse_backfill_window(
 
 def generate_fields_string(
     fields_aggregate_list: list[tuple[str, str]],
-    interval: tuple[int, str],
+    interval: tuple,
     tags_list: list,
 ):
     """
@@ -817,7 +818,7 @@ def generate_fields_string(
     Returns:
         str: SQL SELECT clause string including DATE_BIN, aggregations, time_from, time_to, and tags.
     """
-    query = (
+    query: str = (
         f"DATE_BIN(INTERVAL '{interval[0]} {interval[1]}', time, '1970-01-01T00:00:00Z') AS _time,\n \
     \tcount(*) AS record_count,\n \
     \tMIN(time) AS time_from,\n \
@@ -844,7 +845,7 @@ def generate_group_by_string(tags_list: list):
     Returns:
         str: SQL GROUP BY clause string including '_time' and tags.
     """
-    group_by_clause = f"_time"
+    group_by_clause: str = f"_time"
     for tag in tags_list:
         group_by_clause += f", {tag}"
     return group_by_clause
@@ -863,21 +864,21 @@ def generate_tag_filter_clause(tag_values: dict | None):
     if tag_values is None:
         return ""
 
-    influxql = ""
+    sql_clause: str = ""
     for key, values in tag_values.items():
         if len(values) == 1:
-            influxql += f"AND\n\t\"{key}\" = '{values[0]}'\n"
+            sql_clause += f"AND\n\t\"{key}\" = '{values[0]}'\n"
         else:
             quoted_values = ", ".join(f"'{v}'" for v in values)
-            influxql += f'AND\n\t"{key}" IN ({quoted_values})\n'
-    return influxql
+            sql_clause += f'AND\n\t"{key}" IN ({quoted_values})\n'
+    return sql_clause
 
 
 def build_downsample_query(
     fields_list: list[tuple[str, str]],
     measurement: str,
     tags_list: list[str],
-    interval: tuple[int, str],
+    interval: tuple,
     tag_values: dict[str, list[str]] | None,
     start_time: datetime,
     end_time: datetime,
@@ -898,17 +899,17 @@ def build_downsample_query(
         A complete SQL query string.
     """
     # SELECT clause
-    fields_clause = generate_fields_string(fields_list, interval, tags_list)
+    fields_clause: str = generate_fields_string(fields_list, interval, tags_list)
     # GROUP BY clause
-    group_by = generate_group_by_string(tags_list)
+    group_by_clause: str = generate_group_by_string(tags_list)
     # tag filters
-    tag_filter = generate_tag_filter_clause(tag_values)
+    tag_filter_clause: str = generate_tag_filter_clause(tag_values)
 
     # ISO timestamps
-    start_iso = start_time.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    end_iso = end_time.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    start_iso: str = start_time.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    end_iso: str = end_time.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    query = f"""
+    query: str = f"""
         SELECT
             {fields_clause}
         FROM
@@ -917,9 +918,9 @@ def build_downsample_query(
             time >= '{start_iso}'
         AND 
             time < '{end_iso}'
-        {tag_filter}
+        {tag_filter_clause}
         GROUP BY
-        {group_by}
+        {group_by_clause}
     """
     return query
 
@@ -946,13 +947,13 @@ def write_downsampled_data(
     Returns:
         tuple[bool, str | None, int]: Tuple containing success status, error message (if any), and number of retries.
     """
-    retry_count = 0
+    retry_count: int = 0
 
     # Calculate metrics for logging
-    record_count = len(data)
-    db_name = target_database if target_database else "default"
+    record_count: int = len(data)
+    db_name: str = target_database if target_database else "default"
     # Log the operation details
-    log_data = {
+    log_data: dict = {
         "records": record_count,
         "database": db_name,
         "measurement": target_measurement,
@@ -965,7 +966,7 @@ def write_downsampled_data(
                 for row in data:
                     influxdb3_local.write_to_db(db_name, row)
                 # Log successful write with metrics
-                success_log = {
+                success_log: dict = {
                     "records_written": record_count,
                     "database": db_name,
                     "measurement": target_measurement,
@@ -979,7 +980,7 @@ def write_downsampled_data(
             except Exception as e:
                 retry_count += 1
                 # Log retry attempt with error details
-                retry_log = {
+                retry_log: dict = {
                     "attempt": tries + 1,
                     "max_retries": max_retries,
                     "records": record_count,
@@ -990,7 +991,7 @@ def write_downsampled_data(
                 influxdb3_local.warn(
                     f"[{task_id}] Error write attempt {tries + 1}", retry_log
                 )
-                wait_time = (2**tries) + random.random()
+                wait_time: float = (2**tries) + random.random()
                 time.sleep(wait_time)
 
                 if tries == max_retries - 1:
@@ -998,7 +999,7 @@ def write_downsampled_data(
 
     except Exception as e:
         # Log failure with complete metrics
-        failure_log = {
+        failure_log: dict = {
             "records": record_count,
             "database": db_name,
             "measurement": target_measurement,
@@ -1028,8 +1029,8 @@ def transform_to_influx_line(
     Returns:
         list[LineBuilder]: List of LineBuilder objects ready for writing to InfluxDB.
     """
-    builders = []
-    fields_mapping = {
+    builders: list = []
+    fields_mapping: dict = {
         f"{field}_{aggregate}": f"{field}_{aggregate}"
         for field, aggregate in fields_list
     }
@@ -1040,13 +1041,13 @@ def transform_to_influx_line(
 
     for row in data:
         builder = LineBuilder(measurement)
-        timestamp = row["_time"]
+        timestamp: int = row["_time"]
         builder.time_ns(timestamp)
         for tag in tags_list:
             if tag in row and row[tag] is not None:
                 builder.tag(tag, str(row[tag]))
 
-        has_fields = False
+        has_fields: bool = False
         for field_key, field_name in fields_mapping.items():
             if field_key in row and row[field_key] is not None:
                 value = row[field_key]
@@ -1078,7 +1079,7 @@ def process_scheduled_call(
     Raises:
         Exception: If no args are provided.
     """
-    task_id = str(uuid.uuid4())
+    task_id: str = str(uuid.uuid4())
     influxdb3_local.info(
         f"[{task_id}] Starting downsampling schedule for call_time: {call_time}."
     )
@@ -1100,14 +1101,16 @@ def process_scheduled_call(
         fields: list = parse_field_aggregations_for_scheduler(
             influxdb3_local, args, task_id
         )
-        interval: tuple = parse_time_interval(influxdb3_local, args, "interval", task_id)
+        interval: tuple = parse_time_interval(
+            influxdb3_local, args, "interval", task_id
+        )
         max_retries: int = parse_max_retries(args)
         offset: timedelta = parse_offset(args, task_id)
         window: timedelta = parse_window(args, task_id)
         call_time_: datetime = call_time.replace(tzinfo=timezone.utc)
 
-        real_now = call_time_ - offset
-        real_then = real_now - window
+        real_now: datetime = call_time_ - offset
+        real_then: datetime = real_now - window
 
         query: str = build_downsample_query(
             fields,
@@ -1119,12 +1122,12 @@ def process_scheduled_call(
             real_now,
         )
 
-        data = influxdb3_local.query(query)
+        data: list = influxdb3_local.query(query)
 
         # Log source data metrics
-        source_record_count = len(data)
-        source_columns = list(data[0].keys()) if source_record_count > 0 else []
-        source_data_log = {
+        source_record_count: int = len(data)
+        source_columns: list = list(data[0].keys()) if source_record_count > 0 else []
+        source_data_log: dict = {
             "source_records": source_record_count,
             "source_columns": source_columns,
             "time_range": f"{real_then.isoformat()} to {real_now.isoformat()}",
@@ -1144,7 +1147,7 @@ def process_scheduled_call(
         )
 
         # Log transformed data metrics
-        transformed_record_count = len(transformed_data)
+        transformed_record_count: int = len(transformed_data)
         field_counts: dict = {}
         tag_counts: dict = {}
 
@@ -1158,7 +1161,7 @@ def process_scheduled_call(
             # Try different ways to access field names based on LineBuilder implementation
             if hasattr(sample_record, "fields"):
                 if isinstance(sample_record.fields, dict):
-                    field_names = list(sample_record.fields.keys())
+                    field_names: list = list(sample_record.fields.keys())
                 elif hasattr(sample_record.fields, "__iter__") and all(
                     hasattr(f, "key") for f in sample_record.fields
                 ):
@@ -1171,7 +1174,7 @@ def process_scheduled_call(
             # Do the same for tags
             if hasattr(sample_record, "tags") and sample_record.tags:
                 if isinstance(sample_record.tags, dict):
-                    tag_names = list(sample_record.tags.keys())
+                    tag_names: list = list(sample_record.tags.keys())
                 elif hasattr(sample_record.tags, "__iter__") and all(
                     hasattr(t, "key") for t in sample_record.tags
                 ):
@@ -1186,7 +1189,7 @@ def process_scheduled_call(
             tag_names = ["<tag extraction error>"]
 
         # Define transform_data_log variable after field extraction
-        transform_data_log = {
+        transform_data_log: dict = {
             "source_records": source_record_count,
             "transformed_records": transformed_record_count,
             "target_measurement": target_measurement,
@@ -1215,8 +1218,8 @@ def process_scheduled_call(
             task_id,
         )
 
-        end_time = time.time()
-        execution_time = end_time - start_time
+        end_time: float = time.time()
+        execution_time: float = end_time - start_time
         if not success:
             influxdb3_local.error(
                 f"[{task_id}] Downsampling job failed with {error}, {retries} retries."
@@ -1224,7 +1227,7 @@ def process_scheduled_call(
             return
 
         # Final summary log
-        summary_log = {
+        summary_log: dict = {
             "execution_time_seconds": round(execution_time, 2),
             "source_records": source_record_count,
             "written_records": transformed_record_count,
@@ -1254,20 +1257,18 @@ def process_request(
     Raises:
         Exception: If no request body is provided.)
     """
-    task_id = str(uuid.uuid4())
+    task_id: str = str(uuid.uuid4())
 
     if request_body:
-        data = json.loads(request_body)
+        data: dict = json.loads(request_body)
         influxdb3_local.info(f"[{task_id}] Request data: {data}.")
     else:
         influxdb3_local.error(f"[{task_id}] No request body provided.")
-        return {
-            "message": f"[{task_id}] Error: No request body provided."
-        }
+        return {"message": f"[{task_id}] Error: No request body provided."}
 
     try:
         influxdb3_local.info(f"[{task_id}] Starting downsampling process.")
-        start_time = time.time()
+        start_time: float = time.time()
 
         source_measurement, target_measurement = parse_source_and_target_measurement(
             influxdb3_local, data, task_id
@@ -1278,7 +1279,9 @@ def process_request(
         )
         tags: list = get_tag_names(influxdb3_local, source_measurement, task_id)
         fields: list = parse_field_aggregations_for_http(influxdb3_local, data, task_id)
-        interval: tuple = parse_time_interval(influxdb3_local, data, "interval", task_id)
+        interval: tuple = parse_time_interval(
+            influxdb3_local, data, "interval", task_id
+        )
         max_retries: int = parse_max_retries(data)
 
         batch_size: tuple = parse_time_interval(
@@ -1287,11 +1290,13 @@ def process_request(
         backfill_start, backfill_end = parse_backfill_window(data, task_id)
 
         if backfill_start is None:
-            q = f"SELECT MIN(time) as _t FROM {source_measurement}"
-            res = influxdb3_local.query(q)
-            oldest = res[0].get("_t")
+            q: str = f"SELECT MIN(time) as _t FROM {source_measurement}"
+            res: list = influxdb3_local.query(q)
+            oldest: int = res[0].get("_t")
 
-            backfill_start: datetime = datetime.fromtimestamp(oldest / 1e9, tz=timezone.utc)
+            backfill_start: datetime = datetime.fromtimestamp(
+                oldest / 1e9, tz=timezone.utc
+            )
             influxdb3_local.info(
                 f"[{task_id}] Full mode: from {backfill_start} to {backfill_end}."
             )
@@ -1307,13 +1312,13 @@ def process_request(
         batch_count: int = 0
 
         magnitude, unit = batch_size
-        unit_mapping = {
+        unit_mapping: dict = {
             "seconds": lambda x: timedelta(seconds=x),
             "minutes": lambda x: timedelta(minutes=x),
             "hours": lambda x: timedelta(hours=x),
             "days": lambda x: timedelta(days=x),
         }
-        batch_delta = unit_mapping[unit.lower()](magnitude)
+        batch_delta: timedelta = unit_mapping[unit.lower()](magnitude)
         while cursor < backfill_end:
             batch_count += 1
             batch_end = min(cursor + batch_delta, backfill_end)
@@ -1328,13 +1333,15 @@ def process_request(
                 batch_end,
             )
 
-            batch_data = influxdb3_local.query(query)
-            batch_source_count = len(batch_data)
+            batch_data: list = influxdb3_local.query(query)
+            batch_source_count: int = len(batch_data)
             total_source_records += batch_source_count
 
             # Log batch source data metrics
-            source_columns = list(batch_data[0].keys()) if batch_source_count > 0 else []
-            batch_source_log = {
+            source_columns: list = (
+                list(batch_data[0].keys()) if batch_source_count > 0 else []
+            )
+            batch_source_log: dict = {
                 "batch": batch_count,
                 "time_range": f"{cursor.isoformat()} to {batch_end.isoformat()}",
                 "source_records": batch_source_count,
@@ -1353,12 +1360,12 @@ def process_request(
                 cursor = batch_end
                 continue
 
-            transformed_data = transform_to_influx_line(
+            transformed_data: list = transform_to_influx_line(
                 batch_data, target_measurement, fields, tags
             )
 
-            batch_transformed_count = len(transformed_data)
-            transform_log = {
+            batch_transformed_count: int = len(transformed_data)
+            transform_log: dict = {
                 "batch": batch_count,
                 "source_records": batch_source_count,
                 "transformed_records": batch_transformed_count,
@@ -1386,7 +1393,7 @@ def process_request(
 
             if success:
                 total_written_records += batch_transformed_count
-            batch_result_log = {
+            batch_result_log: dict = {
                 "batch": batch_count,
                 "success": success,
                 "source_records": batch_source_count,
@@ -1407,10 +1414,10 @@ def process_request(
             total_retries += retries
             cursor = batch_end
 
-        duration = time.time() - start_time
+        duration: float = time.time() - start_time
 
         # Final summary log
-        final_summary = {
+        final_summary: dict = {
             "total_batches": batch_count,
             "execution_time_seconds": round(duration, 2),
             "total_source_records": total_source_records,
@@ -1421,7 +1428,9 @@ def process_request(
             "time_range": f"{backfill_start.isoformat()} to {backfill_end.isoformat()}",
         }
 
-        influxdb3_local.info(f"[{task_id}] Downsampling process completed", final_summary)
+        influxdb3_local.info(
+            f"[{task_id}] Downsampling process completed", final_summary
+        )
 
         return {
             "message": f"[{task_id}] Downsampling completed from '{source_measurement}' to '{target_measurement}'"
