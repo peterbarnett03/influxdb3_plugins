@@ -2,7 +2,7 @@
 {
     "plugin_name": "Notification sender",
     "plugin_type": ["http"],
-    "dependencies": ["httpx", "requests", "twilio"],
+    "dependencies": ["httpx", "twilio"],
     "required_plugins": [],
     "category": "Alerting",
     "description": "This plugin sends notifications through various channels (Slack, Discord, HTTP, SMS, WhatsApp) based on incoming HTTP POST requests. It acts as a standalone notification dispatcher, receiving data from other plugins or external systems.",
@@ -23,6 +23,7 @@
     ]
 }
 """
+
 import asyncio
 import base64
 import json
@@ -30,6 +31,7 @@ import os
 import random
 import time
 import uuid
+from json import JSONDecodeError
 
 import httpx
 from twilio.base.exceptions import TwilioRestException
@@ -61,8 +63,12 @@ def send_sms_via_twilio(influxdb3_local, params: dict, task_id: str) -> bool:
         influxdb3_local.error(f"[{task_id}] Missing Twilio credentials")
         return False
 
-    from_number: str = params["twilio_from_number"]
-    to_number: str = params["twilio_to_number"]
+    from_number: str | None = params.get("twilio_from_number", None)
+    to_number: str | None = params.get("twilio_to_number", None)
+    if not from_number or not to_number:
+        influxdb3_local.error(f"[{task_id}] Missing Twilio phone numbers")
+        return False
+
     notification_text: str = params["notification_text"]
     max_retries: int = 3
 
@@ -78,11 +84,11 @@ def send_sms_via_twilio(influxdb3_local, params: dict, task_id: str) -> bool:
             influxdb3_local.warn(f"[{task_id}] Twilio error (attempt {attempt}): {e}")
         except Exception as e:
             influxdb3_local.warn(
-                f"[{task_id}] Unexpected error (attempt {attempt}): {e}"
+                f"[{task_id}] Unexpected error while sending SMS message (attempt {attempt}): {e}"
             )
 
         if attempt < max_retries:
-            wait = random.uniform(1, 4)
+            wait: float = random.uniform(1, 4)
             time.sleep(wait)
 
     influxdb3_local.error(
@@ -116,15 +122,21 @@ def send_whatsapp_via_twilio(influxdb3_local, params: dict, task_id: str) -> boo
         influxdb3_local.error(f"[{task_id}] Missing Twilio credentials")
         return False
 
-    from_number: str = f"whatsapp:{params['twilio_from_number']}"
-    to_number: str = f"whatsapp:{params['twilio_to_number']}"
+    from_number: str | None = params.get("twilio_from_number", None)
+    to_number: str | None = params.get("twilio_to_number", None)
+    if not from_number or not to_number:
+        influxdb3_local.error(f"[{task_id}] Missing Twilio phone numbers")
+        return False
+
     body: str = params["notification_text"]
     max_retries: int = 3
 
     for attempt in range(1, max_retries + 1):
         try:
             client = Client(account_sid, auth_token)
-            message = client.messages.create(to=to_number, from_=from_number, body=body)
+            message = client.messages.create(
+                to=f"whatsapp:{to_number}", from_=f"whatsapp:{from_number}", body=body
+            )
             influxdb3_local.info(
                 f"[{task_id}] WhatsApp message sent! SID: {message.sid}"
             )
@@ -133,11 +145,11 @@ def send_whatsapp_via_twilio(influxdb3_local, params: dict, task_id: str) -> boo
             influxdb3_local.warn(f"[{task_id}] Twilio error (attempt {attempt}): {e}")
         except Exception as e:
             influxdb3_local.warn(
-                f"[{task_id}] Unexpected error (attempt {attempt}): {e}"
+                f"[{task_id}] Unexpected error while sending WhatsApp message (attempt {attempt}): {e}"
             )
 
         if attempt < max_retries:
-            wait = random.uniform(1, 4)
+            wait: float = random.uniform(1, 4)
             time.sleep(wait)
 
     influxdb3_local.error(
@@ -159,6 +171,10 @@ async def alert_async(
         task_id (str: Unique task identifier
     """
     influxdb3_local.info(f"[{task_id}] Sending notification via {endpoint_type}")
+    webhook_url: str = args.get(f"{endpoint_type}_webhook_url")
+    if not webhook_url:
+        influxdb3_local.error(f"[{task_id}] Webhook URL not found for {endpoint_type}")
+        return False
 
     payload: dict = build_payload(endpoint_type, args)
     headers: dict = parse_headers(influxdb3_local, args, endpoint_type, task_id)
@@ -168,7 +184,7 @@ async def alert_async(
         for attempt in range(max_retries):
             try:
                 response = await client.post(
-                    args[f"{endpoint_type}_webhook_url"],
+                    webhook_url,
                     json=payload,
                     headers=headers,
                     timeout=10,
@@ -255,11 +271,15 @@ def process_request(
     """
     Process an incoming HTTP request to trigger notifications via configured senders.
     """
-    task_id = str(uuid.uuid4())
+    task_id: str = str(uuid.uuid4())
 
     # Process the request body
     if request_body:
-        data: dict = json.loads(request_body)
+        try:
+            data: dict = json.loads(request_body)
+        except JSONDecodeError:
+            influxdb3_local.error(f"[{task_id}] Invalid JSON in request body.")
+            return {"status": "failed", "message": "Invalid JSON in request body."}
     else:
         influxdb3_local.error(f"[{task_id}] No request body provided.")
         return {"status": "failed", "message": "No request body provided."}

@@ -1,4 +1,3 @@
-
 # InfluxDB 3 Data Replicator Plugin
 
 This plugin replicates data from a local InfluxDB 3 Core/Enterprise instance to a remote InfluxDB 3 instance. It supports filtering of tables and fields, renaming of tables and fields. The plugin can be triggered via a scheduler or data write triggers.
@@ -14,13 +13,13 @@ This plugin replicates data from a local InfluxDB 3 Core/Enterprise instance to 
 - **Data Replication**: Replicate data from a local InfluxDB 3 instance to a remote one.
 - **Filtering**: Specify which tables to replicate and which fields to exclude.
 - **Renaming**: Rename tables and fields during replication.
-- **Scheduler and Data write Support**: Run periodically or on data writes via InfluxDB triggers.
-- **Queue Management**: Use a compressed JSONL queue file for reliable delivery.
+- **Scheduler and Data Write Support**: Run periodically or on data writes via InfluxDB triggers.
+- **Queue Management**: Use a compressed JSONL queue file for reliable delivery, with unique suffixes to avoid conflicts.
 - **Retry Logic**: Handle errors and rate limits with retry mechanisms.
 
 ## Logging
 
-During execution, the plugin writes internal logs into the InfluxDB `_internal` database, in the `system.processing_engine_logs` table. You can inspect the most recent log entries with:
+Logs are stored in the `_internal` database (or the database where the trigger is created) in the `system.processing_engine_logs` table. To view logs, use the following query:
 
 ```bash
 influxdb3 query --database _internal "SELECT * FROM system.processing_engine_logs"
@@ -51,19 +50,18 @@ Example output:
 -   **trigger_name**: Name of the trigger that generated the log (e.g., `my_scheduler`).
 -   **log_level**: Severity level of the log entry (`INFO`, `WARN`, `ERROR`, etc.).
 -   **log_text**: Message describing the action, status, or error encountered by the plugin with task_id.
-- 
 
 ## Queue Management
 
-The plugin uses a compressed JSONL queue file to ensure reliable data delivery.
+The plugin uses a compressed JSONL queue file to ensure reliable data delivery. The queue file is unique per trigger configuration to avoid conflicts.
 
 ### File Location
 - **Default**: `~/.plugins` (if `PLUGIN_DIR` is not set).
 - **Custom**: Set via the `PLUGIN_DIR` environment variable.
 
 ### File Name
-- **Data Writes Mode**: `edr_queue_writes.jsonl.gz`
-- **Schedule Mode**: `edr_queue_schedule.jsonl.gz`
+- **Data Writes Mode**: `edr_queue_writes_<unique_file_suffix>.jsonl.gz`
+- **Schedule Mode**: `edr_queue_schedule_<unique_file_suffix>.jsonl.gz`
 
 ### File Format
 - Compressed with **gzip**.
@@ -79,7 +77,7 @@ The plugin uses a compressed JSONL queue file to ensure reliable data delivery.
 
 ### Notes
 - Monitor file size to avoid disk overflow.
-
+- Use a unique `unique_file_suffix` for each trigger to avoid queue conflicts.
 
 ## Setup, Run & Test
 
@@ -94,12 +92,11 @@ The plugin uses a compressed JSONL queue file to ensure reliable data delivery.
   ```bash
   influxdb3 serve --node-id node0 --object-store file --data-dir ~/.influxdb3 --plugin-dir ~/.plugins
   ```
-  
-### 2. Download & Install InfluxDB 3 python module used by plugin
+
+### 2. Download & Install InfluxDB 3 Python module used by plugin
   ```bash
   influxdb3 install package influxdb3-python
   ```
-
 
 ### 3. Configure & Create Trigger (Scheduler Mode)
 
@@ -112,28 +109,28 @@ influxdb3 create trigger \
   --database mydb \
   --plugin-filename data_replicator.py \
   --trigger-spec "every:10s" \
-  --trigger-arguments host=<remote_host>,token=<remote_token>,database=<remote_db>,source_measurement=<table>,window=10s \
+  --trigger-arguments host=<remote_host>,token=<remote_token>,database=<remote_db>,source_measurement=<table>,window=10s,unique_file_suffix=<suffix> \
   data_replicator_trigger
 ```
 
 #### Arguments (Scheduler Mode)
 The following arguments are supported in the `--trigger-arguments` string for scheduler-based triggers:
 
-| Argument              | Description                                                    | Constraints                                                                             | Default |
-|-----------------------|----------------------------------------------------------------|-----------------------------------------------------------------------------------------|---------|
-| `host`                | Remote InfluxDB host URL.                                      | Required. (`http://127.0.0.1`, `12.4.0.1`, `https://12.4.0.1`)                          | `None`  |
-| `token`               | Remote InfluxDB API token.                                     | Required.                                                                               | `None`  |
-| `database`            | Remote database name.                                          | Required.                                                                               | `None`  |
-| `source_measurement`  | The name of table to replicate.                                | Required.                                                                               | `None`  |
-| `max_size`            | Maximum size for the queue file in MB.                         | Integer ≥ 1.                                                                            | `1024`  |
-| `verify_ssl`          | Whether to verify SSL certificates when connecting via HTTPS.  | True or False. Optional.                                                                | `true`  |
-| `port_override`       | Override the default write port (e.g., 8181).                  | Integer port number. Optional.                                                          | `443`   |
-| `max_retries`         | Maximum number of retries for write operations.                | Integer ≥ 0.                                                                            | `3`     |
-| `excluded_fields`     | String defining fields to exclude per table.                   | Format: `<table1>:<field1>@<field2>.<table2>:<field3>...`                               | `None`  |
-| `tables_rename`       | String defining table renames.                                 | Format: `<old_table1>:<new_table1>`                                                     | `None`  |
-| `field_renames`       | String defining field renames per table.                       | Format: `table1:oldA@newA oldB@newB`                                                    | `None`  |
-| `offset`              | Time offset to apply to the window (e.g., `10min`, `1h`).      | Format: `<number><unit>` where unit is `s`, `min`, `h`, `d`, `w`. Number ≥ 1.           | `0`     |
-| `window`              | Time window for each replication job (e.g., `1h`, `1d`).       | Format: `<number><unit>` where unit is `s`, `min`, `h`, `d`, `w`. Number ≥ 1. Required. | `None`  |
+| Argument              | Description                                                      | Constraints                                                                                                                             | Default |
+|-----------------------|------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|---------|
+| `host`                | Remote InfluxDB host URL.                                        | Required. (`http://127.0.0.1`, `12.4.0.1`, `https://12.4.0.1`, http://127.0.0.1:8182), default scheme is `http`, default port is `8181` | `None`  |
+| `token`               | Remote InfluxDB API token.                                       | Required.                                                                                                                               | `None`  |
+| `database`            | Remote database name.                                            | Required.                                                                                                                               | `None`  |
+| `source_measurement`  | The name of the measurement to replicate.                        | Required.                                                                                                                               | `None`  |
+| `window`              | Time window for each replication job (e.g., `1h`, `1d`).         | Format: `<number><unit>` where unit is `s`, `min`, `h`, `d`, `w`. Number ≥ 1. Required.                                                 | `None`  |
+| `unique_file_suffix`  | Unique suffix for the queue file to avoid conflicts.             | Required.                                                                                                                               | `None`  |
+| `max_size`            | Maximum size for the queue file in MB.                           | Integer ≥ 1.                                                                                                                            | `1024`  |
+| `verify_ssl`          | Whether to verify SSL certificates when connecting via HTTPS.    | `true` or `false`. Optional.                                                                                                            | `true`  |
+| `max_retries`         | Maximum number of retries for write operations.                  | Integer ≥ 0.                                                                                                                            | `3`     |
+| `excluded_fields`     | Dot-separated list of fields to exclude (e.g., `field1.field2`). | Optional.                                                                                                                               | `None`  |
+| `target_table`        | New name for the measurement in the remote database.             | Optional. Defaults to `source_measurement`.                                                                                             | `None`  |
+| `field_renames`       | Field renames in the format `old1:new1.old2:new2`.               | Optional.                                                                                                                               | `None`  |
+| `offset`              | Time offset to apply to the window (e.g., `10min`, `1h`).        | Format: `<number><unit>` where unit is `s`, `min`, `h`, `d`, `w`. Number ≥ 1.                                                           | `0`     |
 
 #### Enable Trigger
 Enable the trigger to start periodic replication:
@@ -141,9 +138,7 @@ Enable the trigger to start periodic replication:
 influxdb3 enable trigger --database mydb data_replicator_trigger
 ```
 
-
-
-### 4. Configure & Create Trigger (Data write Mode)
+### 4. Configure & Create Trigger (Data Write Mode)
 
 The Data Replicator Plugin can be configured to automatically replicate data whenever data is written to the local InfluxDB database and the Write-Ahead Log (WAL) is flushed. This is achieved by creating a trigger, which executes the plugin each time a write operation is committed to the database.
 
@@ -155,26 +150,26 @@ influxdb3 create trigger \
   --database mydb \
   --trigger-spec "all_tables" \
   --plugin-filename data_replicator.py \
-  --trigger-arguments host=<remote_host>,token=<remote_token>,database=<remote_db>,tables=table1.table2,field_renames="home:hum@humidity temp@temperature" \
+  --trigger-arguments host=<remote_host>,token=<remote_token>,database=<remote_db>,tables=table1.table2,field_renames="table1:hum@humidity temp@temperature",unique_file_suffix=<suffix> \
   data_replicator_trigger
 ```
 
-#### Arguments (Data write Mode)
+#### Arguments (Data Write Mode)
 The following arguments are supported in the `--trigger-arguments` string for data write trigger:
 
-| Argument              | Description                                                      | Constraints                                                      | Default  |
-|-----------------------|------------------------------------------------------------------|------------------------------------------------------------------|----------|
-| `host`                | Remote InfluxDB host URL.                                        | Required. (`http://127.0.0.1`, `12.4.0.1`, `https://12.4.0.1`)   | `None`   |
-| `token`               | Remote InfluxDB API token.                                       | Required.                                                        | `None`   |
-| `database`            | Remote database name.                                            | Required.                                                        | `None`   |
-| `tables`              | Dot-separated list of tables to replicate.                       | Optional. If not provided, all tables are replicated.            | `None`   |
-| `verify_ssl`          | Whether to verify SSL certificates when connecting via HTTPS.    | True or False. Optional.                                         | `true`   |
-| `port_override`       | Override the default write port (e.g., 8181).                    | Integer port number. Optional.                                   | `443`    |
-| `max_retries`         | Maximum number of retries for write operations.                  | Integer ≥ 0.                                                     | `3`      | 
-| `max_size`            | Maximum size for the queue file in MB.                           | Integer ≥ 1.                                                     | `1024`   |
-| `excluded_fields`     | String defining fields to exclude per table.                     | Format: `<table1>:<field1>@<field2>.<table2>:<field3>...`        | `None`   |
-| `tables_rename`       | String defining table renames.                                   | Format: `<old_table1>:<new_table1>.<old_table2>:<new_table2>...` | `None`   |
-| `field_renames`       | String defining field renames per table.                         | Format: `table1:oldA@newA oldB@newB.table2:oldX@newX oldY@newY`  | `None`   |
+| Argument             | Description                                                      | Constraints                                                      | Default  |
+|----------------------|------------------------------------------------------------------|------------------------------------------------------------------|----------|
+| `host`               | Remote InfluxDB host URL.                                        | Required. (`http://127.0.0.1`, `12.4.0.1`, `https://12.4.0.1`)   | `None`   |
+| `token`              | Remote InfluxDB API token.                                       | Required.                                                        | `None`   |
+| `database`           | Remote database name.                                            | Required.                                                        | `None`   |
+| `unique_file_suffix` | Unique suffix for the queue file to avoid conflicts.             | Required.                                                        | `None`   |
+| `tables`             | Dot-separated list of tables to replicate.                       | Optional. If not provided, all tables are replicated.            | `None`   |
+| `verify_ssl`         | Whether to verify SSL certificates when connecting via HTTPS.    | `true` or `false`. Optional.                                     | `true`   |
+| `max_retries`        | Maximum number of retries for write operations.                  | Integer ≥ 0.                                                     | `3`      |
+| `max_size`           | Maximum size for the queue file in MB.                           | Integer ≥ 1.                                                     | `1024`   |
+| `excluded_fields`    | String defining fields to exclude per table.                     | Format: `<table1>:<field1>@<field2>.<table2>:<field3>...`        | `None`   |
+| `tables_rename`      | String defining table renames.                                   | Format: `<old_table1>:<new_table1>.<old_table2>:<new_table2>...` | `None`   |
+| `field_renames`      | String defining field renames per table.                         | Format: `table1:oldA@newA oldB@newB.table2:oldX@newX oldY@newY`  | `None`   |
 
 #### Enable Trigger
 To start replication on WAL flush events, enable the trigger with the following command:

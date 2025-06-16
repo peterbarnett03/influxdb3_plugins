@@ -155,6 +155,7 @@
     ]
 }
 """
+
 import json
 import os
 import random
@@ -169,7 +170,7 @@ import pandas as pd
 import requests
 
 # Supported sender types with their required arguments
-AVAILABLE_SENDERS: dict = {
+AVAILABLE_SENDERS = {
     "slack": ["slack_webhook_url", "slack_headers"],
     "discord": ["discord_webhook_url", "discord_headers"],
     "http": ["http_webhook_url", "http_headers"],
@@ -183,7 +184,7 @@ AVAILABLE_SENDERS: dict = {
 }
 
 # Keywords to skip when validating sender args
-EXCLUDED_KEYWORDS: list = ["headers", "token", "sid"]
+EXCLUDED_KEYWORDS = ["headers", "token", "sid"]
 
 
 def validate_webhook_url(influxdb3_local, service: str, url: str, task_id: str) -> bool:
@@ -300,9 +301,12 @@ def send_notification(
     Raises:
         requests.RequestException: If all retries fail or a non-2xx response is received.
     """
-    url = f"http://localhost:{port}/api/v3/engine/{path}"
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
-    data = json.dumps(payload)
+    url: str = f"http://localhost:{port}/api/v3/engine/{path}"
+    headers: dict = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}",
+    }
+    data: str = json.dumps(payload)
 
     max_retries: int = 3
     timeout: float = 5.0
@@ -345,7 +349,7 @@ def parse_port_override(args: dict, task_id: str) -> int:
     Raises:
         Exception if invalid or out of range.
     """
-    raw = args.get("port_override", 8181)
+    raw: str | int = args.get("port_override", 8181)
     try:
         port = int(raw)
     except (ValueError, TypeError):
@@ -371,7 +375,13 @@ def parse_time_duration(raw: str, task_id: str) -> timedelta:
     Raises:
         Exception if format is invalid or number conversion fails.
     """
-    units = {"s": "seconds", "min": "minutes", "h": "hours", "d": "days", "w": "weeks"}
+    units: dict = {
+        "s": "seconds",
+        "min": "minutes",
+        "h": "hours",
+        "d": "days",
+        "w": "weeks",
+    }
     num_part, unit_part = "", ""
     for u in sorted(units.keys(), key=len, reverse=True):
         if raw.endswith(u):
@@ -427,13 +437,13 @@ def get_tag_names(influxdb3_local, measurement: str, task_id: str) -> list[str]:
     Returns:
         List of tag names (strings). Empty list if none found.
     """
-    query = """
+    query: str = """
         SELECT column_name
         FROM information_schema.columns
         WHERE table_name = $measurement
           AND data_type = 'Dictionary(Int32, Utf8)'
     """
-    res = influxdb3_local.query(query, {"measurement": measurement})
+    res: list = influxdb3_local.query(query, {"measurement": measurement})
     if not res:
         influxdb3_local.info(f"[{task_id}] No tags found for '{measurement}'")
         return []
@@ -456,9 +466,9 @@ def generate_cache_key(
     Returns:
         str: Key like "cpu:temp:host=server1:region=us-west"
     """
-    key = f"{measurement}:{field}:{threshold_level}"
+    key: str = f"{measurement}:{field}:{threshold_level}"
     for tag in sorted(tags):
-        tag_val = row.get(tag, "None")
+        tag_val: str = row.get(tag, "None")
         key += f":{tag}={tag_val}"
     return key
 
@@ -466,6 +476,27 @@ def generate_cache_key(
 def parse_error_thresholds(
     influxdb3_local, args: dict, task_id: str
 ) -> dict[str, float]:
+    """Parses a string of error thresholds into a dictionary mapping severity levels to threshold values.
+
+    Args:
+        influxdb3_local: An InfluxDB 3 logger instance for logging warnings.
+        args (dict): A dictionary containing the `error_thresholds` key with a string value
+            specifying thresholds in the format "level-threshold:level-threshold" (e.g., "INFO-10:WARN-20.5").
+        task_id (str): A unique identifier for the task, included in warning and error messages.
+
+    Returns:
+        dict[str, float]: A dictionary mapping severity levels (e.g., "INFO", "WARN") to their
+            corresponding threshold values as floats.
+
+    Raises:
+        Exception: If no valid thresholds are parsed from the input string, with a message
+            including the `task_id` and a description of the error.
+
+    Example:
+        args = {"error_thresholds": "INFO-10:WARN-'20.5':ERROR-30"}
+        parse_error_thresholds(influxdb3_local, args, "task123")
+        {'INFO': 10.0, 'WARN': 20.5, 'ERROR': 30.0}
+    """
     threshold_str: str = args["error_thresholds"]
     thresholds: dict = {}
 
@@ -526,7 +557,7 @@ def generate_query(
         # Add tags to the SELECT clause, ensuring proper escaping
         select_clause += ", " + ", ".join([f"{tag}" for tag in tags])
 
-    return f"SELECT {select_clause} FROM {measurement} WHERE time >= '{start_time.isoformat()}' AND time < '{end_time.isoformat()}'"
+    return f"SELECT {select_clause} FROM {measurement} WHERE time >= '{start_time.isoformat()}' AND time < '{end_time.isoformat()}' ORDER BY time"
 
 
 def process_scheduled_call(
@@ -566,7 +597,7 @@ def process_scheduled_call(
     Exceptions:
         All exceptions are caught and logged via influxdb3_local.error.
     """
-    task_id = str(uuid.uuid4())
+    task_id: str = str(uuid.uuid4())
 
     # Validate required arguments
     required_keys: list = [
@@ -611,11 +642,7 @@ def process_scheduled_call(
             "notification_text",
             "[$level] Forecast error alert in $measurement.$field: $metric=$error. Tags: $tags",
         )
-        min_condition_duration: timedelta = (
-            parse_time_duration(args["min_condition_duration"], task_id)
-            if args.get("min_condition_duration")
-            else timedelta(seconds=0)
-        )
+        min_condition_duration: timedelta = parse_time_duration(args.get("min_condition_duration", "0s"), task_id)
         influxdb3_auth_token: str | None = os.getenv(
             "INFLUXDB3_AUTH_TOKEN"
         ) or args.get("influxdb3_auth_token")
@@ -675,14 +702,16 @@ def process_scheduled_call(
 
         # Parse timestamps and round to nearest second for alignment
         if rounding_freq is None:
-            df_fore["time"] = pd.to_datetime(df_fore["time"])
-            df_act["time"] = pd.to_datetime(df_act["time"])
+            df_fore["time"] = pd.to_datetime(df_fore["time"], unit="ns")
+            df_act["time"] = pd.to_datetime(df_act["time"], unit="ns")
         else:
             try:
-                df_fore["time"] = pd.to_datetime(df_fore["time"]).dt.round(
-                    rounding_freq
-                )
-                df_act["time"] = pd.to_datetime(df_act["time"]).dt.round(rounding_freq)
+                df_fore["time"] = pd.to_datetime(
+                    df_fore["time"], unit="ns"
+                ).dt.round(rounding_freq)
+                df_act["time"] = pd.to_datetime(
+                    df_act["time"], unit="ns"
+                ).dt.round(rounding_freq)
             except Exception as e:
                 influxdb3_local.error(
                     f"[{task_id}] Error rounding timestamps: {str(e)}"

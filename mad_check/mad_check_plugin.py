@@ -140,7 +140,7 @@ from urllib.parse import urlparse
 import requests
 
 # Supported sender types with their required arguments
-AVAILABLE_SENDERS: dict = {
+AVAILABLE_SENDERS = {
     "slack": ["slack_webhook_url", "slack_headers"],
     "discord": ["discord_webhook_url", "discord_headers"],
     "http": ["http_webhook_url", "http_headers"],
@@ -227,8 +227,8 @@ def generate_cache_key(
     """
     base = f"{measurement}:{field}:{k}:{suffix}"
     for tag in sorted(tags):
-        tagval = row.get(tag, "None")
-        base += f":{tag}={tagval}"
+        tag_val = row.get(tag, "None")
+        base += f":{tag}={tag_val}"
     return base
 
 
@@ -304,9 +304,9 @@ def send_notification(
     Raises:
         requests.RequestException: If all retries fail or a non-2xx response is received.
     """
-    url = f"http://localhost:{port}/api/v3/engine/{path}"
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
-    data = json.dumps(payload)
+    url: str = f"http://localhost:{port}/api/v3/engine/{path}"
+    headers: dict = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
+    data: str = json.dumps(payload)
 
     max_retries: int = 3
     timeout: float = 5.0
@@ -349,7 +349,7 @@ def parse_port_override(args: dict, task_id: str) -> int:
     Raises:
         Exception: If 'port_override' is provided but is not a valid integer in the range 1–65535.
     """
-    raw = args.get("port_override", 8181)
+    raw: str | int = args.get("port_override", 8181)
 
     try:
         port = int(raw)
@@ -456,7 +456,7 @@ def parse_mad_thresholds(influxdb3_local, args: dict, task_id: str) -> list[tupl
     Raises:
         Exception: If no valid segments are parsed.
     """
-    valid_units = {
+    valid_units: dict = {
         "s": "seconds",
         "min": "minutes",
         "h": "hours",
@@ -465,7 +465,7 @@ def parse_mad_thresholds(influxdb3_local, args: dict, task_id: str) -> list[tupl
     }
     raw_input: str = args.get("mad_thresholds")
     results: list[tuple] = []
-    segments = [seg.strip() for seg in raw_input.split("@") if seg.strip()]
+    segments: list = [seg.strip() for seg in raw_input.split("@") if seg.strip()]
 
     for seg in segments:
         parts = seg.split(":")
@@ -477,20 +477,20 @@ def parse_mad_thresholds(influxdb3_local, args: dict, task_id: str) -> list[tupl
 
         field_name = parts[0].strip()
         try:
-            k = float(parts[1].strip())
+            k: float = float(parts[1].strip())
         except ValueError:
             influxdb3_local.warn(f"[{task_id}] Invalid k in segment '{seg}'")
             continue
 
         try:
-            window_count = int(parts[2].strip())
+            window_count: int = int(parts[2].strip())
         except ValueError:
             influxdb3_local.warn(f"[{task_id}] Invalid window_count in '{seg}'")
             continue
 
         raw_thresh = parts[3].strip()
         if re.fullmatch(r"-?\d+", raw_thresh):
-            threshold_param = int(raw_thresh)
+            threshold_param: int | timedelta = int(raw_thresh)
         else:
             num_part, unit_part = "", ""
             for unit in sorted(valid_units.keys(), key=len, reverse=True):
@@ -533,7 +533,7 @@ def check_state_changes(cached_values: deque, max_flips: int) -> bool:
     if len(cached_values) < 2 or max_flips == 0:
         return True
 
-    flips = 0
+    flips: int = 0
     prev = None
     first = True
     for v in cached_values:
@@ -588,8 +588,8 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
         )
         return
 
-    measurement = args["measurement"]
-    all_measurements = get_all_measurements(influxdb3_local)
+    measurement: str = args["measurement"]
+    all_measurements: list = get_all_measurements(influxdb3_local)
     if measurement not in all_measurements:
         influxdb3_local.error(f"[{task_id}] Measurement '{measurement}' not found")
         return
@@ -645,7 +645,7 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
 
                     now: datetime = datetime.now(timezone.utc)
 
-                    # 1) Manage deque of size window_count for median/MAD
+                    # Manage deque of size window_count for median/MAD
                     deque_key: str = generate_cache_key(
                         measurement, field_name, k, "deque", tags, row
                     )
@@ -677,12 +677,12 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
 
                     is_outlier: bool = (current_val < lower) or (current_val > upper)
 
-                    # 2) Flip-detection deque (size = state_change_window)
+                    # Flip-detection deque (size = state_change_window)
                     can_send: bool = check_state_changes(
                         window_deque, state_change_count
                     )
 
-                    # 3) Count-based mode
+                    # Count-based mode
                     if not isinstance(threshold_param, timedelta):
                         count_key: str = generate_cache_key(
                             measurement, field_name, k, "count-count", tags, row
@@ -732,7 +732,7 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
                         else:
                             influxdb3_local.cache.put(count_key, "0")
 
-                    # 4) Duration-based mode
+                    # Duration-based mode
                     else:
                         time_key: str = generate_cache_key(
                             measurement, field_name, k, "time-time", tags, row

@@ -25,7 +25,7 @@ This plugin enables downsampling of data in an InfluxDB 3 Core/Enterprise instan
 
 ## Logging
 
-During execution, the plugin writes internal logs into the InfluxDB `_internal` database, in the `system.processing_engine_logs` table. You can inspect the most recent log entries with:
+Logs are stored in the `_internal` database (or the database where the trigger is created) in the `system.processing_engine_logs` table. To view logs, use the following query:
 
 ```bash
 influxdb3 query --database _internal "SELECT * FROM system.processing_engine_logs"

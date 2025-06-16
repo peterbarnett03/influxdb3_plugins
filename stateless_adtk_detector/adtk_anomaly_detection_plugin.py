@@ -4,7 +4,7 @@
     "plugin_type": ["scheduled"],
     "dependencies": ["pandas", "adtk", "requests"],
     "required_plugins": ["Notification sender"],
-    "category": "Alerting",
+    "category": "Anomaly Detection",
     "description": "This plugin provides anomaly detection capabilities for time series data in InfluxDB 3 using the ADTK library through a `scheduler` trigger. It leverages the Notification Sender plugin for InfluxDB 3 to send notifications via various channels when anomalies are detected.",
     "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/adtk_anomaly_detection_plugin.md",
     "scheduled_args_config": [
@@ -143,6 +143,7 @@
     ]
 }
 """
+
 import base64
 import json
 import os
@@ -224,7 +225,7 @@ def get_tag_names(influxdb3_local, measurement: str, task_id: str) -> list[str]:
     Returns:
         list[str]: List of tag names with 'Dictionary(Int32, Utf8)' data type.
     """
-    query = """
+    query: str = """
         SELECT column_name
         FROM information_schema.columns
         WHERE table_name = $measurement
@@ -257,7 +258,7 @@ def generate_cache_key(
     Returns:
         str: Formatted key, e.g., "cpu:usage:host=server1:region=us-west".
     """
-    base = f"{measurement}:{field}"
+    base: str = f"{measurement}:{field}"
     for tag in sorted(tags):
         tag_val = row.get(tag, "None")
         base += f":{tag}={tag_val}"
@@ -336,9 +337,12 @@ def send_notification(
     Raises:
         requests.RequestException: If all retries fail or a non-2xx response is received.
     """
-    url = f"http://localhost:{port}/api/v3/engine/{path}"
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
-    data = json.dumps(payload)
+    url: str = f"http://localhost:{port}/api/v3/engine/{path}"
+    headers: dict = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}",
+    }
+    data: str = json.dumps(payload)
 
     max_retries: int = 3
     timeout: float = 5.0
@@ -381,7 +385,7 @@ def parse_port_override(args: dict, task_id: str) -> int:
     Raises:
         Exception: If 'port_override' is provided but is not a valid integer in the range 1–65535.
     """
-    raw = args.get("port_override", 8181)
+    raw: str | int = args.get("port_override", 8181)
 
     try:
         port = int(raw)
@@ -453,7 +457,7 @@ def parse_time_duration(raw: str, task_id: str) -> timedelta:
     Raises:
         Exception: If the duration format is invalid.
     """
-    valid_units = {
+    valid_units: dict = {
         "s": "seconds",
         "min": "minutes",
         "h": "hours",
@@ -546,6 +550,16 @@ def parse_detector_params(
     return valid_params
 
 
+def parse_min_consensus(min_consensus: str | int, task_id: str) -> int:
+    """Validate and convert min_consensus to an integer."""
+    try:
+        return int(min_consensus)
+    except (TypeError, ValueError):
+        raise Exception(
+            f"[{task_id}] Invalid min_consensus, not an integer: {min_consensus!r}"
+        )
+
+
 def process_scheduled_call(
     influxdb3_local, call_time: datetime, args: dict | None = None
 ):
@@ -578,7 +592,7 @@ def process_scheduled_call(
     Exceptions:
         All exceptions are caught and logged via influxdb3_local.error.
     """
-    task_id = str(uuid.uuid4())
+    task_id: str = str(uuid.uuid4())
 
     if (
         not args
@@ -590,7 +604,7 @@ def process_scheduled_call(
         or "senders" not in args
     ):
         influxdb3_local.error(
-            f"[{task_id}] Missing required arguments: table, field, detectors, detector_params, window, or senders"
+            f"[{task_id}] Missing required arguments: measurement, field, detectors, detector_params, window, or senders"
         )
         return
 
@@ -598,7 +612,7 @@ def process_scheduled_call(
         # Parse configuration
         measurement: str = args["measurement"]
         # Validate measurement
-        all_measurements = get_all_measurements(influxdb3_local)
+        all_measurements: list = get_all_measurements(influxdb3_local)
         if measurement not in all_measurements:
             influxdb3_local.error(f"[{task_id}] Measurement '{measurement}' not found")
             return
@@ -608,14 +622,12 @@ def process_scheduled_call(
         detector_params: dict = parse_detector_params(
             influxdb3_local, args, detectors, task_id
         )
-        min_consensus: int = args.get("min_consensus", 1)
+        min_consensus: int = parse_min_consensus(args.get("min_consensus", 1), task_id)
         window: timedelta = parse_time_duration(args["window"], task_id)
         senders_config: dict = parse_senders(influxdb3_local, args, task_id)
         port_override: int = parse_port_override(args, task_id)
-        min_condition_duration: timedelta = (
-            parse_time_duration(args.get("min_condition_duration", "0s"), task_id)
-            if args.get("min_condition_duration")
-            else timedelta(seconds=0)
+        min_condition_duration: timedelta = parse_time_duration(
+            args.get("min_condition_duration", "0s"), task_id
         )
         notification_path: str = args.get("notification_path", "notify")
         notification_text: str = args.get(
@@ -633,7 +645,7 @@ def process_scheduled_call(
         end_time: datetime = call_time
         start_time: datetime = end_time - window
         query: str = f"""
-                SELECT *
+                SELECT {field}, time
                 FROM {measurement}
                 WHERE time >= $start_time AND time < $end_time
                 ORDER BY time
@@ -645,7 +657,7 @@ def process_scheduled_call(
 
         if not result:
             influxdb3_local.info(
-                f"[{task_id}] No data found for {measurement}.{field} in window {window}"
+                f"[{task_id}] No data found for {measurement}.{field} from {start_time} to {end_time}"
             )
             return
 
@@ -657,11 +669,9 @@ def process_scheduled_call(
             )
             return
         series: pd.Series = pd.Series(
-            df[field].values, index=pd.to_datetime(df["time"])
+            df[field].values, index=pd.to_datetime(df["time"], unit="ns")
         )
-        series = validate_series(
-            series
-        )  # Ensure regular sampling and time order
+        series = validate_series(series)  # Ensure regular sampling and time order
 
         # Apply detectors
         anomaly_results: list = []
@@ -682,6 +692,12 @@ def process_scheduled_call(
                     f"[{task_id}] Failed to apply detector {detector_name}: {e}"
                 )
 
+        if not anomaly_results:
+            influxdb3_local.error(
+                f"[{task_id}] No valid detectors applied to {measurement}.{field}"
+            )
+            return
+
         # Consensus: point is anomaly if >= min_consensus detectors agree
         anomaly_df = pd.concat(anomaly_results, axis=1).fillna(False)
         anomaly_count = anomaly_df.sum(axis=1)
@@ -696,23 +712,53 @@ def process_scheduled_call(
             ]
             cache_key: str = generate_cache_key(measurement, field, tags, row)
             tag_str: str = ", ".join(f"{t}={row.get(t, 'None')}" for t in tags)
+            start_time_str: str = influxdb3_local.cache.get(cache_key, default="")
 
             if is_anomaly:
-                start_time_str: str = influxdb3_local.cache.get(cache_key, default="")
                 if not start_time_str:
-                    # Start of a new anomaly
-                    influxdb3_local.cache.put(
-                        cache_key, datetime.now(timezone.utc).isoformat()
-                    )
                     if min_condition_duration > timedelta(0):
+                        # Start of a new anomaly
+                        influxdb3_local.cache.put(
+                            cache_key, datetime.now(timezone.utc).isoformat()
+                        )
                         influxdb3_local.info(
                             f"[{task_id}] Anomaly started for {measurement}.{field} (tags: {tag_str}), waiting for duration {min_condition_duration}"
                         )
                         continue
+
+                    # Send notification
+                    payload: dict = {
+                        "notification_text": interpolate_notification_text(
+                            notification_text,
+                            {
+                                "table": measurement,
+                                "field": field,
+                                "value": row[field],
+                                "detectors": ".".join(detectors),
+                                "tags": tag_str,
+                            },
+                        ),
+                        "senders_config": senders_config,
+                    }
+                    influxdb3_local.error(
+                        f"[{task_id}] Anomaly detected for {measurement}.{field} (tags: {tag_str}), sending alert"
+                    )
+                    send_notification(
+                        influxdb3_local,
+                        port_override,
+                        notification_path,
+                        influxdb3_auth_token,
+                        payload,
+                        task_id,
+                    )
                 else:
                     # Check duration
-                    duration_start_time: datetime = datetime.fromisoformat(start_time_str)
-                    elapsed: timedelta = datetime.now(timezone.utc) - duration_start_time
+                    duration_start_time: datetime = datetime.fromisoformat(
+                        start_time_str
+                    )
+                    elapsed: timedelta = (
+                        datetime.now(timezone.utc) - duration_start_time
+                    )
                     if elapsed >= min_condition_duration:
                         # Send notification
                         payload: dict = {
@@ -748,10 +794,11 @@ def process_scheduled_call(
                         )
             else:
                 # Reset cache if anomaly stops
-                influxdb3_local.cache.put(cache_key, "")
-                influxdb3_local.info(
-                    f"[{task_id}] Anomaly cleared for {measurement}.{field} (tags: {tag_str})"
-                )
+                if start_time_str:
+                    influxdb3_local.cache.put(cache_key, "")
+                    influxdb3_local.info(
+                        f"[{task_id}] Anomaly cleared for {measurement}.{field} (tags: {tag_str})"
+                    )
 
     except Exception as e:
         influxdb3_local.error(f"[{task_id}] Error: {e}")
