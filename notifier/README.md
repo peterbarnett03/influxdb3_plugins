@@ -150,7 +150,7 @@ The plugin expects a JSON body with the following structure:
 ## Important Notes
 - **Environment Variables**: For security, Twilio credentials can be set via environment variables (`TWILIO_SID`, `TWILIO_TOKEN`), which take precedence over request parameters.
 - **Retries**: The plugin retries failed notifications up to 3 times with exponential backoff for asynchronous senders (Slack, Discord, HTTP) and random delays for synchronous senders (SMS, WhatsApp).
-- **Logging**: Logs are stored in the `_internal` database (or exactly the name of the database where the trigger is created) in the `system.processing_engine_logs` table. To view logs, use the following query::
+- **Logging**: Logs are stored in the `_internal` database (or the database where the trigger is created) in the `system.processing_engine_logs` table. To view logs, use the following query::
   ```bash
   influxdb3 query --database _internal "SELECT * FROM system.processing_engine_logs"
   ```

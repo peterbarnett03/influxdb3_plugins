@@ -20,7 +20,7 @@ This plugin system provides field change and threshold monitoring capabilities f
 - **State Stability Check**: Suppresses notifications if field values change too frequently (data writes type).
 
 ## Logging
-Logs are stored in the `_internal` database (or exactly the name of the database where the trigger is created) in the `system.processing_engine_logs` table. To view logs, use the following query:
+Logs are stored in the `_internal` database (or the database where the trigger is created) in the `system.processing_engine_logs` table. To view logs, use the following query:
 
 ```bash
 influxdb3 query --database _internal "SELECT * FROM system.processing_engine_logs"

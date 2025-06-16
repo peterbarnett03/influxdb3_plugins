@@ -19,7 +19,7 @@ This plugin system provides checks capabilities for InfluxDB 3 through two compl
 - **Environment Variable Support**: Can be configured using environment variables (e.g., `INFLUXDB3_AUTH_TOKEN`).
 
 ## Logging
-Logs are stored in the `_internal` database (or exactly the name of the database where the trigger is created) in the `system.processing_engine_logs` table. To view logs, use the following query:
+Logs are stored in the `_internal` database (or the database where the trigger is created) in the `system.processing_engine_logs` table. To view logs, use the following query:
 
 ```bash
 influxdb3 query --database _internal "SELECT * FROM system.processing_engine_logs"
