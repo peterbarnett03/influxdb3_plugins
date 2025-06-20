@@ -1,89 +1,127 @@
 {
-  "plugin_library": {
-    "version": "1.0.0",
-    "last_updated": "2025-06-16T17:42:08+03:00",
-    "plugins": [
-      {
-        "name": "Data Replicator",
-        "path": "data_replicator/data_replicator.py",
-        "description": "Replicates data from a local InfluxDB 3 Core/Enterprise instance to a remote InfluxDB 3 instance. Supports filtering of tables and fields, renaming of tables and fields, and queue management for reliable delivery.",
-        "author": "InfluxData",
-        "required_plugins": ["influxdb3-python"],
-        "last_update": "2025-06-16",
-        "trigger_types_supported": ["scheduler", "data_writes"]
-      },
-      {
-        "name": "Downsampler",
-        "path": "downsampler/downsampler.py",
-        "description": "Enables downsampling of data in an InfluxDB 3 instance with flexible configuration for time intervals, field aggregations, tag filtering, and batch processing. Supports both scheduler and HTTP trigger modes.",
-        "author": "InfluxData",
-        "required_plugins": [],
-        "last_update": "2025-06-16",
-        "trigger_types_supported": ["scheduler", "http"]
-      },
-      {
-        "name": "Forecast Error Evaluator",
-        "path": "forecast_error_evaluator/forecast_error_evaluator.py",
-        "description": "Evaluates the accuracy of forecast models by comparing predicted values with actual observations. Computes error metrics (MSE, MAE, RMSE) and detects anomalies based on elevated errors with multi-channel notifications.",
-        "author": "InfluxData",
-        "required_plugins": ["pandas", "requests", "Notification Sender Plugin"],
-        "last_update": "2025-06-16",
-        "trigger_types_supported": ["scheduler"]
-      },
-      {
-        "name": "InfluxDB to Iceberg",
-        "path": "influxdb_to_iceberg/influxdb_to_iceberg.py",
-        "description": "Transfers data from InfluxDB 3 to Apache Iceberg tables with automatic schema management, customizable namespace and table naming, field filtering, and batch processing support.",
-        "author": "InfluxData",
-        "required_plugins": ["pandas", "pyarrow", "pyiceberg[s3fs,hive,sql-sqlite]"],
-        "last_update": "2025-06-16",
-        "trigger_types_supported": ["scheduler", "http"]
-      },
-      {
-        "name": "MAD Anomaly Detection",
-        "path": "mad_check/mad_check_plugin.py",
-        "description": "Provides Median Absolute Deviation (MAD)-based anomaly detection using data writes trigger. Maintains in-memory deques for efficient computation and supports both count-based and duration-based thresholds.",
-        "author": "InfluxData",
-        "required_plugins": ["requests", "Notification Sender Plugin"],
-        "last_update": "2025-06-16",
-        "trigger_types_supported": ["data_writes"]
-      },
-      {
-        "name": "Notification Sender",
-        "path": "notifier/notifier_plugin.py",
-        "description": "Standalone notification dispatcher that sends notifications through various channels (Slack, Discord, HTTP, SMS, WhatsApp) based on incoming HTTP requests. Features retry logic and environment variable support.",
-        "author": "InfluxData",
-        "required_plugins": ["httpx", "twilio"],
-        "last_update": "2025-06-16",
-        "trigger_types_supported": ["http"]
-      },
-      {
-        "name": "State Change Monitor",
-        "path": "state_change/state_change_check_plugin.py",
-        "description": "Provides field change and threshold monitoring capabilities through scheduler and data writes plugins. Detects changes in field values or threshold conditions with customizable notification templates.",
-        "author": "InfluxData",
-        "required_plugins": ["requests", "Notification Sender Plugin"],
-        "last_update": "2025-06-16",
-        "trigger_types_supported": ["scheduler", "data_writes"]
-      },
-      {
-        "name": "ADTK Anomaly Detection",
-        "path": "stateless_adtk_detector/adtk_anomaly_detection_plugin.py",
-        "description": "Provides anomaly detection capabilities for time series data using the ADTK library. Supports multiple stateless detectors with consensus-based detection and customizable notification messages.",
-        "author": "InfluxData",
-        "required_plugins": ["requests", "adtk", "pandas", "Notification Sender Plugin"],
-        "last_update": "2025-06-16",
-        "trigger_types_supported": ["scheduler"]
-      },
-      {
-        "name": "Threshold and Deadman Checks",
-        "path": "threshold_deadman_checks/threshold_deadman_checks_plugin.py",
-        "description": "Provides comprehensive monitoring capabilities including deadman alerts and aggregation-based threshold checks. Supports both scheduler and data write triggers with multi-channel notifications.",
-        "author": "InfluxData",
-        "required_plugins": ["requests", "Notification Sender Plugin"],
-        "last_update": "2025-06-16",
-        "trigger_types_supported": ["scheduler", "data_writes"]
-      }
-    ]
-  }
+    "plugin_library": {
+        "version": "1.0.0",
+        "last_updated": "2025-06-16T17:42:08+03:00",
+        "plugins": [
+            {
+                "name": "Data Replicator",
+                "path": "data_replicator/data_replicator.py",
+                "description": "Replicates data from a local InfluxDB 3 Core/Enterprise instance to a remote InfluxDB 3 instance. Supports filtering of tables and fields, renaming of tables and fields, and queue management for reliable delivery.",
+                "author": "InfluxData",
+                "required_plugins": [],
+                "required_libraries": ["influxdb3-python"],
+                "last_update": "2025-06-16",
+                "trigger_types_supported": ["scheduler", "data_writes"],
+            },
+            {
+                "name": "Downsampler",
+                "path": "downsampler/downsampler.py",
+                "description": "Enables downsampling of data in an InfluxDB 3 instance with flexible configuration for time intervals, field aggregations, tag filtering, and batch processing. Supports both scheduler and HTTP trigger modes.",
+                "author": "InfluxData",
+                "required_plugins": [],
+                "required_libraries": [],
+                "last_update": "2025-06-16",
+                "trigger_types_supported": ["scheduler", "http"],
+            },
+            {
+                "name": "Forecast Error Evaluator",
+                "path": "forecast_error_evaluator/forecast_error_evaluator.py",
+                "description": "Evaluates the accuracy of forecast models by comparing predicted values with actual observations. Computes error metrics (MSE, MAE, RMSE) and detects anomalies based on elevated errors with multi-channel notifications.",
+                "author": "InfluxData",
+                "required_plugins": [
+                    {
+                        "name": "Notification sender",
+                        "path": "notifier/notifier_plugin.py",
+                    }
+                ],
+                "required_libraries": ["pandas", "requests"],
+                "last_update": "2025-06-16",
+                "trigger_types_supported": ["scheduler"],
+            },
+            {
+                "name": "InfluxDB to Iceberg",
+                "path": "influxdb_to_iceberg/influxdb_to_iceberg.py",
+                "description": "Transfers data from InfluxDB 3 to Apache Iceberg tables with automatic schema management, customizable namespace and table naming, field filtering, and batch processing support.",
+                "author": "InfluxData",
+                "required_plugins": [],
+                "required_libraries": [
+                    "pandas",
+                    "pyarrow",
+                    "pyiceberg[s3fs,hive,sql-sqlite]",
+                ],
+                "last_update": "2025-06-16",
+                "trigger_types_supported": ["scheduler", "http"],
+            },
+            {
+                "name": "MAD Anomaly Detection",
+                "path": "mad_check/mad_check_plugin.py",
+                "description": "Provides Median Absolute Deviation (MAD)-based anomaly detection using data writes trigger. Maintains in-memory deques for efficient computation and supports both count-based and duration-based thresholds.",
+                "author": "InfluxData",
+                "required_plugins": [
+                    {
+                        "name": "Notification sender",
+                        "path": "notifier/notifier_plugin.py",
+                    }
+                ],
+                "required_libraries": ["requests"],
+                "last_update": "2025-06-16",
+                "trigger_types_supported": ["data_writes"],
+            },
+            {
+                "name": "Notification Sender",
+                "path": "notifier/notifier_plugin.py",
+                "description": "Standalone notification dispatcher that sends notifications through various channels (Slack, Discord, HTTP, SMS, WhatsApp) based on incoming HTTP requests. Features retry logic and environment variable support.",
+                "author": "InfluxData",
+                "required_plugins": [],
+                "required_libraries": ["httpx", "twilio"],
+                "last_update": "2025-06-16",
+                "trigger_types_supported": ["http"],
+            },
+            {
+                "name": "State Change Monitor",
+                "path": "state_change/state_change_check_plugin.py",
+                "description": "Provides field change and threshold monitoring capabilities through scheduler and data writes plugins. Detects changes in field values or threshold conditions with customizable notification templates.",
+                "author": "InfluxData",
+                "required_plugins": [
+                    {
+                        "name": "Notification sender",
+                        "path": "notifier/notifier_plugin.py",
+                    }
+                ],
+                "required_libraries": ["requests"],
+                "last_update": "2025-06-16",
+                "trigger_types_supported": ["scheduler", "data_writes"],
+            },
+            {
+                "name": "ADTK Anomaly Detection",
+                "path": "stateless_adtk_detector/adtk_anomaly_detection_plugin.py",
+                "description": "Provides anomaly detection capabilities for time series data using the ADTK library. Supports multiple stateless detectors with consensus-based detection and customizable notification messages.",
+                "author": "InfluxData",
+                "required_plugins": [
+                    {
+                        "name": "Notification sender",
+                        "path": "notifier/notifier_plugin.py",
+                    }
+                ],
+                "required_libraries": ["requests", "adtk", "pandas"],
+                "last_update": "2025-06-16",
+                "trigger_types_supported": ["scheduler"],
+            },
+            {
+                "name": "Threshold and Deadman Checks",
+                "path": "threshold_deadman_checks/threshold_deadman_checks_plugin.py",
+                "description": "Provides comprehensive monitoring capabilities including deadman alerts and aggregation-based threshold checks. Supports both scheduler and data write triggers with multi-channel notifications.",
+                "author": "InfluxData",
+                "required_plugins": [
+                    {
+                        "name": "Notification sender",
+                        "path": "notifier/notifier_plugin.py",
+                    }
+                ],
+                "required_libraries": ["requests"],
+                "last_update": "2025-06-16",
+                "trigger_types_supported": ["scheduler", "data_writes"],
+            },
+        ],
+    }
 }
