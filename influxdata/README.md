@@ -1,2 +1,2 @@
-# influxdb3_plugins_dev
-Internal dev of Python plugins for InfluxDB 3.
+# influxdata
+Official Python plugins for InfluxDB 3, developed by InfluxData.
