@@ -5,7 +5,7 @@
         "plugins": [
             {
                 "name": "Data Replicator",
-                "path": "data_replicator/data_replicator.py",
+                "path": "influxdata/data_replicator/data_replicator.py",
                 "description": "Replicates data from a local InfluxDB 3 Core/Enterprise instance to a remote InfluxDB 3 instance. Supports filtering of tables and fields, renaming of tables and fields, and queue management for reliable delivery.",
                 "author": "InfluxData",
                 "required_plugins": [],
@@ -15,7 +15,7 @@
             },
             {
                 "name": "Downsampler",
-                "path": "downsampler/downsampler.py",
+                "path": "influxdata/downsampler/downsampler.py",
                 "description": "Enables downsampling of data in an InfluxDB 3 instance with flexible configuration for time intervals, field aggregations, tag filtering, and batch processing. Supports both scheduler and HTTP trigger modes.",
                 "author": "InfluxData",
                 "required_plugins": [],
@@ -25,7 +25,7 @@
             },
             {
                 "name": "Forecast Error Evaluator",
-                "path": "forecast_error_evaluator/forecast_error_evaluator.py",
+                "path": "influxdata/forecast_error_evaluator/forecast_error_evaluator.py",
                 "description": "Evaluates the accuracy of forecast models by comparing predicted values with actual observations. Computes error metrics (MSE, MAE, RMSE) and detects anomalies based on elevated errors with multi-channel notifications.",
                 "author": "InfluxData",
                 "required_plugins": [
@@ -40,7 +40,7 @@
             },
             {
                 "name": "InfluxDB to Iceberg",
-                "path": "influxdb_to_iceberg/influxdb_to_iceberg.py",
+                "path": "influxdata/influxdb_to_iceberg/influxdb_to_iceberg.py",
                 "description": "Transfers data from InfluxDB 3 to Apache Iceberg tables with automatic schema management, customizable namespace and table naming, field filtering, and batch processing support.",
                 "author": "InfluxData",
                 "required_plugins": [],
@@ -54,7 +54,7 @@
             },
             {
                 "name": "MAD Anomaly Detection",
-                "path": "mad_check/mad_check_plugin.py",
+                "path": "influxdata/mad_check/mad_check_plugin.py",
                 "description": "Provides Median Absolute Deviation (MAD)-based anomaly detection using data writes trigger. Maintains in-memory deques for efficient computation and supports both count-based and duration-based thresholds.",
                 "author": "InfluxData",
                 "required_plugins": [
@@ -69,7 +69,7 @@
             },
             {
                 "name": "Notification Sender",
-                "path": "notifier/notifier_plugin.py",
+                "path": "influxdata/notifier/notifier_plugin.py",
                 "description": "Standalone notification dispatcher that sends notifications through various channels (Slack, Discord, HTTP, SMS, WhatsApp) based on incoming HTTP requests. Features retry logic and environment variable support.",
                 "author": "InfluxData",
                 "required_plugins": [],
@@ -79,7 +79,7 @@
             },
             {
                 "name": "State Change Monitor",
-                "path": "state_change/state_change_check_plugin.py",
+                "path": "influxdata/state_change/state_change_check_plugin.py",
                 "description": "Provides field change and threshold monitoring capabilities through scheduler and data writes plugins. Detects changes in field values or threshold conditions with customizable notification templates.",
                 "author": "InfluxData",
                 "required_plugins": [
@@ -94,7 +94,7 @@
             },
             {
                 "name": "ADTK Anomaly Detection",
-                "path": "stateless_adtk_detector/adtk_anomaly_detection_plugin.py",
+                "path": "influxdata/stateless_adtk_detector/adtk_anomaly_detection_plugin.py",
                 "description": "Provides anomaly detection capabilities for time series data using the ADTK library. Supports multiple stateless detectors with consensus-based detection and customizable notification messages.",
                 "author": "InfluxData",
                 "required_plugins": [
@@ -109,7 +109,7 @@
             },
             {
                 "name": "Threshold and Deadman Checks",
-                "path": "threshold_deadman_checks/threshold_deadman_checks_plugin.py",
+                "path": "influxdata/threshold_deadman_checks/threshold_deadman_checks_plugin.py",
                 "description": "Provides comprehensive monitoring capabilities including deadman alerts and aggregation-based threshold checks. Supports both scheduler and data write triggers with multi-channel notifications.",
                 "author": "InfluxData",
                 "required_plugins": [
