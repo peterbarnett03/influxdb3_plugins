@@ -11,7 +11,7 @@
                 "required_plugins": [],
                 "required_libraries": ["influxdb3-python"],
                 "last_update": "2025-06-16",
-                "trigger_types_supported": ["scheduler", "data_writes"],
+                "trigger_types_supported": ["scheduler", "data_writes"]
             },
             {
                 "name": "Downsampler",
@@ -21,7 +21,7 @@
                 "required_plugins": [],
                 "required_libraries": [],
                 "last_update": "2025-06-16",
-                "trigger_types_supported": ["scheduler", "http"],
+                "trigger_types_supported": ["scheduler", "http"]
             },
             {
                 "name": "Forecast Error Evaluator",
@@ -31,12 +31,12 @@
                 "required_plugins": [
                     {
                         "name": "Notification sender",
-                        "path": "notifier/notifier_plugin.py",
+                        "path": "influxdata/notifier/notifier_plugin.py"
                     }
                 ],
                 "required_libraries": ["pandas", "requests"],
                 "last_update": "2025-06-16",
-                "trigger_types_supported": ["scheduler"],
+                "trigger_types_supported": ["scheduler"]
             },
             {
                 "name": "InfluxDB to Iceberg",
@@ -47,10 +47,10 @@
                 "required_libraries": [
                     "pandas",
                     "pyarrow",
-                    "pyiceberg[s3fs,hive,sql-sqlite]",
+                    "pyiceberg[s3fs,hive,sql-sqlite]"
                 ],
                 "last_update": "2025-06-16",
-                "trigger_types_supported": ["scheduler", "http"],
+                "trigger_types_supported": ["scheduler", "http"]
             },
             {
                 "name": "MAD Anomaly Detection",
@@ -60,12 +60,12 @@
                 "required_plugins": [
                     {
                         "name": "Notification sender",
-                        "path": "notifier/notifier_plugin.py",
+                        "path": "influxdata/notifier/notifier_plugin.py"
                     }
                 ],
                 "required_libraries": ["requests"],
                 "last_update": "2025-06-16",
-                "trigger_types_supported": ["data_writes"],
+                "trigger_types_supported": ["data_writes"]
             },
             {
                 "name": "Notification Sender",
@@ -75,7 +75,27 @@
                 "required_plugins": [],
                 "required_libraries": ["httpx", "twilio"],
                 "last_update": "2025-06-16",
-                "trigger_types_supported": ["http"],
+                "trigger_types_supported": ["http"]
+            },
+            {
+                "name": "Basic Transformation",
+                "path": "influxdata/basic_transformation/basic_transformation.py",
+                "description": "Enables transformation of time series data stored in InfluxDB 3 (transformations are supported for field/tag names and values).",
+                "author": "InfluxData",
+                "required_plugins": [],
+                "required_libraries": ["pint"],
+                "last_update": "2025-06-25",
+                "trigger_types_supported": ["scheduler"]
+            },
+            {
+                "name": "Prophet Forecasting",
+                "path": "influxdata/prophet_forecasting/prophet_forecasting.py",
+                "description": "Provides time series forecasting capabilities for InfluxDB 3 data using the Prophet library.",
+                "author": "InfluxData",
+                "required_plugins": [],
+                "required_libraries": ["pandas", "requests", "prophet", "numpy"],
+                "last_update": "2025-06-25",
+                "trigger_types_supported": ["http", "scheduler"]
             },
             {
                 "name": "State Change Monitor",
@@ -85,12 +105,12 @@
                 "required_plugins": [
                     {
                         "name": "Notification sender",
-                        "path": "notifier/notifier_plugin.py",
+                        "path": "influxdata/notifier/notifier_plugin.py"
                     }
                 ],
                 "required_libraries": ["requests"],
                 "last_update": "2025-06-16",
-                "trigger_types_supported": ["scheduler", "data_writes"],
+                "trigger_types_supported": ["scheduler", "data_writes"]
             },
             {
                 "name": "ADTK Anomaly Detection",
@@ -100,12 +120,12 @@
                 "required_plugins": [
                     {
                         "name": "Notification sender",
-                        "path": "notifier/notifier_plugin.py",
+                        "path": "influxdata/notifier/notifier_plugin.py"
                     }
                 ],
                 "required_libraries": ["requests", "adtk", "pandas"],
                 "last_update": "2025-06-16",
-                "trigger_types_supported": ["scheduler"],
+                "trigger_types_supported": ["scheduler"]
             },
             {
                 "name": "Threshold and Deadman Checks",
@@ -115,13 +135,13 @@
                 "required_plugins": [
                     {
                         "name": "Notification sender",
-                        "path": "notifier/notifier_plugin.py",
+                        "path": "influxdata/notifier/notifier_plugin.py"
                     }
                 ],
                 "required_libraries": ["requests"],
                 "last_update": "2025-06-16",
-                "trigger_types_supported": ["scheduler", "data_writes"],
-            },
-        ],
+                "trigger_types_supported": ["scheduler", "data_writes"]
+            }
+        ]
     }
 }
