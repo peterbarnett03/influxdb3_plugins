@@ -4,16 +4,6 @@
         "last_updated": "2025-06-16T17:42:08+03:00",
         "plugins": [
             {
-                "name": "Data Replicator",
-                "path": "influxdata/data_replicator/data_replicator.py",
-                "description": "Replicates data from a local InfluxDB 3 Core/Enterprise instance to a remote InfluxDB 3 instance. Supports filtering of tables and fields, renaming of tables and fields, and queue management for reliable delivery.",
-                "author": "InfluxData",
-                "required_plugins": [],
-                "required_libraries": ["influxdb3-python"],
-                "last_update": "2025-06-16",
-                "trigger_types_supported": ["scheduler", "data_writes"]
-            },
-            {
                 "name": "Downsampler",
                 "path": "influxdata/downsampler/downsampler.py",
                 "description": "Enables downsampling of data in an InfluxDB 3 instance with flexible configuration for time intervals, field aggregations, tag filtering, and batch processing. Supports both scheduler and HTTP trigger modes.",
