@@ -6,7 +6,7 @@
     "required_plugins": [],
     "category": "Data Replication",
     "description": "This plugin replicates data from a local InfluxDB 3 instance to a remote InfluxDB 3 instance, supporting filtering, renaming, and reliable delivery via scheduler or data write triggers.",
-    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/data_replicator.md",
+    "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/data_replicator/README.md",
     "scheduled_args_config": [
         {
             "name": "host",

@@ -6,7 +6,7 @@
     "required_plugins": ["Notification sender"],
     "category": "Anomaly Detection",
     "description": "This plugin provides field change and threshold monitoring for InfluxDB 3 using scheduler and data write triggers, with notifications via multiple channels.",
-    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/state_change_check_plugin.md",
+    "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/state_change/README.md",
     "scheduled_args_config": [
         {
             "name": "measurement",

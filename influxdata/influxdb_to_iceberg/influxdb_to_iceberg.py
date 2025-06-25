@@ -6,7 +6,7 @@
     "required_plugins": [],
     "category": "Data Transfer",
     "description": "This plugin transfers data from InfluxDB 3 to Apache Iceberg tables using scheduler or HTTP triggers.",
-    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/influxdb_to_iceberg.md",
+    "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/influxdb_to_iceberg/README.md",
     "scheduled_args_config": [
         {
             "name": "measurement",

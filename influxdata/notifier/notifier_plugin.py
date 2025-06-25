@@ -6,7 +6,7 @@
     "required_plugins": [],
     "category": "Alerting",
     "description": "This plugin sends notifications through various channels (Slack, Discord, HTTP, SMS, WhatsApp) based on incoming HTTP POST requests. It acts as a standalone notification dispatcher, receiving data from other plugins or external systems.",
-    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/notifier_plugin.md",
+    "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/notifier/README.md",
     "request_body_config": [
         {
             "name": "notification_text",

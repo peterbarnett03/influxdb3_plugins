@@ -6,7 +6,7 @@
     "required_plugins": [],
     "category": "Data Processing",
     "description": "This plugin enables downsampling of data in InfluxDB 3, supporting periodic scheduling and on-demand HTTP requests with flexible aggregation and filtering.",
-    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/downsampler.md",
+    "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/downsampler/README.md",
     "scheduled_args_config": [
         {
             "name": "source_measurement",

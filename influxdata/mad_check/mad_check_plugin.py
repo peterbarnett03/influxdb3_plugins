@@ -6,7 +6,7 @@
     "required_plugins": ["Notification sender"],
     "category": "Anomaly Detection",
     "description": "This plugin provides Median Absolute Deviation (MAD)-based anomaly detection for InfluxDB 3 using the data writes trigger.",
-    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/mad_check_plugin.md",
+    "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/mad_check/README.md",
     "onwrite_args_config": [
         {
             "name": "measurement",

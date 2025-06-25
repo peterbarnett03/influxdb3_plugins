@@ -6,7 +6,7 @@
     "required_plugins": [],
     "category": "Forecasting",
     "description": "This plugin enables forecasting of time series data stored in InfluxDB 3 using the Prophet library. It supports periodic forecasting via a scheduler and on-demand forecasting via HTTP requests.",
-    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/prophet_forecasting.md",
+    "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/prophet_forecasting/README.md",
     "scheduled_args_config": [
         {
             "name": "measurement",

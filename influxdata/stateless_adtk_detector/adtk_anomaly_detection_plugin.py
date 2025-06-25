@@ -6,7 +6,7 @@
     "required_plugins": ["Notification sender"],
     "category": "Anomaly Detection",
     "description": "This plugin provides anomaly detection capabilities for time series data in InfluxDB 3 using the ADTK library through a `scheduler` trigger. It leverages the Notification Sender plugin for InfluxDB 3 to send notifications via various channels when anomalies are detected.",
-    "docs_file_link": "https://github.com/InfluxData/influxdb3-python/blob/main/plugins/adtk_anomaly_detection_plugin.md",
+    "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/stateless_adtk_detector/README.md",
     "scheduled_args_config": [
         {
             "name": "measurement",
