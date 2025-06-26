@@ -1,11 +1,6 @@
 """
 {
-    "plugin_name": "State Change Monitoring",
     "plugin_type": ["scheduled", "onwrite"],
-    "dependencies": ["requests"],
-    "required_plugins": ["Notification sender"],
-    "category": "Anomaly Detection",
-    "description": "This plugin provides field change and threshold monitoring for InfluxDB 3 using scheduler and data write triggers, with notifications via multiple channels.",
     "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/state_change/README.md",
     "scheduled_args_config": [
         {

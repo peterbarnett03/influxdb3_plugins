@@ -1,11 +1,6 @@
 """
 {
-    "plugin_name": "Threshold and deadman checks",
     "plugin_type": ["scheduled", "onwrite"],
-    "dependencies": ["requests"],
-    "required_plugins": ["Notification sender"],
-    "category": "Anomaly Detection",
-    "description": "This plugin provides threshold and deadman checks for InfluxDB 3 using scheduler and data write triggers, with notifications via multiple channels.",
     "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/threshold_deadman_checks/README.md",
     "scheduled_args_config": [
         {

@@ -1,11 +1,6 @@
 """
 {
-    "plugin_name": "Forecast Error Evaluator",
     "plugin_type": ["scheduled"],
-    "dependencies": ["pandas", "requests"],
-    "required_plugins": ["Notification sender"],
-    "category": "Anomaly Detection",
-    "description": "This plugin evaluates the accuracy of forecasting models in InfluxDB 3 by comparing predicted values with actual observations and detecting anomalies based on error rates, sending alerts when anomalies occur.",
     "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/forecast_error_evaluator/README.md",
     "scheduled_args_config": [
         {

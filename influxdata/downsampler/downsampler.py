@@ -1,11 +1,6 @@
 """
 {
-    "plugin_name": "Downsampler",
     "plugin_type": ["scheduled", "http"],
-    "dependencies": [],
-    "required_plugins": [],
-    "category": "Data Processing",
-    "description": "This plugin enables downsampling of data in InfluxDB 3, supporting periodic scheduling and on-demand HTTP requests with flexible aggregation and filtering.",
     "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/downsampler/README.md",
     "scheduled_args_config": [
         {
@@ -60,80 +55,6 @@
             "name": "tag_values",
             "example": "room:Kitchen@LivingRoom@Bedroom@'Some value string'",
             "description": "Dot-separated tag filters (e.g., 'tag:value1@value2').",
-            "required": false
-        },
-        {
-            "name": "max_retries",
-            "example": "5",
-            "description": "Maximum number of retries for write operations.",
-            "required": false
-        },
-        {
-            "name": "target_database",
-            "example": "mydb",
-            "description": "Target database for writing downsampled data. If not provided, uses 'default' database.",
-            "required": false
-        }
-    ],
-    "request_body_config": [
-        {
-            "name": "source_measurement",
-            "example": "home",
-            "description": "Name of the source measurement to downsample.",
-            "required": true
-        },
-        {
-            "name": "target_measurement",
-            "example": "home_downsampled",
-            "description": "Name of the target measurement to write downsampled data.",
-            "required": true
-        },
-        {
-            "name": "interval",
-            "example": "10s",
-            "description": "Time interval for downsampling (e.g., '10min', '2h'). Units: 's', 'min', 'h', 'd', 'w', 'm', 'q', 'y'.",
-            "required": false
-        },
-        {
-            "name": "batch_size",
-            "example": "1h",
-            "description": "Time interval for batch processing (e.g., '1h', '1d'). Units: 's', 'min', 'h', 'd'.",
-            "required": false
-        },
-        {
-            "name": "calculations",
-            "example": [["co", "avg"], ["co", "max"], ["co", "min"]],
-            "description": "Aggregation functions. Either 'avg' or a list of ['field', 'aggregation']. Valid aggregations: avg, sum, min, max, derivative, median.",
-            "required": false
-        },
-        {
-            "name": "specific_fields",
-            "example": ["usage_user", "usage_system"],
-            "description": "List of fields to downsample (e.g., ['usage_user', 'usage_system']).",
-            "required": false
-        },
-        {
-            "name": "excluded_fields",
-            "example": ["usage_idle"],
-            "description": "List of fields to exclude from downsampling.",
-            "required": false
-        },
-        {
-            "name": "tag_values",
-            "example": {"host": ["server1", "server2"]},
-            "description": "Dictionary of tag names to lists of values (e.g., {'host': ['server1', 'server2']}).",
-            "required": false
-        },
-        {
-            "name": "backfill_start",
-            "example": "2025-05-01T00:00:00+03:00",
-            "description": "Start time for backfill in ISO 8601 format (e.g., '2025-05-01T00:00:00+03:00').",
-            "required": false
-        },
-        {
-            "name": "backfill_end",
-            "example": "2025-05-02T00:00:00+03:00",
-            "description": "End time for backfill in ISO 8601 format (e.g., '2025-05-02T00:00:00+03:00').",
             "required": false
         },
         {

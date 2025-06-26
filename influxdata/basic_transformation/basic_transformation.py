@@ -1,11 +1,6 @@
 """
 {
-    "plugin_name": "Basic Transformation",
     "plugin_type": ["scheduled"],
-    "dependencies": ["pint"],
-    "required_plugins": [],
-    "category": "Data Transformation",
-    "description": "This plugin enables transformation of time series data stored in InfluxDB 3. It supports scheduled tasks to periodically transform data from a source measurement and write the results to a target measurement.",
     "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/basic_transformation/README.md",
     "scheduled_args_config": [
         {

@@ -1,11 +1,6 @@
 """
 {
-    "plugin_name": "Prophet forecasting",
     "plugin_type": ["scheduled", "http"],
-    "dependencies": ["pandas", "requests", "prophet", "numpy"],
-    "required_plugins": [],
-    "category": "Forecasting",
-    "description": "This plugin enables forecasting of time series data stored in InfluxDB 3 using the Prophet library. It supports periodic forecasting via a scheduler and on-demand forecasting via HTTP requests.",
     "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/prophet_forecasting/README.md",
     "scheduled_args_config": [
         {
@@ -212,127 +207,7 @@
             "description": "Twilio sender phone number (verified). Required if using sms or whatsapp sender.",
             "required": false
         }
-    ],
-    "request_body_config": [
-        {
-            "name": "measurement",
-            "example": "temperature",
-            "description": "The InfluxDB measurement to query for historical data.",
-            "required": true
-        },
-        {
-            "name": "field",
-            "example": "value",
-            "description": "The field name within the measurement to forecast.",
-            "required": true
-        },
-        {
-            "name": "forecast_horizont",
-            "example": "7d",
-            "description": "Future duration to forecast. Format: <number><unit> where unit is s, min, h, d, w, m, q, y.",
-            "required": true
-        },
-        {
-            "name": "tag_values",
-            "example": {"region": "us-west", "device": "sensor1"},
-            "description": "Dictionary of tag filters for the InfluxDB query.",
-            "required": true
-        },
-        {
-            "name": "target_measurement",
-            "example": "temperature_forecast",
-            "description": "Destination measurement for storing forecast results.",
-            "required": true
-        },
-        {
-            "name": "unique_suffix",
-            "example": "20250619_v1",
-            "description": "Unique identifier for model versioning and storage.",
-            "required": true
-        },
-        {
-            "name": "start_time",
-            "example": "2025-05-20T00:00:00Z",
-            "description": "Start of historical window (ISO 8601 format with timezone).",
-            "required": true
-        },
-        {
-            "name": "end_time",
-            "example": "2025-06-19T00:00:00Z",
-            "description": "End of historical window (ISO 8601 format with timezone).",
-            "required": true
-        },
-        {
-            "name": "seasonality_mode",
-            "example": "additive",
-            "description": "Prophet seasonality mode ('additive' or 'multiplicative'). Defaults to 'additive'.",
-            "required": false
-        },
-        {
-            "name": "changepoint_prior_scale",
-            "example": "0.05",
-            "description": "Flexibility of trend changepoints. Defaults to 0.05.",
-            "required": false
-        },
-        {
-            "name": "changepoints",
-            "example": ["2025-01-01", "2025-06-01"],
-            "description": "List of changepoint dates (ISO format).",
-            "required": false
-        },
-        {
-            "name": "save_mode",
-            "example": "true",
-            "description": "Whether to load/save the model ('true' or 'false'). Defaults to 'false'.",
-            "required": false
-        },
-        {
-            "name": "validation_window",
-            "example": "3d",
-            "description": "Duration for validation window. Defaults to '0s' (no validation). Format: <number><unit>.",
-            "required": false
-        },
-        {
-            "name": "msre_threshold",
-            "example": "0.05",
-            "description": "Maximum acceptable MSRE for validation. Defaults to infinity (no threshold).",
-            "required": false
-        },
-        {
-            "name": "target_database",
-            "example": "forecast_db",
-            "description": "Optional InfluxDB database name for writing forecast results.",
-            "required": false
-        },
-        {
-            "name": "holiday_date_list",
-            "example": ["2025-01-01", "2025-12-25"],
-            "description": "List of custom holiday dates (ISO format).",
-            "required": false
-        },
-        {
-            "name": "holiday_names",
-            "example": ["New Year", "Christmas"],
-            "description": "List of names corresponding to the holiday dates.",
-            "required": false
-        },
-        {
-            "name": "holiday_country_names",
-            "example": ["US", "UK"],
-            "description": "List of country codes for built-in holidays.",
-            "required": false
-        },
-        {
-            "name": "inferred_freq",
-            "example": "1D",
-            "description": "Manually specified frequency (e.g., '1D'). If not provided, frequency is inferred from data.",
-            "required": false
-        }
-    ],
-    "query_parameters_config": [],
-    "request_headers_config": [],
-    "onwrite_args_config": [],
-    "http_args_config": []
+    ]
 }
 """
 

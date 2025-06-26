@@ -1,11 +1,6 @@
 """
 {
-    "plugin_name": "influxdb_to_iceberg",
     "plugin_type": ["scheduled", "http"],
-    "dependencies": ["pandas", "pyarrow", "pyiceberg"],
-    "required_plugins": [],
-    "category": "Data Transfer",
-    "description": "This plugin transfers data from InfluxDB 3 to Apache Iceberg tables using scheduler or HTTP triggers.",
     "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/influxdb_to_iceberg/README.md",
     "scheduled_args_config": [
         {
@@ -50,65 +45,10 @@
             "description": "Iceberg table name (optional, default: same as measurement).",
             "required": false
         }
-    ],
-    "request_body_config": [
-        {
-            "name": "measurement",
-            "example": "cpu",
-            "description": "The InfluxDB measurement to replicate.",
-            "required": true
-        },
-        {
-            "name": "catalog_configs",
-            "example": {"type": "sql", "uri": "http://nessie:9000"},
-            "description": "Configuration dictionary for Iceberg catalog loading.",
-            "required": true
-        },
-        {
-            "name": "included_fields",
-            "example": ["usage_user", "usage_idle"],
-            "description": "List of field names to include in replication (optional).",
-            "required": false
-        },
-        {
-            "name": "excluded_fields",
-            "example": ["usage_system"],
-            "description": "List of field names to exclude from replication (optional).",
-            "required": false
-        },
-        {
-            "name": "namespace",
-            "example": "production",
-            "description": "Target Iceberg namespace (optional, default: 'default').",
-            "required": false
-        },
-        {
-            "name": "table_name",
-            "example": "cpu_metrics",
-            "description": "Target Iceberg table name (optional, default: same as measurement).",
-            "required": false
-        },
-        {
-            "name": "batch_size",
-            "example": "1d",
-            "description": "Batch size duration for processing (e.g., '1d', '12h'). Units: 's', 'min', 'h', 'd', 'w'. Default: '1d'.",
-            "required": false
-        },
-        {
-            "name": "backfill_start",
-            "example": "2023-01-01T00:00:00+00:00",
-            "description": "ISO 8601 datetime string with timezone for the start of the backfill window. If not provided, uses the oldest available data.",
-            "required": false
-        },
-        {
-            "name": "backfill_end",
-            "example": "2023-01-02T00:00:00+00:00",
-            "description": "ISO 8601 datetime string with timezone for the end of the backfill window. If not provided, uses the current UTC time.",
-            "required": false
-        }
     ]
 }
 """
+
 import base64
 import json
 import time
