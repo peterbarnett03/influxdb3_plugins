@@ -58,7 +58,7 @@
                 "trigger_types_supported": ["data_writes"]
             },
             {
-                "name": "Notification Sender",
+                "name": "Notification sender",
                 "path": "influxdata/notifier/notifier_plugin.py",
                 "description": "Standalone notification dispatcher that sends notifications through various channels (Slack, Discord, HTTP, SMS, WhatsApp) based on incoming HTTP requests. Features retry logic and environment variable support.",
                 "author": "InfluxData",
