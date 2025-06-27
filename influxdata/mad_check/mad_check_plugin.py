@@ -116,6 +116,12 @@
             "example": "+19876543210",
             "description": "Twilio sender phone number (verified). Required if using sms or whatsapp sender.",
             "required": false
+        },
+        {
+            "name": "config_file_path",
+            "example": "config.toml",
+            "description": "Path to config file to override args. Format: 'config.toml'.",
+            "required": false
         }
     ]
 }
@@ -126,9 +132,11 @@ import os
 import random
 import re
 import time
+import tomllib
 import uuid
 from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from statistics import median
 from string import Template
 from urllib.parse import urlparse
@@ -301,7 +309,10 @@ def send_notification(
         requests.RequestException: If all retries fail or a non-2xx response is received.
     """
     url: str = f"http://localhost:{port}/api/v3/engine/{path}"
-    headers: dict = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
+    headers: dict = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}",
+    }
     data: str = json.dumps(payload)
 
     max_retries: int = 3
@@ -473,7 +484,10 @@ def parse_mad_thresholds(influxdb3_local, args: dict, task_id: str) -> list[tupl
 
         field_name = parts[0].strip()
         try:
-            k: float = float(parts[1].strip())
+            k: str | float = parts[1].strip()
+            if k[0] == k[-1] and k[0] in ("'", '"'):
+                k = k[1:-1]
+            k = float(k)
         except ValueError:
             influxdb3_local.warn(f"[{task_id}] Invalid k in segment '{seg}'")
             continue
@@ -561,6 +575,7 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
               - mad_thresholds (str): '@'-separated segments "field:k:window:threshold".
               - senders (str): Dot-separated notification channels.
             Optional:
+              - config_file_path (str): path to config file to override args.
               - state_change_count (int): Max flips allowed before suppressing.
               - port_override (int): HTTP port for notification plugin (default 8181).
               - influxdb3_auth_token (str): API v3 token (or via ENV var).
@@ -572,6 +587,26 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
         All exceptions are caught and logged via influxdb3_local.error.
     """
     task_id: str = str(uuid.uuid4())
+
+    # Override args with config file if specified
+    if args:
+        if path := args.get("config_file_path", None):
+            try:
+                plugin_dir_var: str | None = os.getenv("PLUGIN_DIR", None)
+                if not plugin_dir_var:
+                    influxdb3_local.error(
+                        f"[{task_id}] Failed to get PLUGIN_DIR env var"
+                    )
+                    return
+                plugin_dir: Path = Path(plugin_dir_var)
+                file_path = plugin_dir / path
+                influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
+                with open(file_path, "rb") as f:
+                    args = tomllib.load(f)
+                influxdb3_local.info(f"[{task_id}] New args content: {args}")
+            except Exception:
+                influxdb3_local.error(f"[{task_id}] Failed to read config file")
+                return
 
     if (
         not args

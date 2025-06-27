@@ -14,6 +14,7 @@ This plugin provides Median Absolute Deviation (MAD)-based anomaly detection for
 - **MAD-Based Anomaly Detection**: Detects anomalies in field values using Median Absolute Deviation without repeated database queries.
 - **In-Memory Deques**: Maintains recent values in memory for efficient MAD computation.
 - **Count and Duration-Based Triggers**: Supports triggering alerts based on the number of consecutive outliers or the duration of outlier conditions.
+- **Args Overriding**: Allows overriding arguments for  data write type via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function).
 - **Flip Detection**: Suppresses notifications if field values change too frequently within a specified window.
 - **Multi-Channel Notifications**: Supports Slack, Discord, HTTP, SMS, and WhatsApp via the Notification Sender Plugin.
 - **Customizable Messages**: Notification templates support dynamic variables (e.g., `$table`, `$field`, `$threshold_count`, `$tags`).
@@ -74,6 +75,7 @@ The following arguments are extracted from the `args` dictionary for the Data Wr
 | `notification_time_text`  | Template for duration-based notification messages with variables `$table`, `$field`, `$threshold_time`, `$tags`.                          | No       | `"MAD duration alert: Field $field in $table outlier for $threshold_time. Tags: $tags"`                  |
 | `notification_path`       | URL path for the notification sending plugin.                                                                                             | No       | `"some/path"` (default: `notify`)                                                                        |
 | `port_override`           | Port number where InfluxDB accepts requests.                                                                                              | No       | `8182` (default: `8181`)                                                                                 |
+| `config_file_path`        | Path to the configuration file from `PLUGIN_DIR` env var. Format: `'example.toml'`.                                                       | No       | `'example.toml'`                                                                                         |
 
 #### MAD Thresholds Format
 - Format: `field_name:k:window_count:threshold` (e.g., `temp:"2.5":20:5` for 5 consecutive outliers, or `load:"3.0":10:2m` for 2 minutes of outlier conditions).
