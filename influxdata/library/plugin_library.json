@@ -131,7 +131,27 @@
                 "required_libraries": ["requests"],
                 "last_update": "2025-06-16",
                 "trigger_types_supported": ["scheduler", "data_writes"]
-            }
+            },
+            {
+                "name": "System Metrics Collector",
+                "path": "examples/schedule/system_metrics/system_metrics.py",
+                "description": "Collects system-level metrics (CPU, memory, disk, and network) using psutil and writes them to InfluxDB. Designed to run on a schedule and provide observability into host-level performance.",
+                "author": "InfluxData",
+                "required_plugins": [],
+                "required_libraries": ["psutil"],
+                "last_update": "2025-06-27",
+                "trigger_types_supported": ["scheduler"]
+              },
+              {
+                  "name": "Simple Data Replicator",
+                  "path": "suyashcjoshi/data-replicator/data_replicator.py",
+                  "description": "Replicates data from a local InfluxDB 3 instance to a remote instance on WAL flush. Supports filtering, downsampling, and optional validation of replicated entries with a persistent queue.",
+                  "author": "InfluxData",
+                  "required_plugins": [],
+                  "required_libraries": ["influxdb_client_3"],
+                  "last_update": "2025-06-27",
+                  "trigger_types_supported": ["data_writes"]
+              }
         ]
     }
 }
