@@ -13,6 +13,7 @@ This plugin system provides field change and threshold monitoring capabilities f
 ## Features
 - **Scheduler Plugin**: Periodically queries a measurement within a time window, counts field value changes for unique tag combinations, and sends notifications if thresholds are exceeded.
 - **Data Write Plugin**: Triggers on data writes, monitors field thresholds (count or duration-based), and suppresses notifications for unstable data states.
+- **Args Overriding**: Allows overriding arguments for scheduled and data write types via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function).
 - **Multi-Channel Notifications**: Supports Slack, Discord, HTTP, SMS, and WhatsApp via the Notification Sender Plugin.
 - **Customizable Messages**: Notification templates support dynamic variables (e.g., `$table`, `$field`, `$changes`, `$tags`).
 - **Retry Logic**: Retries failed notifications with randomized backoff.
@@ -62,16 +63,17 @@ The Scheduler Plugin periodically queries a measurement within a specified time 
 #### Arguments (Scheduler Mode)
 The following arguments are extracted from the `args` dictionary for the Scheduler Plugin:
 
-| Argument                | Description                                                                                          | Required | Example                                                                                             |
-|-------------------------|------------------------------------------------------------------------------------------------------|----------|-----------------------------------------------------------------------------------------------------|
-| `measurement`           | The InfluxDB table (measurement) to monitor.                                                         | Yes      | `"cpu"`                                                                                             |
-| `field_change_count`    | Dot-separated list of field thresholds (e.g., `field:count`). Example: `temp:3.load:2`.              | Yes      | `"temp:3.load:2"`                                                                                   |
-| `senders`               | Dot-separated list of notification channels (e.g., `slack.discord`).                                 | Yes      | `"slack.discord"`                                                                                   |
-| `window`                | Time window for data analysis (e.g., `1h` for 1 hour). Units: `s`, `min`, `h`, `d`, `w`.             | Yes      | `"1h"`                                                                                              |
-| `influxdb3_auth_token`  | API token for InfluxDB 3. Can be set via `INFLUXDB3_AUTH_TOKEN` environment variable.                | No       | `"YOUR_API_TOKEN"`                                                                                  |
-| `notification_text`     | Template for notification message with variables `$table`, `$field`, `$changes`, `$window`, `$tags`. | No       | `"Field $field in table $table changed $changes times in window $window for tags $tags"`            |
-| `notification_path`     | URL path for the notification sending plugin.                                                        | No       | `"some/path"` (default: `notify`)                                                                   |
-| `port_override`         | Port number where InfluxDB accepts requests.                                                         | No       | `8182` (default: `8181`)                                                                            |
+| Argument               | Description                                                                                          | Required  | Example                                                                                   |
+|------------------------|------------------------------------------------------------------------------------------------------|-----------|-------------------------------------------------------------------------------------------|
+| `measurement`          | The InfluxDB table (measurement) to monitor.                                                         | Yes       | `"cpu"`                                                                                   |
+| `field_change_count`   | Dot-separated list of field thresholds (e.g., `field:count`). Example: `temp:3.load:2`.              | Yes       | `"temp:3.load:2"`                                                                         |
+| `senders`              | Dot-separated list of notification channels (e.g., `slack.discord`).                                 | Yes       | `"slack.discord"`                                                                         |
+| `window`               | Time window for data analysis (e.g., `1h` for 1 hour). Units: `s`, `min`, `h`, `d`, `w`.             | Yes       | `"1h"`                                                                                    |
+| `influxdb3_auth_token` | API token for InfluxDB 3. Can be set via `INFLUXDB3_AUTH_TOKEN` environment variable.                | No        | `"YOUR_API_TOKEN"`                                                                        |
+| `notification_text`    | Template for notification message with variables `$table`, `$field`, `$changes`, `$window`, `$tags`. | No        | `"Field $field in table $table changed $changes times in window $window for tags $tags"`  |
+| `notification_path`    | URL path for the notification sending plugin.                                                        | No        | `"some/path"` (default: `notify`)                                                         |
+| `port_override`        | Port number where InfluxDB accepts requests.                                                         | No        | `8182` (default: `8181`)                                                                  |
+| `config_file_path`     | Path to the configuration file from `PLUGIN_DIR` env var. Format: `'example.toml'`.                  | No        | `'example.toml'`                                                                          |
 
 #### Sender-Specific Configurations
 Depending on the channels specified in `senders`, additional arguments are required:
@@ -129,6 +131,7 @@ The following arguments are extracted from the `args` dictionary for the Data Wr
 | `notification_time_text`  | Template for notification message (when condition with time) with variables `$table`, `$field`, `$value`, `$duration`, `$row`.  | No       | `"State change detected: Field $field in table $table changed to $value during $duration. Row: $row`             |
 | `notification_path`       | URL path for the notification sending plugin.                                                                                   | No       | `"some/path"` (default: `notify`)                                                                                |
 | `port_override`           | Port number where InfluxDB accepts requests.                                                                                    | No       | `8182` (default: `8181`)                                                                                         |
+| `config_file_path`        | Path to the configuration file from `PLUGIN_DIR` env var. Format: `'example.toml'`.                                             | No       | `'example.toml'`                                                                                                 |
 
 #### Field Thresholds Format
 - Format: `field_name:"value":count_or_time` (e.g., `temp:"30":10` for 10 occurrences, or `humidity:"true":2h` for 2 hours).

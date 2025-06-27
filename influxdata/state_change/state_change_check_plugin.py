@@ -110,6 +110,12 @@
             "example": "+19876543210",
             "description": "Twilio sender phone number (verified). Required if using sms or whatsapp sender.",
             "required": false
+        },
+        {
+            "name": "config_file_path",
+            "example": "config.toml",
+            "description": "Path to config file to override args. Format: 'config.toml'.",
+            "required": false
         }
     ],
     "onwrite_args_config": [
@@ -232,6 +238,12 @@
             "example": "+19876543210",
             "description": "Twilio sender phone number (verified). Required if using sms or whatsapp sender.",
             "required": false
+        },
+        {
+            "name": "config_file_path",
+            "example": "config.toml",
+            "description": "Path to config file to override args. Format: 'config.toml'.",
+            "required": false
         }
     ]
 }
@@ -242,9 +254,11 @@ import os
 import random
 import re
 import time
+import tomllib
 import uuid
 from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from string import Template
 from urllib.parse import urlparse
 
@@ -706,6 +720,7 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
               - "field_thresholds": string defining thresholds, parsed by `parse_field_thresholds`.
               - "senders": dot-separated list of notification channels (e.g., "slack.sms").
             May also include:
+              - "config_file_path": path to config file to override args (str).
               - "state_change_window": integer count of last values to consider for flip detection.
               - "state_change_count": integer threshold of flips to suppress notifications.
               - "port_override": HTTP port for notification plugin (default 8181).
@@ -718,6 +733,26 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
         Exception: Captures and logs any unexpected error (with `influxdb3_local.error`).
     """
     task_id: str = str(uuid.uuid4())
+
+    # Override args with config file if specified
+    if args:
+        if path := args.get("config_file_path", None):
+            try:
+                plugin_dir_var: str | None = os.getenv("PLUGIN_DIR", None)
+                if not plugin_dir_var:
+                    influxdb3_local.error(
+                        f"[{task_id}] Failed to get PLUGIN_DIR env var"
+                    )
+                    return
+                plugin_dir: Path = Path(plugin_dir_var)
+                file_path = plugin_dir / path
+                influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
+                with open(file_path, "rb") as f:
+                    args = tomllib.load(f)
+                influxdb3_local.info(f"[{task_id}] New args content: {args}")
+            except Exception:
+                influxdb3_local.error(f"[{task_id}] Failed to read config file")
+                return
 
     if (
         not args
@@ -1086,6 +1121,7 @@ def process_scheduled_call(
         call_time (datetime): The UTC timestamp at which the scheduler triggers
             this function. This defines the end of the time window.
         args (dict, optional): Dictionary containing the following required keys:
+            - config_file_path (str): path to config file to override args.
             - measurement (str): The name of the measurement to query.
             - field_change_count (dict): Mapping of field names to change thresholds.
             - senders (dict): Configuration for notification senders.
@@ -1099,6 +1135,26 @@ def process_scheduled_call(
         No exceptions are raised directly; all errors are caught and logged.
     """
     task_id: str = str(uuid.uuid4())
+
+    # Override args with config file if specified
+    if args:
+        if path := args.get("config_file_path", None):
+            try:
+                plugin_dir_var: str | None = os.getenv("PLUGIN_DIR", None)
+                if not plugin_dir_var:
+                    influxdb3_local.error(
+                        f"[{task_id}] Failed to get PLUGIN_DIR env var"
+                    )
+                    return
+                plugin_dir: Path = Path(plugin_dir_var)
+                file_path = plugin_dir / path
+                influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
+                with open(file_path, "rb") as f:
+                    args = tomllib.load(f)
+                influxdb3_local.info(f"[{task_id}] New args content: {args}")
+            except Exception:
+                influxdb3_local.error(f"[{task_id}] Failed to read config file")
+                return
 
     # Check for required arguments
     if (
