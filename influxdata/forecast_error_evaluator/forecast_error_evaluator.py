@@ -146,6 +146,12 @@
             "example": "+19876543210",
             "description": "Twilio sender phone number (verified). Required if using sms or whatsapp sender.",
             "required": false
+        },
+        {
+            "name": "config_file_path",
+            "example": "config.toml",
+            "description": "Path to config file to override args. Format: 'config.toml'.",
+            "required": false
         }
     ]
 }
@@ -155,9 +161,11 @@ import json
 import os
 import random
 import time
+import tomllib
 import uuid
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from string import Template
 from urllib.parse import urlparse
 
@@ -588,11 +596,32 @@ def process_scheduled_call(
               - "notification_path" (str): Notification plugin path (default "notify").
               - "port_override" (int): HTTP port for notification plugin (default 8181).
               - "influxdb3_auth_token" (str): API v3 token (or via ENV var INFLUXDB3_AUTH_TOKEN).
+              - "config_file_path": (str), path to config file to override args.
 
     Exceptions:
         All exceptions are caught and logged via influxdb3_local.error.
     """
     task_id: str = str(uuid.uuid4())
+
+    # Override args with config file if specified
+    if args:
+        if path := args.get("config_file_path", None):
+            try:
+                plugin_dir_var: str | None = os.getenv("PLUGIN_DIR", None)
+                if not plugin_dir_var:
+                    influxdb3_local.error(
+                        f"[{task_id}] Failed to get PLUGIN_DIR env var"
+                    )
+                    return
+                plugin_dir: Path = Path(plugin_dir_var)
+                file_path = plugin_dir / path
+                influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
+                with open(file_path, "rb") as f:
+                    args = tomllib.load(f)
+                influxdb3_local.info(f"[{task_id}] New args content: {args}")
+            except Exception:
+                influxdb3_local.error(f"[{task_id}] Failed to read config file")
+                return
 
     # Validate required arguments
     required_keys: list = [
@@ -637,7 +666,9 @@ def process_scheduled_call(
             "notification_text",
             "[$level] Forecast error alert in $measurement.$field: $metric=$error. Tags: $tags",
         )
-        min_condition_duration: timedelta = parse_time_duration(args.get("min_condition_duration", "0s"), task_id)
+        min_condition_duration: timedelta = parse_time_duration(
+            args.get("min_condition_duration", "0s"), task_id
+        )
         influxdb3_auth_token: str | None = os.getenv(
             "INFLUXDB3_AUTH_TOKEN"
         ) or args.get("influxdb3_auth_token")
@@ -701,12 +732,12 @@ def process_scheduled_call(
             df_act["time"] = pd.to_datetime(df_act["time"], unit="ns")
         else:
             try:
-                df_fore["time"] = pd.to_datetime(
-                    df_fore["time"], unit="ns"
-                ).dt.round(rounding_freq)
-                df_act["time"] = pd.to_datetime(
-                    df_act["time"], unit="ns"
-                ).dt.round(rounding_freq)
+                df_fore["time"] = pd.to_datetime(df_fore["time"], unit="ns").dt.round(
+                    rounding_freq
+                )
+                df_act["time"] = pd.to_datetime(df_act["time"], unit="ns").dt.round(
+                    rounding_freq
+                )
             except Exception as e:
                 influxdb3_local.error(
                     f"[{task_id}] Error rounding timestamps: {str(e)}"
