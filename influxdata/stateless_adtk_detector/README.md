@@ -13,6 +13,7 @@ This plugin provides anomaly detection capabilities for time series data in Infl
 ## Features
 - **Scheduler Plugin**: Periodically queries a measurement within a time window, applies one or more ADTK detectors to a numeric field, and sends notifications when anomalies are detected.
 - **Multi-Channel Notifications**: Supports Slack, Discord, HTTP, SMS, and WhatsApp via the Notification Sender Plugin.
+- **Args Overriding**: Allows overriding arguments for scheduler type via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function).
 - **Customizable Messages**: Notification templates support dynamic variables (e.g., `$table`, `$field`, `$timestamp`, `$value`, `$detectors`, `$tags`).
 - **ADTK Stateless Detectors**: Supports multiple detectors:
     - `InterQuartileRangeAD`
@@ -85,6 +86,7 @@ The following arguments are extracted from the `args` dictionary:
 | `notification_text`       | Template for notification message with variables `$table`, `$field`, `$value`, `$detectors`, `$tags`.                                 | No       | `"Anomaly detected in \$table.\$field with value \$value by \$detectors. Tags: \$tags"`                    |
 | `notification_path`       | URL path for the notification sending plugin.                                                                                         | No       | `"some/path"` (default: `notify`)                                                                          |
 | `port_override`           | Port number where InfluxDB accepts requests.                                                                                          | No       | `8182` (default: `8181`)                                                                                   |
+| `config_file_path`        | Path to the configuration file from `PLUGIN_DIR` env var. Format: `'example.toml'`.                                                   | No       | `'example.toml'`                                                                                           |
 
 #### Detector Parameters
 Supported ADTK detectors: `InterQuartileRangeAD`, `LevelShiftAD`, `PersistAD`, `QuantileAD`, `SeasonalAD`, `ThresholdAD`, `VolatilityShiftAD`.
