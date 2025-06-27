@@ -134,6 +134,12 @@
             "example": "+19876543210",
             "description": "Twilio sender phone number (verified). Required if using sms or whatsapp sender.",
             "required": false
+        },
+        {
+            "name": "config_file_path",
+            "example": "config.toml",
+            "description": "Path to config file to override args. Format: 'config.toml'.",
+            "required": false
         }
     ],
     "onwrite_args_config": [
@@ -244,6 +250,12 @@
             "example": "+19876543210",
             "description": "Twilio sender phone number (verified). Required if using sms or whatsapp sender.",
             "required": false
+        },
+        {
+            "name": "config_file_path",
+            "example": "config.toml",
+            "description": "Path to config file to override args. Format: 'config.toml'.",
+            "required": false
         }
     ]
 }
@@ -255,9 +267,11 @@ import os
 import random
 import re
 import time
+import tomllib
 import uuid
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from string import Template
 from urllib.parse import urlparse
 
@@ -577,6 +591,26 @@ def process_writes(influxdb3_local, table_batches: list, args: dict):
     for a specified number of times.
     """
     task_id: str = str(uuid.uuid4())
+
+    # Override args with config file if specified
+    if args:
+        if path := args.get("config_file_path", None):
+            try:
+                plugin_dir_var: str | None = os.getenv("PLUGIN_DIR", None)
+                if not plugin_dir_var:
+                    influxdb3_local.error(
+                        f"[{task_id}] Failed to get PLUGIN_DIR env var"
+                    )
+                    return
+                plugin_dir: Path = Path(plugin_dir_var)
+                file_path = plugin_dir / path
+                influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
+                with open(file_path, "rb") as f:
+                    args = tomllib.load(f)
+                influxdb3_local.info(f"[{task_id}] New args content: {args}")
+            except Exception:
+                influxdb3_local.error(f"[{task_id}] Failed to read config file")
+                return
 
     if (
         not args
@@ -1034,6 +1068,26 @@ def process_scheduled_call(influxdb3_local, call_time: datetime, args: dict):
             "measurement", "senders", "influxdb3_auth_token", "window", and other alert settings.
     """
     task_id: str = str(uuid.uuid4())
+
+    # Override args with config file if specified
+    if args:
+        if path := args.get("config_file_path", None):
+            try:
+                plugin_dir_var: str | None = os.getenv("PLUGIN_DIR", None)
+                if not plugin_dir_var:
+                    influxdb3_local.error(
+                        f"[{task_id}] Failed to get PLUGIN_DIR env var"
+                    )
+                    return
+                plugin_dir: Path = Path(plugin_dir_var)
+                file_path = plugin_dir / path
+                influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
+                with open(file_path, "rb") as f:
+                    args = tomllib.load(f)
+                influxdb3_local.info(f"[{task_id}] New args content: {args}")
+            except Exception:
+                influxdb3_local.error(f"[{task_id}] Failed to read config file")
+                return
 
     # Configuration
     if (

@@ -13,6 +13,7 @@ This plugin system provides checks capabilities for InfluxDB 3 through two compl
 ## Features
 - **Scheduler Plugin**: Periodically checks for data presence (e.g., for deadman alerts) or evaluates aggregation-based conditions and sends notifications when conditions are met.
 - **Data Write Plugin**: Triggers on data writes to the database, checks threshold conditions, and sends notifications.
+- **Args Overriding**: Allows overriding arguments for scheduler and data write types via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function).
 - **Multi-Channel Notifications**: Notifications are sent via the Notification Sender Plugin, supporting Slack, Discord, HTTP, SMS, or WhatsApp.
 - **Customizable Messages**: Allows dynamic variables in notification text.
 - **Retry Logic**: Retries failed notifications with exponential backoff.
@@ -75,6 +76,7 @@ The following arguments are extracted from the `args` dictionary for the Schedul
 | `port_override`               | The port number where InfluxDB accepts requests.                                                                                                       | No       | `8182` (default: `8181`)                                                                                                                  |
 | `deadman_check`               | Boolean flag to enable deadman checks. If `True`, the plugin will check for the absence of data. Default is False.                                     | No       | `True` or `False`                                                                                                                         |
 | `field_aggregation_values`    | Aggregation conditions for threshold checks (e.g., `field:avg@">=10-INFO"$field2:min@"<5.0-WARN"`).                                                    | No       | `field:avg@">=10-ERROR"\$field2:min@"<5.0-INFO"`                                                                                          |
+| `config_file_path`            | Path to the configuration file from `PLUGIN_DIR` env var. Format: `'example.toml'`.                                                                    | No       | `'example.toml'`                                                                                                                          |
 
 #### Aggregation-Based Checks
 The Scheduler Plugin supports aggregation-based threshold checks. Use the `field_aggregation_values` parameter to define conditions on aggregated values (e.g., `avg`, `min`, `max`, `count`, `sum`, `derivative`, `median`. The format is:
@@ -133,16 +135,17 @@ The Data Write Plugin triggers on data writes to the database and checks for thr
 #### Arguments (Data Write Mode)
 The following arguments are extracted from the `args` dictionary for the Data Write Plugin:
 
-| Argument                | Description                                                                                                    | Required | Example                                                                                              |
-|-------------------------|----------------------------------------------------------------------------------------------------------------|----------|------------------------------------------------------------------------------------------------------|
-| `measurement`           | The InfluxDB table (measurement) to monitor.                                                                   | Yes      | `"cpu"`                                                                                              |
-| `field_conditions`      | Conditions for triggering alerts (e.g., `temp>'30.0'-WARN:status=='ok'-INFO`).                                 | Yes      | `temp>'30.0'-WARN:status=='ok'-INFO`                                                                 |
-| `senders`               | Dot-separated list of notification channels.                                                                   | Yes      | `"slack.discord"`                                                                                    |
-| `influxdb3_auth_token`  | API token for your InfluxDB 3 instance. Can be set via environment variable `INFLUXDB3_AUTH_TOKEN`.            | No       | `"YOUR_API_TOKEN"`                                                                                   |
-| `trigger_count`         | Number of times the condition must be met before sending an alert.                                             | No       | `2` (default: 1)                                                                                     |
-| `notification_text`     | Template for the notification message with variables `$level`, `$field`, `$op_sym`, `$compare_val`, `$actual`. | No       | `"[$level] InfluxDB 3 alert triggered. Condition \$field \$op_sym \$compare_val matched (\$actual)"` |
-| `notification_path`     | URL path for the notification sending plugin.                                                                  | No       | `some/path` (default: `notify`)                                                                      |
-| `port_override`         | The port number where InfluxDB accepts requests.                                                               | No       | `8182` (default: `8181`)                                                                             |
+| Argument                | Description                                                                                                     | Required | Example                                                                                              |
+|-------------------------|-----------------------------------------------------------------------------------------------------------------|----------|------------------------------------------------------------------------------------------------------|
+| `measurement`           | The InfluxDB table (measurement) to monitor.                                                                    | Yes      | `"cpu"`                                                                                              |
+| `field_conditions`      | Conditions for triggering alerts (e.g., `temp>'30.0'-WARN:status=='ok'-INFO`).                                  | Yes      | `temp>'30.0'-WARN:status=='ok'-INFO`                                                                 |
+| `senders`               | Dot-separated list of notification channels.                                                                    | Yes      | `"slack.discord"`                                                                                    |
+| `influxdb3_auth_token`  | API token for your InfluxDB 3 instance. Can be set via environment variable `INFLUXDB3_AUTH_TOKEN`.             | No       | `"YOUR_API_TOKEN"`                                                                                   |
+| `trigger_count`         | Number of times the condition must be met before sending an alert.                                              | No       | `2` (default: 1)                                                                                     |
+| `notification_text`     | Template for the notification message with variables `$level`, `$field`, `$op_sym`, `$compare_val`, `$actual`.  | No       | `"[$level] InfluxDB 3 alert triggered. Condition \$field \$op_sym \$compare_val matched (\$actual)"` |
+| `notification_path`     | URL path for the notification sending plugin.                                                                   | No       | `some/path` (default: `notify`)                                                                      |
+| `port_override`         | The port number where InfluxDB accepts requests.                                                                | No       | `8182` (default: `8181`)                                                                             |
+| `config_file_path`      | Path to the configuration file from `PLUGIN_DIR` env var. Format: `'example.toml'`.                             | No       | `'example.toml'`                                                                                     |
 
 #### Sender-Specific Configurations in `senders_config`
 The same sender-specific arguments as described in the Scheduler Plugin section apply here.
