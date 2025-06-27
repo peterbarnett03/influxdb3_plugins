@@ -68,17 +68,26 @@
             "example": "mydb",
             "description": "Target database for writing downsampled data. If not provided, uses 'default' database.",
             "required": false
+        },
+        {
+            "name": "config_file_path",
+            "example": "config.toml",
+            "description": "Path to config file to override args. Format: 'config.toml'.",
+            "required": false
         }
     ]
 }
 """
 
 import json
+import os
 import random
 import re
 import time
+import tomllib
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 
 def parse_time_interval(
@@ -1001,6 +1010,27 @@ def process_scheduled_call(
         Exception: If no args are provided.
     """
     task_id: str = str(uuid.uuid4())
+
+    # Override args with config file if specified
+    if args:
+        if path := args.get("config_file_path", None):
+            try:
+                plugin_dir_var: str | None = os.getenv("PLUGIN_DIR", None)
+                if not plugin_dir_var:
+                    influxdb3_local.error(
+                        f"[{task_id}] Failed to get PLUGIN_DIR env var"
+                    )
+                    return
+                plugin_dir: Path = Path(plugin_dir_var)
+                file_path = plugin_dir / path
+                influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
+                with open(file_path, "rb") as f:
+                    args = tomllib.load(f)
+                influxdb3_local.info(f"[{task_id}] New args content: {args}")
+            except Exception:
+                influxdb3_local.error(f"[{task_id}] Failed to read config file")
+                return
+
     influxdb3_local.info(
         f"[{task_id}] Starting downsampling schedule for call_time: {call_time}."
     )
