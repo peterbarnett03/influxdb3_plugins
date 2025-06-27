@@ -206,6 +206,12 @@
             "example": "+19876543210",
             "description": "Twilio sender phone number (verified). Required if using sms or whatsapp sender.",
             "required": false
+        },
+        {
+            "name": "config_file_path",
+            "example": "config.toml",
+            "description": "Path to config file to override args. Format: 'config.toml'.",
+            "required": false
         }
     ]
 }
@@ -216,6 +222,7 @@ import os
 import random
 import re
 import time
+import tomllib
 import uuid
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
@@ -923,6 +930,7 @@ def process_scheduled_call(
                 - unique_suffix (str): Unique version suffix for model saving/loading.
 
             Optional keys:
+                - config_file_path: path to config file to override args (str).
                 - seasonality_mode (str): Prophet seasonality mode ("additive" or "multiplicative").
                 - changepoint_prior_scale (float): Changepoint flexibility parameter.
                 - changepoints (str): Comma-separated list of changepoint timestamps (ISO format).
@@ -952,6 +960,27 @@ def process_scheduled_call(
         All exceptions are caught and logged. No exceptions are propagated upward.
     """
     task_id: str = str(uuid.uuid4())
+
+    # Override args with config file if specified
+    if args:
+        if path := args.get("config_file_path", None):
+            try:
+                plugin_dir_var: str | None = os.getenv("PLUGIN_DIR", None)
+                if not plugin_dir_var:
+                    influxdb3_local.error(
+                        f"[{task_id}] Failed to get PLUGIN_DIR env var"
+                    )
+                    return
+                plugin_dir: Path = Path(plugin_dir_var)
+                file_path = plugin_dir / path
+                influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
+                with open(file_path, "rb") as f:
+                    args = tomllib.load(f)
+                influxdb3_local.info(f"[{task_id}] New args content: {args}")
+            except Exception:
+                influxdb3_local.error(f"[{task_id}] Failed to read config file")
+                return
+
     required_keys: list = [
         "measurement",
         "field",

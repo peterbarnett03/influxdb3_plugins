@@ -14,6 +14,7 @@ This plugin enables forecasting of time series data stored in InfluxDB 3 using t
 ## Features
 - **Scheduler Plugin**: Periodically performs forecasting on specified InfluxDB measurements.
 - **HTTP Plugin**: Allows on-demand forecasting via HTTP POST requests.
+- **Args Overriding**: Allows overriding arguments for scheduled tasks via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function). 
 - **Model Training and Prediction**: Supports both training new models and using existing ones for prediction.
 - **Forecast Validation**: Optionally validates forecasts against recent actual values using Mean Squared Relative Error (MSRE).
 - **Data Writing**: Writes forecast results to a specified InfluxDB measurement.
@@ -89,6 +90,7 @@ The following arguments are extracted from the `args` dictionary:
 | `notification_path`        | URL path for posting the alert (e.g., `"notify"`). Defaults to `"notify"`.                                                                                | No          | `"notify"`                                                                                                                                                                       |
 | `influxdb3_auth_token`     | Authentication token for sending notifications. If not provided, uses `INFLUXDB3_AUTH_TOKEN` environment variable.                                        | No          | `"your_token"`                                                                                                                                                                   |
 | `port_override`            | Optional custom port for notification dispatch (1–65535). Defaults to `8181`.                                                                             | No          | `8182`                                                                                                                                                                           |
+| `config_file_path`         | Path to the configuration file from `PLUGIN_DIR` env var. Format: `'example.toml'`.                                                                       | No          | `'example.toml'`                                                                                                                                                                 |
 
 #### Example
 ```bash
