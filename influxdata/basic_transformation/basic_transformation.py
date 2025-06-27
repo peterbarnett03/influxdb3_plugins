@@ -74,16 +74,25 @@
             "example": "temp:'>=101'.hum:'<=182'",
             "description": "Filters for querying specific data. Format: 'field:'=value'.field2:'>value2'. Supported operators: '=', '!=', '>', '<', '>=', '<='.",
             "required": false
+        },
+        {
+            "name": "config_file_path",
+            "example": "config.toml",
+            "description": "Path to config file to override args. Format: 'config.toml'.",
+            "required": false
         }
     ]
 }
 """
 
+import os
 import random
 import re
 import time
+import tomllib
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from pint import UnitRegistry
 
@@ -222,6 +231,7 @@ def parse_time_interval(raw: str, task_id: str) -> timedelta:
         return timedelta(weeks=magnitude)
 
     raise Exception(f"[{task_id}] Error while converting time interval '{raw}'")
+
 
 def parse_fields(args: dict, key: str) -> list[str]:
     """Splits a dot-separated string into a list of strings."""
@@ -780,19 +790,23 @@ def write_data(
 def _normalize_temp_unit_alias(part: str) -> str | None:
     """
     Given a unit part string (e.g. 'degC', 'celsius', 'K', etc.),
-    return a canonical key among 'degC','degF','kelvin','degR' if recognized,
+    return a canonical key among 'degC','degF','degK','degR' if recognized,
     or None if not recognized as an absolute temperature unit.
     Comparison is case-insensitive.
     """
     _temp_aliases: dict = {
+        "degK": "degK",
+        "degR": "degR",
+        "degC": "degC",
+        "degF": "degF",
         "degc": "degC",
         "celsius": "degC",
         "°c": "degC",
         "degf": "degF",
         "fahrenheit": "degF",
         "°f": "degF",
-        "kelvin": "kelvin",
-        "k": "kelvin",
+        "kelvin": "degK",
+        "k": "degK",
         "degr": "degR",
         "degrankine": "degR",
         "rankine": "degR",
@@ -806,7 +820,7 @@ def _normalize_temp_unit_alias(part: str) -> str | None:
 def _convert_absolute_temperature(value: float, from_key: str, to_key: str) -> float:
     """
     Convert absolute temperature value from from_key to to_key.
-    from_key and to_key are canonical strings: 'degC','degF','kelvin','degR'.
+    from_key and to_key are canonical strings: 'degC','degF','degK','degR'.
     Returns the converted float.
     """
     # Step 1: to Kelvin
@@ -814,7 +828,7 @@ def _convert_absolute_temperature(value: float, from_key: str, to_key: str) -> f
         T_k = value + 273.15
     elif from_key == "degF":
         T_k = (value - 32) * 5.0 / 9.0 + 273.15
-    elif from_key == "kelvin":
+    elif from_key == "degK":
         T_k = value
     elif from_key == "degR":
         T_k = value * 5.0 / 9.0
@@ -826,7 +840,7 @@ def _convert_absolute_temperature(value: float, from_key: str, to_key: str) -> f
         return T_k - 273.15
     elif to_key == "degF":
         return (T_k - 273.15) * 9.0 / 5.0 + 32
-    elif to_key == "kelvin":
+    elif to_key == "degK":
         return T_k
     elif to_key == "degR":
         return T_k * 9.0 / 5.0
@@ -1024,6 +1038,7 @@ def process_scheduled_call(
                 - "names_transformations": string defining name transforms (e.g. 'field1:"lower".pattern:"snake"').
                 - "values_transformations": string defining value transforms similarly.
             Optional keys:
+                - "config_file_path": path to config file to override args (str) .
                 - "target_database": target database/bucket name (str).
                 - "included_fields": dot-separated field names to include.
                 - "excluded_fields": dot-separated field names to exclude.
@@ -1033,6 +1048,27 @@ def process_scheduled_call(
                 - "filters": string defining field filters.
     """
     task_id: str = str(uuid.uuid4())
+
+    # Override args with config file
+    if args:
+        if path := args.get("config_file_path", None):
+            try:
+                plugin_dir_var: str | None = os.getenv("PLUGIN_DIR", None)
+                if not plugin_dir_var:
+                    influxdb3_local.error(
+                        f"[{task_id}] Failed to get PLUGIN_DIR env var"
+                    )
+                    return
+                plugin_dir: Path = Path(plugin_dir_var)
+                file_path = plugin_dir / path
+                influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
+                with open(file_path, "rb") as f:
+                    args = tomllib.load(f)
+                influxdb3_local.info(f"[{task_id}] New args content: {args}")
+            except Exception:
+                influxdb3_local.error(f"[{task_id}] Failed to read config file")
+                return
+
     required_keys: list = [
         "measurement",
         "window",
