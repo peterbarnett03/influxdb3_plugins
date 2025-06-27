@@ -14,6 +14,7 @@ This plugin transfers data from InfluxDB 3 to Apache Iceberg tables. It supports
 ## Features
 - **Scheduler Plugin**: Periodically queries InfluxDB measurements within a specified time window.
 - **HTTP Plugin**: Allows on-demand replication via HTTP POST requests, supporting batch processing and backfill windows.
+- **Args Overriding**: Allows overriding arguments for scheduler type via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function).
 - **Data Transformation**: Converts InfluxDB query results to a format suitable for Iceberg tables.
 - **Schema Management**: Automatically creates the Iceberg table schema based on the queried data if the table does not exist.
 - **Namespace and Table Naming**: Customizable Iceberg namespace and table names, defaulting to "default" namespace and the measurement name for the table.
@@ -65,15 +66,17 @@ The Scheduler Plugin periodically queries the specified InfluxDB measurement wit
 #### Arguments
 The following arguments are extracted from the `args` dictionary:
 
-| Argument          | Description                                                                                                                                                  | Required  | Example                                      |
-|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|----------------------------------------------|
-| `measurement`     | The InfluxDB measurement to query.                                                                                                                           | Yes       | `"cpu"`                                      |
-| `window`          | Time window for data analysis (e.g., `1h` for 1 hour). Units: `s`, `min`, `h`, `d`, `w`.                                                                     | Yes       | `"1h"`                                       |
-| `catalog_configs` | Base64-encoded JSON string containing Iceberg catalog configuration. See the [PyIceberg catalog documentation](https://py.iceberg.apache.org/configuration/) | Yes       | `"eyJ1cmkiOiAiaHR0cDovL25lc3NpZTo5MDAwIn0="` |
-| `included_fields` | Dot-separated list of field names to include in the query (optional).                                                                                        | No        | `"usage_user.usage_idle"`                    |
-| `excluded_fields` | Dot-separated list of field names to exclude from the query (optional).                                                                                      | No        | `"usage_system.usage_user"`                  |
-| `namespace`       | Iceberg namespace for the table (optional, default: `"default"`).                                                                                            | No        | `"production"`                               |
-| `table_name`      | Iceberg table name (optional, default: same as `measurement`).                                                                                               | No        | `"cpu_metrics"`                              |
+| Argument            | Description                                                                                                                                                   | Required  | Example                                      |
+|---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|----------------------------------------------|
+| `measurement`       | The InfluxDB measurement to query.                                                                                                                            | Yes       | `"cpu"`                                      |
+| `window`            | Time window for data analysis (e.g., `1h` for 1 hour). Units: `s`, `min`, `h`, `d`, `w`.                                                                      | Yes       | `"1h"`                                       |
+| `catalog_configs`   | Base64-encoded JSON string containing Iceberg catalog configuration. See the [PyIceberg catalog documentation](https://py.iceberg.apache.org/configuration/). | Yes       | `"eyJ1cmkiOiAiaHR0cDovL25lc3NpZTo5MDAwIn0="` |
+| `included_fields`   | Dot-separated list of field names to include in the query (optional).                                                                                         | No        | `"usage_user.usage_idle"`                    |
+| `excluded_fields`   | Dot-separated list of field names to exclude from the query (optional).                                                                                       | No        | `"usage_system.usage_user"`                  |
+| `namespace`         | Iceberg namespace for the table (optional, default: `"default"`).                                                                                             | No        | `"production"`                               |
+| `table_name`        | Iceberg table name (optional, default: same as `measurement`).                                                                                                | No        | `"cpu_metrics"`                              |
+| `config_file_path`  | Path to the configuration file from `PLUGIN_DIR` env var. Format: `'example.toml'`.                                                                           | No        | `'example.toml'`                             |
+
 
 #### Schema Creation and Naming
 - **Schema Creation**: 

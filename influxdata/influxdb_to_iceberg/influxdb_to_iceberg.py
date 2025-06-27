@@ -44,6 +44,12 @@
             "example": "cpu_metrics",
             "description": "Iceberg table name (optional, default: same as measurement).",
             "required": false
+        },
+        {
+            "name": "config_file_path",
+            "example": "config.toml",
+            "description": "Path to config file to override args. Format: 'config.toml'.",
+            "required": false
         }
     ]
 }
@@ -51,9 +57,12 @@
 
 import base64
 import json
+import os
 import time
+import tomllib
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pandas as pd
 import pyarrow as pa
@@ -312,6 +321,7 @@ def process_scheduled_call(
             - "excluded_fields": str, dot-separated field names to exclude (optional).
             - "namespace": str, Iceberg namespace (optional; default "default").
             - "table_name": str, Iceberg table name (optional; default = measurement).
+            - "config_file_path": str, path to config file to override args (optional).
 
     Returns:
         None. All outcomes and errors are logged via influxdb3_local.
@@ -322,6 +332,26 @@ def process_scheduled_call(
       - Each append writes a new file in Iceberg (normal behavior).
     """
     task_id = str(uuid.uuid4())
+
+    # Override args with config file if specified
+    if args:
+        if path := args.get("config_file_path", None):
+            try:
+                plugin_dir_var: str | None = os.getenv("PLUGIN_DIR", None)
+                if not plugin_dir_var:
+                    influxdb3_local.error(
+                        f"[{task_id}] Failed to get PLUGIN_DIR env var"
+                    )
+                    return
+                plugin_dir: Path = Path(plugin_dir_var)
+                file_path = plugin_dir / path
+                influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
+                with open(file_path, "rb") as f:
+                    args = tomllib.load(f)
+                influxdb3_local.info(f"[{task_id}] New args content: {args}")
+            except Exception:
+                influxdb3_local.error(f"[{task_id}] Failed to read config file")
+                return
 
     # Validate required arguments
     required_keys: list = ["measurement", "window", "catalog_configs"]
