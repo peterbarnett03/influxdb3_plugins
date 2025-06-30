@@ -144,7 +144,7 @@
             },
             {
                 "name": "Simple Data Replicator",
-                "path": "suyashcjoshi/data-replicator/data_replicator.py",
+                "path": "suyashcjoshi/data-replicator/data-replicator.py",
                 "description": "Replicates data from a local InfluxDB 3 instance to a remote instance on WAL flush. Supports filtering, downsampling, and optional validation of replicated entries with a persistent queue.",
                 "author": "InfluxData",
                 "required_plugins": [],
