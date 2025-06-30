@@ -29,7 +29,7 @@
         },
         {
             "name": "values_transformations",
-            "example": "temp:'convert_C_to_F'.hum:'upper'.something:'lower'",
+            "example": "temp:'convert_degC_to_degF'.hum:'upper'.something:'lower'",
             "description": "Rules for transforming field values. Format: 'field1:'transform1 transform2'.pattern:'transform3'.",
             "required": true
         },

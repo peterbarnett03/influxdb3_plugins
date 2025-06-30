@@ -3,9 +3,8 @@
 This plugin system provides checks capabilities for InfluxDB 3 through two complementary plugins: `scheduler` and `data write`. These plugins detect checks conditions and use the **Notification Sender Plugin for InfluxDB 3** to dispatch notifications via various channels.
 
 ## Prerequisites
-- **InfluxDB v3 Core/Enterprise**: Latest version.
-- **Python**: Version 3.10 or higher.
-- **Notification Sender Plugin for InfluxDB 3**: This plugin is required for sending notifications. [Link to Notification Sender Plugin](#) (to be added).
+- **InfluxDB v3 Core/Enterprise**: with the Processing Engine enabled.
+- **Notification Sender Plugin for InfluxDB 3**: This plugin is required for sending notifications. [Link to Notification Sender Plugin](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/notifier).
 
 ## Files
 - `threshold_deadman_checks_plugin.py`: The main plugin code containing handlers for `scheduler` and `data write`.
@@ -52,7 +51,7 @@ influxdb3 install package requests
 ```
 
 ### 3. Install and Configure the Notification Sender Plugin
-- Ensure the [Notification Sender Plugin for InfluxDB 3](#) (link to be added) is installed and configured. This plugin is **required** for sending notifications via Slack, Discord, HTTP, SMS, or WhatsApp. The Notification Sender Plugin must be properly installed and configured for the alerting system to function.
+- Ensure the [Notification Sender Plugin for InfluxDB 3](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/notifier) is installed and configured. This plugin is **required** for sending notifications via Slack, Discord, HTTP, SMS, or WhatsApp. The Notification Sender Plugin must be properly installed and configured for the alerting system to function.
 
 ## Configure & Create Triggers
 

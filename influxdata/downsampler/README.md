@@ -3,8 +3,7 @@
 This plugin enables downsampling of data in an InfluxDB 3 Core/Enterprise instance and writes the results to a target measurement and database. It supports flexible configuration for time intervals, field aggregations, tag filtering, and batch processing, with robust error handling and retry logic. The plugin can be triggered via a scheduler for periodic downsampling or through HTTP requests for on-demand processing.  
   
 ## Prerequisites  
-- **InfluxDB v3 Core**: Public beta (March 29, 2025) or later.  
-- **Python**: 3.10 or higher.
+- **InfluxDB v3 Core/Enterprise**: with the Processing Engine enabled.
   
 ## Files  
 - `downsampler.py`: The main plugin code for downsampling data.  

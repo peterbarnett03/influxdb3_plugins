@@ -3,9 +3,8 @@
 This plugin provides anomaly detection capabilities for time series data in InfluxDB 3 using the ADTK library through a `scheduler` trigger. It leverages the **Notification Sender Plugin for InfluxDB 3** to send notifications via various channels when anomalies are detected.
 
 ## Prerequisites
-- **InfluxDB v3 Core/Enterprise**: Latest version.
-- **Python**: Version 3.10 or higher.
-- **Notification Sender Plugin for InfluxDB 3**: Required for sending notifications. [Link to Notification Sender Plugin](#) (to be added).
+- **InfluxDB v3 Core/Enterprise**: with the Processing Engine enabled.
+- **Notification Sender Plugin for InfluxDB 3**: Required for sending notifications. [Link to Notification Sender Plugin](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/notifier).
 
 ## Files
 - `adtk_anomaly_detection_plugin.py`: The main plugin code containing the handler for the `scheduler` trigger.
@@ -62,7 +61,7 @@ influxdb3 install package pandas
 ```
 
 ### 3. Install and Configure the Notification Sender Plugin
-- Ensure the [Notification Sender Plugin for InfluxDB 3](#) (link to be added) is installed and configured. This plugin is **required** for sending notifications via Slack, Discord, HTTP, SMS, or WhatsApp.
+- Ensure the [Notification Sender Plugin for InfluxDB 3](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/notifier) is installed and configured. This plugin is **required** for sending notifications via Slack, Discord, HTTP, SMS, or WhatsApp.
 
 ## Configure & Create Triggers
 

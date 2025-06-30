@@ -3,8 +3,7 @@
 This plugin is designed to send notifications through various channels (Slack, Discord, HTTP, SMS, WhatsApp) based on incoming HTTP requests. A standalone notification dispatcher, receiving data from other plugins or external systems and sending notifications accordingly.
 
 ## Prerequisites
-- **InfluxDB v3 Core/Enterprise**: Latest version.
-- **Python**: Version 3.10 or higher.
+- **InfluxDB v3 Core/Enterprise**: with the Processing Engine enabled.
 
 ## Files
 - `notifier_plugin.py`: The main plugin code for handling notification requests.

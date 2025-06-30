@@ -5,8 +5,7 @@ This plugin transfers data from InfluxDB 3 to Apache Iceberg tables. It supports
 - **HTTP Plugin**: Allows on-demand data replication via HTTP POST requests, enabling flexible control over the replication process.
 
 ## Prerequisites
-- **InfluxDB v3 Core/Enterprise**: Latest version.
-- **Python**: Version 3.10 or higher.
+- **InfluxDB v3 Core/Enterprise**: with the Processing Engine enabled.
 
 ## Files
 - `influxdb_to_iceberg.py`: The main plugin code containing handlers for both `scheduler` and `http` triggers.

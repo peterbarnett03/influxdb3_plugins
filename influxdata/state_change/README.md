@@ -3,9 +3,8 @@
 This plugin system provides field change and threshold monitoring capabilities for InfluxDB 3 through two complementary plugins: `scheduler` and `data writes`. These plugins detect changes in field values or threshold conditions and use the **Notification Sender Plugin for InfluxDB 3** to dispatch notifications via various channels.
 
 ## Prerequisites
-- **InfluxDB v3 Core/Enterprise**: Latest version.
-- **Python**: Version 3.10 or higher.
-- **Notification Sender Plugin for InfluxDB 3**: Required for sending notifications. [Link to Notification Sender Plugin](#) (to be added).
+- **InfluxDB v3 Core/Enterprise**: with the Processing Engine enabled.
+- **Notification Sender Plugin for InfluxDB 3**: Required for sending notifications. [Link to Notification Sender Plugin](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/notifier).
 
 ## Files
 - `state_change_check_plugin.py`: The main plugin code containing handlers for `scheduler` and `data writes` triggers.
@@ -53,7 +52,7 @@ influxdb3 install package requests
 ```
 
 ### 3. Install and Configure the Notification Sender Plugin
-- Ensure the [Notification Sender Plugin for InfluxDB 3](#) (link to be added) is installed and configured. This plugin is **required** for sending notifications via Slack, Discord, HTTP, SMS, or WhatsApp.
+- Ensure the [Notification Sender Plugin for InfluxDB 3](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/notifier) is installed and configured. This plugin is **required** for sending notifications via Slack, Discord, HTTP, SMS, or WhatsApp.
 
 ## Configure & Create Triggers
 

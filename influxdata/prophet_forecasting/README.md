@@ -5,8 +5,7 @@ This plugin enables forecasting of time series data stored in InfluxDB 3 using t
 - **HTTP Plugin**: Allows on-demand forecasting via HTTP POST requests, providing flexible control over the forecasting process.
 
 ## Prerequisites
-- **InfluxDB v3 Core/Enterprise**: Latest version.
-- **Python**: Version 3.10 or higher.
+- **InfluxDB v3 Core/Enterprise**: with the Processing Engine enabled.
 
 ## Files
 - `prophet_forecasting.py`: The main plugin code containing handlers for both `scheduler` and `http` triggers.

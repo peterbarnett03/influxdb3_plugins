@@ -3,8 +3,7 @@
 This plugin enables the transformation of time series data stored in InfluxDB 3. It supports transformations for both field/tag names and their values, allowing users to clean, standardize, or convert data as needed. The plugin is designed to run scheduled tasks that periodically transform data from a source measurement and write the results to a target measurement.
 
 ## Prerequisites
-- **InfluxDB v3 Core/Enterprise**: Latest version.
-- **Python**: Version 3.10 or higher.
+- **InfluxDB v3 Core/Enterprise**: with the Processing Engine enabled.
 
 ## Files
 - `basic_transformation.py`: The main plugin code containing handlers for scheduled tasks.
@@ -62,7 +61,7 @@ The following arguments are extracted from the `args` dictionary:
 | `window`                   | Historical window duration for data retrieval (e.g., `30d`). Format: `<number><unit>` where unit is `s`, `min`, `h`, `d`, `w`, `m`, `q`, `y`.                        | Yes         | `"30d"`                                                       |
 | `target_measurement`       | Destination measurement for storing transformed data.                                                                                                                | Yes         | `"transformed_temperature"`                                   |
 | `names_transformations`    | Rules for transforming field and tag names. Format: `'field1:"transform1 transform2".pattern_name:"transform3 transform4'`.                                          | Yes         | `'room:"lower snake".temp:"upper".name:"custom_replacement"'` |
-| `values_transformations`   | Rules for transforming field values. Format: `'field1:"transform1 transform2".pattern:"transform3"'`.                                                                | Yes         | `'temp:"convert_C_to_F".hum:"upper".something:"lower"'`       |
+| `values_transformations`   | Rules for transforming field values. Format: `'field1:"transform1 transform2".pattern:"transform3"'`.                                                                | Yes         | `'temp:"convert_degC_to_degF".hum:"upper".something:"lower"'` |
 | `target_database`          | Optional InfluxDB database name for writing transformed data.                                                                                                        | No          | `"transformed_db"`                                            |
 | `included_fields`          | Dot-separated list of field names to include in the query.                                                                                                           | No          | `"temp.hum.something"`                                        |
 | `excluded_fields`          | Dot-separated list of field names to exclude from the query.                                                                                                         | No          | `"co.h-u_m2"`                                                 |
@@ -78,7 +77,7 @@ influxdb3 create trigger \
   --database mydb \
   --plugin-filename basic_transformation.py \
   --trigger-spec "every:1d" \
-  --trigger-arguments measurement=temperature,window=30d,target_measurement=transformed_temperature,names_transformations='room:"lower".temp:"snake"',values_transformations='temp:"convert_C_to_F".something:"upper"' \
+  --trigger-arguments measurement=temperature,window=30d,target_measurement=transformed_temperature,names_transformations='room:"lower".temp:"snake"',values_transformations='temp:"convert_degC_to_degF".something:"upper"' \
   basic_transform_trigger
 ```
 
