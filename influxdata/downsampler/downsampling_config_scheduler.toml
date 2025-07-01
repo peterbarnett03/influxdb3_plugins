@@ -1,0 +1,54 @@
+# Downsampling Plugin Scheduler Configuration Template
+# Copy this file to your PLUGIN_DIR and reference it with `--trigger-arguments config_file_path=downsampling_config_scheduler.toml`
+
+
+########## Required Parameters ##########
+# Name of the source measurement to downsample
+source_measurement = "home"         # e.g., "cpu_usage", "temperature"
+
+# Name of the target measurement to write downsampled data
+target_measurement = "home_downsampled"
+
+# Time interval for aggregation. Format: <number><unit>
+# Units: s, min, h, d, w, m, q, y
+interval = "10min"                  # e.g., "10s", "1h", "1d"
+
+# Time window for each downsampling job. Format: <number><unit>
+# Units: s, min, h, d, w
+window = "1h"                       # e.g., "30min", "24h"
+
+
+
+########## Optional Parameters ##########
+# Time offset to shift the window. Format: <number><unit>
+# offset = "5min"                  # e.g., "10s", "1h"
+
+# Aggregation functions per field.
+# Either a single function or dot-separated list of field:function pairs
+# calculations = "avg"               # default: "avg"
+# calculations = "field1:sum.field2:max"
+
+# Specific fields to downsample (dot-separated list).
+# specific_fields = "temperature.humidity"
+
+# Fields to exclude from downsampling (dot-separated list).
+# excluded_fields = "pressure"
+
+# Tag filters: dot-separated tag:value1@value2 pairs.
+# tag_values = "room:Kitchen@LivingRoom@'My Bedroom'"
+
+# Maximum number of retries for write operations. Integer ≥ 0
+# max_retries = "5"                    # default: 5
+
+# Target database for writing downsampled data.
+# target_database = "analytics_db"
+
+
+
+###### Example: Create Trigger Using This Config ######
+# influxdb3 create trigger \
+#   --database mydb \
+#   --plugin-filename downsampler.py \
+#   --trigger-spec "every:10min" \
+#   --trigger-arguments config_file_path=downsampling_config_scheduler.toml \
+#   downsampling_trigger

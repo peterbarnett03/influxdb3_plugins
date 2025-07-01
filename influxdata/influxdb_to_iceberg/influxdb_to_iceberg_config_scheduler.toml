@@ -1,0 +1,41 @@
+# InfluxDB to Iceberg Data Transfer Plugin Scheduler Configuration Template
+# Copy this file to your PLUGIN_DIR and reference it with
+#   --trigger-arguments config_file_path=influxdb_to_iceberg_config_scheduler.toml
+
+
+########## Required Parameters ##########
+# InfluxDB measurement to query and transfer
+measurement = "cpu"             # e.g., "cpu", "temperature"
+
+# Time window for each transfer job. Format: <number><unit>
+# Units: s (seconds), min (minutes), h (hours), d (days), w (weeks)
+window = "1h"                          # e.g., "30m", "24h"
+
+# Base64-encoded JSON string for Iceberg catalog configuration.
+# See https://py.iceberg.apache.org/configuration/
+catalog_configs = "eyJ0eXBlIjogInNraXBwIiwgInVyaSI6ICJodHRwOi8vbG9jYWxob3N0OjkwMDAifQ=="  # e.g., {"type":"spark","uri":"thrift://..."}
+
+
+
+########## Optional Parameters ##########
+# Include only these fields from the query (dot-separated list)
+# included_fields = "usage_user.usage_idle"
+
+# Exclude these fields from the query (dot-separated list)
+# excluded_fields = "usage_system.usage_user"
+
+# Iceberg namespace for the target table (default: "default")
+# namespace = "analytics"
+
+# Iceberg table name (default: same as data_measurement)
+# table_name = "cpu_metrics"
+
+
+
+###### Example: Create Trigger Using This Config ######
+# influxdb3 create trigger \
+#   --database mydb \
+#   --plugin-filename influxdb_to_iceberg.py \
+#   --trigger-spec "every:1h" \
+#   --trigger-arguments config_file_path=influxdb_to_iceberg_config_scheduler.toml \
+#   influxdb_to_iceberg_scheduler

@@ -1,0 +1,133 @@
+# Prophet Forecasting Plugin Scheduler Configuration Template
+# Copy this file to your PLUGIN_DIR and reference it with
+#   --trigger-arguments config_file_path=prophet_forecasting_scheduler.toml
+
+
+########## Required Parameters ##########
+# InfluxDB measurement to query for historical data
+measurement = "temperature"            # e.g., "cpu_load", "temperature"
+
+# Field within the measurement to forecast
+field = "value"                        # e.g., "value"
+
+# Historical window duration for training data. Format: <number><unit>
+# Units: s, min, h, d, w, m, q, y
+window = "30d"                         # e.g., "7d", "90d"
+
+# Future duration to forecast. Format: <number><unit>
+# Units: s, min, h, d, w, m, q, y
+forecast_horizont = "2d"               # e.g., "1h", "7d"
+
+# Tag filters for querying specific tag values
+# Format: key1:value1.key2:value2
+tag_values = "region:west.device:sensor1"  # e.g., "host:server1.region:eu"
+
+# Destination measurement for writing forecast results
+target_measurement = "temperature_forecast"  # e.g., "cpu_forecast"
+
+# Mode of operation: "train" or "predict"
+model_mode = "train"                   # "train" trains new model for each trigger; "predict" loads existing or trains if not found and safe for future use
+
+# Unique identifier for model versioning and storage
+unique_suffix = "20250619_v1"          # e.g., "20250701_v2"
+
+
+
+########## Optional Parameters ##########
+# Prophet style of seasonality: "additive" or "multiplicative"
+# seasonality_mode = "additive"        # default: "additive"
+
+# Flexibility of trend changepoints. Float > 0
+# changepoint_prior_scale = "0.05"        # default: 0.05
+
+# Specific changepoint dates (space-separated, ISO format)
+# changepoints = "2025-01-01 2025-06-01"
+
+# Custom holiday dates (space-separated, ISO format)
+# holiday_date_list = "2025-01-01 2025-12-25"
+
+# Names for custom holidays (dot-separated, matching holiday_date_list)
+# holiday_names = "New Year.Christmas"
+
+# Built-in holiday country codes (dot-separated, e.g., "US.UK")
+# holiday_country_names = "US.UK"
+
+# Manually specified frequency (e.g., "1D", "1H"); If not provided, frequency is inferred from data.
+# inferred_freq = "1D"
+
+# Duration for validation window (e.g., "3d"); default: "0s"
+# validation_window = "3d"
+
+# Threshold for Mean Squared Relative Error (float); default: infinite
+# msre_threshold = "0.05"
+
+# InfluxDB database for writing results (optional)
+# target_database = "forecast_db"
+
+# Send alerts if validation fails ("true" or "false"); default: "false", if set, Sender-Specific Settings are required
+# is_sending_alert = "true"
+
+# Template for notification message on validation failure (will be used if is_sending_alert = "true")
+# Variables: $version, $measurement, $field, $start_time, $end_time, $output_measurement
+# notification_text = "Validation failed for model:$version on measurement:$measurement.$field"
+
+# Notification channels, dot-separated list, e.g., "slack.sms" (will be used if is_sending_alert = "true")
+# senders = "slack"                     # required if is_sending_alert = "true"
+
+# Custom URL path for notification sender plugin; default: "notify"(will be used if is_sending_alert = "true")
+# notification_path = "notify"
+
+# InfluxDB API token for notifications (or via INFLUXDB3_AUTH_TOKEN env var)
+# influxdb3_auth_token = "YOUR_API_TOKEN"
+
+# Override InfluxDB port for notifications; default: 8181
+# port_override = 8182
+
+
+
+########## Sender-Specific Settings ##########
+# For each channel listed in senders, uncomment and configure the following parameters:
+
+# --- Slack ---
+# Webhook URL for Slack notifications (required)
+# slack_webhook_url = "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+# Optional: Custom headers for Slack webhook (Base64-encoded JSON string)
+# slack_headers = "eyJIb3N0IjogImV4YW1wbGUuY29tIn0="
+
+# --- Discord ---
+# Webhook URL for Discord notifications (required)
+# discord_webhook_url = "https://discord.com/api/webhooks/AAA/BBB"
+# Optional: Custom headers for Discord webhook (Base64-encoded JSON string)
+# discord_headers = "eyJDb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIn0="
+
+# --- HTTP ---
+# HTTP endpoint to send notifications (required)
+# http_webhook_url = "https://example.com/webhook"
+# Optional: Custom HTTP headers (Base64-encoded JSON string)
+# http_headers = "eyJhdXRoIjogIkJlYXJlciBZT1VSX1RPS0VOIn0="
+
+# --- SMS (Twilio) ---
+# Twilio Account SID (required, or via TWILIO_SID env var)
+# twilio_sid = "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+# Twilio Auth Token (required, or via TWILIO_TOKEN env var)
+# twilio_token = "your_auth_token"
+# Twilio sender number (required, format: +1234567890)
+# twilio_from_number = "+1234567890"
+# Recipient phone number (required, format: +0987654321)
+# twilio_to_number = "+0987654321"
+
+# --- WhatsApp (via Twilio) ---
+# WhatsApp sender number (required, format: +1234567890)
+# whatsapp_from_number = "+1234567890"
+# WhatsApp recipient number (required, format: +0987654321)
+# whatsapp_to_number = "+0987654321"
+
+
+
+###### Example: Create Trigger Using This Config ######
+# influxdb3 create trigger \
+#   --database mydb \
+#   --plugin-filename prophet_forecasting.py \
+#   --trigger-spec "every:1d" \
+#   --trigger-arguments config_file_path=prophet_forecasting_scheduler.toml \
+#   prophet_forecast_schedule_trigger

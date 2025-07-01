@@ -1,0 +1,96 @@
+# Forecast Error Evaluator Plugin Scheduler Configuration Template
+# Copy this file to your PLUGIN_DIR and reference it with
+#   --trigger-arguments config_file_path=forecast_error_config_scheduler.toml
+
+########## Required Parameters ##########
+# InfluxDB measurement containing forecasted values
+forecast_measurement = "forecast_data"      # e.g., "forecast_data"
+
+# InfluxDB measurement containing actual (ground truth) values
+actual_measurement = "actual_data"          # e.g., "actual_data"
+
+# Field name in forecast_measurement for predicted values
+forecast_field = "predicted_temp"           # e.g., "predicted_temp"
+
+# Field name in actual_measurement for actual values
+actual_field = "temp"                       # e.g., "temp"
+
+# Error metric to compute: mse, mae, or rmse
+error_metric = "rmse"                       # one of "mse", "mae", "rmse"
+
+# Thresholds for anomaly levels. Format: LEVEL-"value":LEVEL-"value":...
+error_thresholds = 'INFO-"0.5":WARN-"0.9":ERROR-"1.2":CRITICAL-"1.5"'
+
+# Time window for analysis. Format: <number><unit> (s, min, h, d, w)
+window = "1h"                                # e.g., "10m", "1h"
+
+# Notification channels (dot-separated list)
+senders = "slack"                           # e.g., "slack.discord.http"
+
+########## Optional Parameters ##########
+# Minimum duration for an anomaly condition before notifying. Format: <number><unit>
+# min_condition_duration = "5m"
+
+# Timestamp rounding frequency. Format: <number><unit> (s, min, h, d, w)
+# rounding_freq = "1s"
+
+# Template for notification messages. Variables: $measurement, $level, $field, $error, $metric, $tags
+# notification_text = "[$level] Forecast error in $measurement.$field: $metric=$error. Tags: $tags"
+
+# Custom URL path for notification sender plugin (defaults to "notify")
+# notification_path = "custom/notify"
+
+# Override InfluxDB port (defaults to 8181)
+# port_override = "8182"
+
+# InfluxDB 3 API token (can also be provided via INFLUXDB3_AUTH_TOKEN env var)
+# influxdb3_auth_token = "YOUR_API_TOKEN"
+
+
+
+########## Sender-Specific Settings ##########
+# For each channel listed in senders, uncomment and configure the following parameters:
+
+# --- Slack ---
+# Webhook URL for Slack notifications (required)
+# slack_webhook_url = "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+# Optional: Custom headers for Slack webhook (Base64-encoded JSON string)
+# slack_headers = "eyJIb3N0IjogImV4YW1wbGUuY29tIn0="
+
+# --- Discord ---
+# Webhook URL for Discord notifications (required)
+# discord_webhook_url = "https://discord.com/api/webhooks/AAA/BBB"
+# Optional: Custom headers for Discord webhook (Base64-encoded JSON string)
+# discord_headers = "eyJDb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIn0="
+
+# --- HTTP ---
+# HTTP endpoint to send notifications (required)
+# http_webhook_url = "https://example.com/webhook"
+# Optional: Custom HTTP headers (Base64-encoded JSON string)
+# http_headers = "eyJhdXRoIjogIkJlYXJlciBZT1VSX1RPS0VOIn0="
+
+# --- SMS (Twilio) ---
+# Twilio Account SID (required, or via TWILIO_SID env var)
+# twilio_sid = "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+# Twilio Auth Token (required, or via TWILIO_TOKEN env var)
+# twilio_token = "your_auth_token"
+# Twilio sender number (required, format: +1234567890)
+# twilio_from_number = "+1234567890"
+# Recipient phone number (required, format: +0987654321)
+# twilio_to_number = "+0987654321"
+
+# --- WhatsApp (via Twilio) ---
+# WhatsApp sender number (required, format: +1234567890)
+# whatsapp_from_number = "+1234567890"
+# WhatsApp recipient number (required, format: +0987654321)
+# whatsapp_to_number = "+0987654321"
+
+
+
+###### Example: Create Trigger Using This Config ######
+# influxdb3 create trigger \
+#   --database mydb \
+#   --plugin-filename forecast_error_evaluator.py \
+#   --trigger-spec "every:10m" \
+#   --trigger-arguments config_file_path=forecast_error_config_scheduler.toml \
+#   forecast_error_trigger

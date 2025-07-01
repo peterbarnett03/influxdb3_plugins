@@ -1,0 +1,88 @@
+# State Change Monitoring Plugin Data Write Configuration Template
+# Copy this file to your PLUGIN_DIR and reference it with
+#   --trigger-arguments config_file_path=state_change_config_data_writes.toml
+
+
+########## Required Parameters ##########
+# Measurement to monitor for threshold conditions
+measurement = "cpu"                  # e.g., "cpu", "temperature"
+
+# Field threshold conditions: field:value:count_or_duration
+# Multiple conditions separated by @. Example: "temp:30:10@status:true:2h"
+field_thresholds = "temp:30:10@status:true:2h"
+
+# Notification channels (dot-separated list)
+senders = "slack.discord"            # e.g., "slack.sms"
+
+
+
+########## Optional Parameters ##########
+# InfluxDB 3 API token for notifications (or via INFLUXDB3_AUTH_TOKEN env var)
+# influxdb3_auth_token = "YOUR_API_TOKEN"
+
+# Stability check parameters
+# Number of recent values to assess stability
+# state_change_window = "5"              # default: 1
+# Maximum allowed changes in that window
+# state_change_count = "2"               # default: 1
+
+# Templates for notifications
+# Count-based: variables $table, $field, $value, $duration, $row
+# notification_count_text = "Field $field in $table hit threshold $value $duration times. Row: $row"
+# Time-based: variables $table, $field, $value, $duration, $row
+# notification_time_text = "Field $field in $table exceeded $value for $duration. Row: $row"
+
+# Custom URL path for Notification Sender plugin (default: "notify")
+# notification_path = "notify"
+
+# Override InfluxDB port for notifications (default: 8181)
+# port_override = 8182
+
+
+
+########## Sender-Specific Settings ##########
+# For each channel listed in senders, uncomment and configure the following parameters:
+
+# --- Slack ---
+# Webhook URL for Slack notifications (required)
+# slack_webhook_url = "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+# Optional: Custom headers for Slack webhook (Base64-encoded JSON string)
+# slack_headers = "eyJIb3N0IjogImV4YW1wbGUuY29tIn0="
+
+# --- Discord ---
+# Webhook URL for Discord notifications (required)
+# discord_webhook_url = "https://discord.com/api/webhooks/AAA/BBB"
+# Optional: Custom headers for Discord webhook (Base64-encoded JSON string)
+# discord_headers = "eyJDb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIn0="
+
+# --- HTTP ---
+# HTTP endpoint to send notifications (required)
+# http_webhook_url = "https://example.com/webhook"
+# Optional: Custom HTTP headers (Base64-encoded JSON string)
+# http_headers = "eyJhdXRoIjogIkJlYXJlciBZT1VSX1RPS0VOIn0="
+
+# --- SMS (Twilio) ---
+# Twilio Account SID (required, or via TWILIO_SID env var)
+# twilio_sid = "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+# Twilio Auth Token (required, or via TWILIO_TOKEN env var)
+# twilio_token = "your_auth_token"
+# Twilio sender number (required, format: +1234567890)
+# twilio_from_number = "+1234567890"
+# Recipient phone number (required, format: +0987654321)
+# twilio_to_number = "+0987654321"
+
+# --- WhatsApp (via Twilio) ---
+# WhatsApp sender number (required, format: +1234567890)
+# whatsapp_from_number = "+1234567890"
+# WhatsApp recipient number (required, format: +0987654321)
+# whatsapp_to_number = "+0987654321"
+
+
+
+###### Example: Create Trigger Using This Config ######
+# influxdb3 create trigger \
+#   --database mydb \
+#   --plugin-filename state_change_check_plugin.py \
+#   --trigger-spec "all_tables" \
+#   --trigger-arguments config_file_path=state_change_config_data_writes.toml \
+#   state_change_datawrite_trigger

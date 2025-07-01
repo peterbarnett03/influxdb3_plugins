@@ -1,0 +1,81 @@
+# Threshold and deadman checks Plugin Data Write Configuration Template
+# # Copy this file to your PLUGIN_DIR and reference it with
+#   --trigger-arguments config_file_path=threshold_deadman_config_data_writes.toml`
+
+
+########## Required Parameters ##########
+# Measurement to monitor for threshold conditions
+measurement = "cpu"                  # e.g., "cpu", "temperature"
+
+# Field-level conditions: field>value-level or field<value-level
+# Multiple separated by $: e.g., "temp>=30-INFO$status==ok-ERROR"
+field_conditions = "temp>30-INFO$status=='ok'-ERROR"
+
+# Notification channels (dot-separated list)
+senders = "slack.discord"            # e.g., "slack.sms.http"
+
+
+
+########## Optional Parameters ##########
+# Times condition must be met before alert
+# trigger_count = "2"                   # default: 1
+
+# InfluxDB auth token (or via INFLUXDB3_AUTH_TOKEN env var)
+# influxdb3_auth_token = "YOUR_API_TOKEN"
+
+# Templates for notifications:
+# Count-based: $level, $field, $op_sym, $compare_val, $actual
+# notification_text = "[$level] $field $op_sym $compare_val matched (actual: $actual)"
+
+# Notification Sender path and port
+# notification_path = "notify"         # default: notify
+# port_override = 8182                 # default: 8181
+
+
+
+########## Sender-Specific Settings ##########
+# For each channel listed in senders, uncomment and configure the following parameters:
+
+# --- Slack ---
+# Webhook URL for Slack notifications (required)
+# slack_webhook_url = "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+# Optional: Custom headers for Slack webhook (Base64-encoded JSON string)
+# slack_headers = "eyJIb3N0IjogImV4YW1wbGUuY29tIn0="
+
+# --- Discord ---
+# Webhook URL for Discord notifications (required)
+# discord_webhook_url = "https://discord.com/api/webhooks/AAA/BBB"
+# Optional: Custom headers for Discord webhook (Base64-encoded JSON string)
+# discord_headers = "eyJDb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIn0="
+
+# --- HTTP ---
+# HTTP endpoint to send notifications (required)
+# http_webhook_url = "https://example.com/webhook"
+# Optional: Custom HTTP headers (Base64-encoded JSON string)
+# http_headers = "eyJhdXRoIjogIkJlYXJlciBZT1VSX1RPS0VOIn0="
+
+# --- SMS (Twilio) ---
+# Twilio Account SID (required, or via TWILIO_SID env var)
+# twilio_sid = "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+# Twilio Auth Token (required, or via TWILIO_TOKEN env var)
+# twilio_token = "your_auth_token"
+# Twilio sender number (required, format: +1234567890)
+# twilio_from_number = "+1234567890"
+# Recipient phone number (required, format: +0987654321)
+# twilio_to_number = "+0987654321"
+
+# --- WhatsApp (via Twilio) ---
+# WhatsApp sender number (required, format: +1234567890)
+# whatsapp_from_number = "+1234567890"
+# WhatsApp recipient number (required, format: +0987654321)
+# whatsapp_to_number = "+0987654321"
+
+
+
+###### Example: Create Trigger Using This Config ######
+# influxdb3 create trigger \
+#   --database mydb \
+#   --plugin-filename threshold_deadman_checks_plugin.py \
+#   --trigger-spec "all_tables" \
+#   --trigger-arguments config_file_path=threshold_deadman_config_data_writes.toml \
+#   threshold_deadman_datawrite_trigger
