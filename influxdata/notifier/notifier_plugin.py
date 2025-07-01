@@ -1,7 +1,6 @@
 """
 {
-    "plugin_type": ["http"],
-    "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/notifier/README.md"
+    "plugin_type": ["http"]
 }
 """
 

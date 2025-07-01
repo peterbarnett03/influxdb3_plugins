@@ -1,7 +1,6 @@
 """
 {
     "plugin_type": ["scheduled", "http"],
-    "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/influxdb_to_iceberg/README.md",
     "scheduled_args_config": [
         {
             "name": "measurement",

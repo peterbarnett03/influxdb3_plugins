@@ -8,6 +8,7 @@
                 "path": "influxdata/downsampler/downsampler.py",
                 "description": "Enables downsampling of data in an InfluxDB 3 instance with flexible configuration for time intervals, field aggregations, tag filtering, and batch processing. Supports both scheduler and HTTP trigger modes.",
                 "author": "InfluxData",
+                "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/downsampler/README.md",
                 "required_plugins": [],
                 "required_libraries": [],
                 "last_update": "2025-06-16",
@@ -18,6 +19,7 @@
                 "path": "influxdata/forecast_error_evaluator/forecast_error_evaluator.py",
                 "description": "Evaluates the accuracy of forecast models by comparing predicted values with actual observations. Computes error metrics (MSE, MAE, RMSE) and detects anomalies based on elevated errors with multi-channel notifications.",
                 "author": "InfluxData",
+                "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/forecast_error_evaluator/README.md",
                 "required_plugins": [
                     {
                         "name": "Notification sender",
@@ -33,6 +35,7 @@
                 "path": "influxdata/influxdb_to_iceberg/influxdb_to_iceberg.py",
                 "description": "Transfers data from InfluxDB 3 to Apache Iceberg tables with automatic schema management, customizable namespace and table naming, field filtering, and batch processing support.",
                 "author": "InfluxData",
+                "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/influxdb_to_iceberg/README.md",
                 "required_plugins": [],
                 "required_libraries": [
                     "pandas",
@@ -47,6 +50,7 @@
                 "path": "influxdata/mad_check/mad_check_plugin.py",
                 "description": "Provides Median Absolute Deviation (MAD)-based anomaly detection using data writes trigger. Maintains in-memory deques for efficient computation and supports both count-based and duration-based thresholds.",
                 "author": "InfluxData",
+                "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/mad_check/README.md",
                 "required_plugins": [
                     {
                         "name": "Notification sender",
@@ -62,6 +66,7 @@
                 "path": "influxdata/notifier/notifier_plugin.py",
                 "description": "Standalone notification dispatcher that sends notifications through various channels (Slack, Discord, HTTP, SMS, WhatsApp) based on incoming HTTP requests. Features retry logic and environment variable support.",
                 "author": "InfluxData",
+                "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/notifier/README.md",
                 "required_plugins": [],
                 "required_libraries": ["httpx", "twilio"],
                 "last_update": "2025-06-16",
@@ -72,6 +77,7 @@
                 "path": "influxdata/basic_transformation/basic_transformation.py",
                 "description": "Enables transformation of time series data stored in InfluxDB 3 (transformations are supported for field/tag names and values).",
                 "author": "InfluxData",
+                "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/basic_transformation/README.md",
                 "required_plugins": [],
                 "required_libraries": ["pint"],
                 "last_update": "2025-06-25",
@@ -82,6 +88,7 @@
                 "path": "influxdata/prophet_forecasting/prophet_forecasting.py",
                 "description": "Provides time series forecasting capabilities for InfluxDB 3 data using the Prophet library.",
                 "author": "InfluxData",
+                "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/prophet_forecasting/README.md",
                 "required_plugins": [],
                 "required_libraries": ["pandas", "requests", "prophet", "numpy"],
                 "last_update": "2025-06-25",
@@ -92,6 +99,7 @@
                 "path": "influxdata/state_change/state_change_check_plugin.py",
                 "description": "Provides field change and threshold monitoring capabilities through scheduler and data writes plugins. Detects changes in field values or threshold conditions with customizable notification templates.",
                 "author": "InfluxData",
+                "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/state_change/README.md",
                 "required_plugins": [
                     {
                         "name": "Notification sender",
@@ -107,6 +115,7 @@
                 "path": "influxdata/stateless_adtk_detector/adtk_anomaly_detection_plugin.py",
                 "description": "Provides anomaly detection capabilities for time series data using the ADTK library. Supports multiple stateless detectors with consensus-based detection and customizable notification messages.",
                 "author": "InfluxData",
+                "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/stateless_adtk_detector/README.md",
                 "required_plugins": [
                     {
                         "name": "Notification sender",
@@ -122,6 +131,7 @@
                 "path": "influxdata/threshold_deadman_checks/threshold_deadman_checks_plugin.py",
                 "description": "Provides comprehensive monitoring capabilities including deadman alerts and aggregation-based threshold checks. Supports both scheduler and data write triggers with multi-channel notifications.",
                 "author": "InfluxData",
+                "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/threshold_deadman_checks/README.md",
                 "required_plugins": [
                     {
                         "name": "Notification sender",
@@ -137,6 +147,7 @@
                 "path": "examples/schedule/system_metrics/system_metrics.py",
                 "description": "Collects system-level metrics (CPU, memory, disk, and network) using psutil and writes them to InfluxDB. Designed to run on a schedule and provide observability into host-level performance.",
                 "author": "InfluxData",
+                "docs_file_link": "",
                 "required_plugins": [],
                 "required_libraries": ["psutil"],
                 "last_update": "2025-06-27",
@@ -147,6 +158,7 @@
                 "path": "suyashcjoshi/data-replicator/data-replicator.py",
                 "description": "Replicates data from a local InfluxDB 3 instance to a remote instance on WAL flush. Supports filtering, downsampling, and optional validation of replicated entries with a persistent queue.",
                 "author": "InfluxData",
+                "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/suyashcjoshi/data-replicator/README.md",
                 "required_plugins": [],
                 "required_libraries": ["influxdb_client_3"],
                 "last_update": "2025-06-27",

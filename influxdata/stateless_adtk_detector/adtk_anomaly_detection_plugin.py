@@ -1,7 +1,6 @@
 """
 {
     "plugin_type": ["scheduled"],
-    "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/stateless_adtk_detector/README.md",
     "scheduled_args_config": [
         {
             "name": "measurement",

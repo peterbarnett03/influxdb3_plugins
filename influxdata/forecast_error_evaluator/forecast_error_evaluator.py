@@ -1,7 +1,6 @@
 """
 {
     "plugin_type": ["scheduled"],
-    "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/forecast_error_evaluator/README.md",
     "scheduled_args_config": [
         {
             "name": "forecast_measurement",

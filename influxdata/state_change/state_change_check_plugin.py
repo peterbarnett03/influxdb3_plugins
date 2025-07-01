@@ -1,7 +1,6 @@
 """
 {
     "plugin_type": ["scheduled", "onwrite"],
-    "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/state_change/README.md",
     "scheduled_args_config": [
         {
             "name": "measurement",

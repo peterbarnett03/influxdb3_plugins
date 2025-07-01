@@ -1,7 +1,6 @@
 """
 {
     "plugin_type": ["onwrite"],
-    "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/mad_check/README.md",
     "onwrite_args_config": [
         {
             "name": "measurement",
