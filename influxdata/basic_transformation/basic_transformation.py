@@ -1,6 +1,6 @@
 """
 {
-    "plugin_type": ["scheduled"],
+    "plugin_type": ["scheduled", "onwrite"],
     "scheduled_args_config": [
         {
             "name": "measurement",
@@ -80,10 +80,85 @@
             "description": "Path to config file to override args. Format: 'config.toml'.",
             "required": false
         }
+    ],
+    "onwrite_args_config": [
+                {
+            "name": "measurement",
+            "example": "temperature",
+            "description": "The InfluxDB measurement to query for historical data.",
+            "required": true
+        },
+        {
+            "name": "target_measurement",
+            "example": "transformed_temperature",
+            "description": "Destination measurement for storing transformed data.",
+            "required": true
+        },
+        {
+            "name": "names_transformations",
+            "example": "room:'lower snake'.temp:'upper'.name:'custom_replacement'",
+            "description": "Rules for transforming field and tag names. Format: 'field1:'transform1 transform2'.pattern_name:'transform3 transform4'.",
+            "required": true
+        },
+        {
+            "name": "values_transformations",
+            "example": "temp:'convert_degC_to_degF'.hum:'upper'.something:'lower'",
+            "description": "Rules for transforming field values. Format: 'field1:'transform1 transform2'.pattern:'transform3'.",
+            "required": true
+        },
+        {
+            "name": "target_database",
+            "example": "transformed_db",
+            "description": "Optional InfluxDB database name for writing transformed data.",
+            "required": false
+        },
+        {
+            "name": "included_fields",
+            "example": "temp.hum.something",
+            "description": "Dot-separated list of field names to include in the query.",
+            "required": false
+        },
+        {
+            "name": "excluded_fields",
+            "example": "co.h-u_m2",
+            "description": "Dot-separated list of field names to exclude from the query.",
+            "required": false
+        },
+        {
+            "name": "dry_run",
+            "example": "true",
+            "description": "If 'true', simulates the transformation without writing to the database. Defaults to 'false'.",
+            "required": false
+        },
+        {
+            "name": "custom_replacements",
+            "example": "replace_space_underscore:' =_'.cust_replace:'Some text=Another text'",
+            "description": "Custom replacement rules for transformations. Format: 'replace_space_underscore:' =_'.cust_replace:'Some text=Another text'.",
+            "required": false
+        },
+        {
+            "name": "custom_regex",
+            "example": "regex_temp:'temp%'",
+            "description": "Custom regex patterns for applying transformations. Format: 'regex_temp:'temp%'. Only '%' (zero, one or more) and '_' (exactly one) are allowed in regex patterns.",
+            "required": false
+        },
+        {
+            "name": "filters",
+            "example": "temp:'>=101'.hum:'<=182'",
+            "description": "Filters for querying specific data. Format: 'field:'=value'.field2:'>value2'. Supported operators: '=', '!=', '>', '<', '>=', '<='.",
+            "required": false
+        },
+        {
+            "name": "config_file_path",
+            "example": "config.toml",
+            "description": "Path to config file to override args. Format: 'config.toml'.",
+            "required": false
+        }
     ]
 }
 """
 
+import operator
 import os
 import random
 import re
@@ -94,6 +169,15 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from pint import UnitRegistry
+
+_OP_FUNCS = {
+    ">": operator.gt,
+    "<": operator.lt,
+    ">=": operator.ge,
+    "<=": operator.le,
+    "=": operator.eq,
+    "!=": operator.ne,
+}
 
 
 def to_lowercase(s: str) -> str:
@@ -331,6 +415,8 @@ def parse_field_filters(
         field, expr = part.split(":", 1)
         field = field.strip()
         expr = expr.strip()
+        if expr[0] == expr[-1] and expr[0] in ("'", '"'):
+            expr = expr[1:-1]
 
         # Find matching operator
         op = next((o for o in operators if expr.startswith(o)), None)
@@ -1283,6 +1369,293 @@ def process_scheduled_call(
             influxdb3_local.error(
                 f"[{task_id}] Failed to write data to measurement {target_measurement}: {error}"
             )
+
+    except Exception as e:
+        influxdb3_local.error(f"[{task_id}] Unexpected error: {e}")
+
+
+def apply_filters(filters: list, fields: list, tags: list, rows: list):
+    if filters:
+        filtered_data = []
+        for row in rows:
+            match = True
+            for field_name, op, value in filters:
+                compare_fn = _OP_FUNCS[op]
+                if not compare_fn(row.get(field_name), value):
+                    match = False
+                    break
+            if match:
+                filtered_data.append(row)
+    else:
+        filtered_data = rows
+
+    for row in filtered_data:
+        keys_to_remove = [
+            k for k in row if k not in fields and k not in tags and k != "time"
+        ]
+        for k in keys_to_remove:
+            row.pop(k)
+
+    return filtered_data
+
+
+def process_writes(influxdb3_local, table_batches: list, args: dict | None = None):
+    """
+    Processes and transforms data batches before writing them to a target measurement.
+
+    args (dict | None): Dictionary of configuration parameters (all values are strings):
+    Required keys:
+        - "measurement": source measurement name (str).
+        - "target_measurement": destination measurement name (str).
+        - "names_transformations": string defining name transforms (e.g. 'field1:"lower".pattern:"snake"').
+        - "values_transformations": string defining value transforms similarly.
+    Optional keys:
+        - "config_file_path": path to config file to override args (str) .
+        - "target_database": target database/bucket name (str).
+        - "included_fields": dot-separated field names to include.
+        - "excluded_fields": dot-separated field names to exclude.
+        - "dry_run": "true"/"false"; if true, only logs transformed results without writing.
+        - "custom_replacements": string defining custom replacements per field.
+        - "custom_regex": string defining regex-based patterns for transformations.
+        - "filters": string defining field filters.
+    """
+    task_id: str = str(uuid.uuid4())
+
+    # Override args with config file
+    if args:
+        if path := args.get("config_file_path", None):
+            try:
+                plugin_dir_var: str | None = os.getenv("PLUGIN_DIR", None)
+                influxdb3_local.info(
+                    f"[{task_id}] PLUGIN_DIR env var: {plugin_dir_var}"
+                )
+                if not plugin_dir_var:
+                    influxdb3_local.error(
+                        f"[{task_id}] Failed to get PLUGIN_DIR env var"
+                    )
+                    return
+                plugin_dir: Path = Path(plugin_dir_var)
+                file_path = plugin_dir / path
+                influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
+                with open(file_path, "rb") as f:
+                    args = tomllib.load(f)
+                influxdb3_local.info(f"[{task_id}] new args content: {args}")
+            except Exception:
+                influxdb3_local.error(f"[{task_id}] Failed to read config file")
+                return
+
+    required_keys: list = [
+        "measurement",
+        "target_measurement",
+        "names_transformations",
+        "values_transformations",
+    ]
+
+    if not args or any(key not in args for key in required_keys):
+        influxdb3_local.error(
+            f"[{task_id}] Missing some of the required arguments: {', '.join(required_keys)}"
+        )
+        return
+
+    try:
+        # Set up configuration
+        measurement: str = args["measurement"]
+        target_measurement: str = args["target_measurement"]
+        target_database: str | None = args.get("target_database", None)
+        included_fields: list = parse_fields(args, "included_fields")
+        excluded_fields: list = parse_fields(args, "excluded_fields")
+        if included_fields and excluded_fields:
+            influxdb3_local.error(
+                f"[{task_id}] Both 'included_fields' and 'excluded_fields' arguments are provided. Only one of them can be used."
+            )
+            return
+
+        dry_run: bool = str(args.get("dry_run", False)).lower() == "true"
+        names_transformations: dict = parse_transformation_rules(
+            influxdb3_local, args, "names_transformations", task_id
+        )
+        values_transformations: dict = parse_transformation_rules(
+            influxdb3_local, args, "values_transformations", task_id
+        )
+        custom_replacements: dict = parse_custom_replacements(
+            influxdb3_local, args.get("custom_replacements"), task_id
+        )
+        custom_regex: dict = parse_custom_regex(
+            influxdb3_local, args.get("custom_regex"), task_id
+        )
+        filters: list = parse_field_filters(influxdb3_local, args, "filters", task_id)
+
+        # recognize fields and tags to transform and save
+        field_names: list[str] = get_fields_names(influxdb3_local, measurement, task_id)
+        if included_fields:
+            fields_to_transform: list = [
+                field for field in field_names if field in included_fields
+            ]
+        elif excluded_fields:
+            fields_to_transform = [
+                field for field in field_names if field not in excluded_fields
+            ]
+        else:
+            fields_to_transform = field_names
+
+        tag_names: list[str] = get_tag_names(influxdb3_local, measurement, task_id)
+
+        for table_batch in table_batches:
+            table_name: str = table_batch["table_name"]
+            if table_name != measurement:
+                continue
+
+            rows: list = apply_filters(
+                filters, fields_to_transform, tag_names, table_batch["rows"]
+            )
+            if not rows:
+                influxdb3_local.warn(f"[{task_id}] No data to process after filtering")
+                return
+
+            ureg: UnitRegistry = UnitRegistry()
+            # Apply transformations
+            for raw in rows:
+                used_fields: list = []
+                for field, transforms in values_transformations.items():
+                    if field in raw:
+                        used_fields.append(field)
+                        value = raw[field]
+                        for transform_name in transforms:
+                            value = apply_value_transformation(
+                                influxdb3_local,
+                                value,
+                                transform_name,
+                                field,
+                                ureg,
+                                custom_replacements,
+                                task_id,
+                            )
+                        raw[field] = value
+                for regex_name, transforms in values_transformations.items():
+                    if regex_name in custom_regex:
+                        for field_name in raw.keys():
+                            if (
+                                custom_regex[regex_name].search(field_name)
+                                and field_name not in used_fields
+                            ):
+                                value = raw[field_name]
+                                for transform_name in transforms:
+                                    value = apply_value_transformation(
+                                        influxdb3_local,
+                                        value,
+                                        transform_name,
+                                        field_name,
+                                        ureg,
+                                        custom_replacements,
+                                        task_id,
+                                    )
+                                raw[field_name] = value
+            tags_mapping: dict = {}
+            used_tags: list = []
+            for tag in tag_names:
+                new_tag: str = tag
+                if tag in names_transformations:
+                    used_tags.append(tag)
+                    for transform_name in names_transformations[tag]:
+                        new_tag = apply_name_transformation(
+                            influxdb3_local,
+                            new_tag,
+                            transform_name,
+                            custom_replacements,
+                            task_id,
+                        )
+                tags_mapping[tag] = new_tag
+            for regex_name, transforms in names_transformations.items():
+                if regex_name in custom_regex:
+                    for tag_name in tag_names:
+                        if (
+                            custom_regex[regex_name].search(tag_name)
+                            and tag_name not in used_tags
+                        ):
+                            new_tag: str = tag_name
+                            for transform_name in transforms:
+                                new_tag = apply_name_transformation(
+                                    influxdb3_local,
+                                    new_tag,
+                                    transform_name,
+                                    custom_replacements,
+                                    task_id,
+                                )
+                            tags_mapping[tag_name] = new_tag
+
+            fields_mapping: dict = {}
+            used_fields: list = []
+            for field in fields_to_transform:
+                new_field: str = field
+                if field in names_transformations:
+                    used_fields.append(field)
+                    for transform_name in names_transformations[field]:
+                        new_field = apply_name_transformation(
+                            influxdb3_local,
+                            new_field,
+                            transform_name,
+                            custom_replacements,
+                            task_id,
+                        )
+                fields_mapping[field] = new_field
+            for regex_name, transforms in names_transformations.items():
+                if regex_name in custom_regex:
+                    for field_name in fields_to_transform:
+                        if (
+                            custom_regex[regex_name].search(field_name)
+                            and field_name not in used_fields
+                        ):
+                            new_field: str = field_name
+                            for transform_name in transforms:
+                                new_field = apply_name_transformation(
+                                    influxdb3_local,
+                                    new_field,
+                                    transform_name,
+                                    custom_replacements,
+                                    task_id,
+                                )
+                            fields_mapping[field_name] = new_field
+
+            transformed_results: list = []
+            all_fields: dict = tags_mapping | fields_mapping
+            for raw in rows:
+                new_point: dict = {}
+                for key, value in raw.items():
+                    new_key = all_fields.get(key, key)
+                    new_point[new_key] = value
+                transformed_results.append(new_point)
+            influxdb3_local.info(f"[{task_id}] Data transformation completed")
+
+            if dry_run:
+                influxdb3_local.info(
+                    f"[{task_id}] Dry run is set, transformed results: {transformed_results}"
+                )
+                return
+
+            # transform data to Line Protocol
+            line_protocol_data: list = transform_to_influx_line(
+                transformed_results,
+                target_measurement,
+                list(fields_mapping.values()),
+                list(tags_mapping.values()),
+            )
+
+            # write data to target database
+            success, error, retries = write_data(
+                influxdb3_local,
+                line_protocol_data,
+                target_measurement=target_measurement,
+                target_database=target_database,
+                task_id=task_id,
+            )
+            if success:
+                influxdb3_local.info(
+                    f"[{task_id}] Data written to {target_measurement}"
+                )
+            else:
+                influxdb3_local.error(
+                    f"[{task_id}] Failed to write data to measurement {target_measurement}: {error}"
+                )
 
     except Exception as e:
         influxdb3_local.error(f"[{task_id}] Unexpected error: {e}")

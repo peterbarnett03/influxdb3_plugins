@@ -1,7 +1,7 @@
 {
     "plugin_library": {
         "version": "1.0.0",
-        "last_updated": "2025-06-16T17:42:08+03:00",
+        "last_updated": "2025-07-02T17:49:08+03:00",
         "plugins": [
             {
                 "name": "Downsampler",
@@ -80,8 +80,8 @@
                 "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/basic_transformation/README.md",
                 "required_plugins": [],
                 "required_libraries": ["pint"],
-                "last_update": "2025-06-25",
-                "trigger_types_supported": ["scheduler"]
+                "last_update": "2025-07-02",
+                "trigger_types_supported": ["scheduler", "data_writes"]
             },
             {
                 "name": "Prophet Forecasting",

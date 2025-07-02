@@ -1,0 +1,59 @@
+# Basic Transformation Plugin Data Write Configuration Template
+# Copy this file to your PLUGIN_DIR and reference it with `--trigger-arguments config_file_path=basic_transformation_config_data_writes.toml`
+
+
+########## Required Parameters ##########
+# InfluxDB measurement to query
+measurement = "temperature"         # e.g., "temperature" or "cpu_load"
+
+# Destination measurement for writing transformed data
+target_measurement = "transformed_temperature"
+
+# Transformations to apply to field and tag names
+# Format: 'field_name:"transform1 transform2".pattern_name:"transform3"'
+names_transformations = 'room:"snake lower".temp:"upper"'
+
+# Transformations to apply to field values
+# Format: 'field_name:"transform1 transform2".pattern_name:"transform3"'
+values_transformations = 'temp:"convert_degC_to_degF".hum:"upper"'
+
+
+
+########## Optional Parameters ##########
+# Optional InfluxDB database for writing transformed data
+# target_database = "transformed_db"
+
+# Include only these fields (dot-separated list)
+# included_fields = "temp.hum.pressure"
+
+# Exclude these fields (dot-separated list)
+# excluded_fields = "co.h-u_m2"
+
+# Dry run mode: if true, logs transformed data without writing to the database
+# dry_run = "true"
+
+# Custom replacement rules for string-based transformations
+# Format: 'rule_name:"old=new"'
+# To apply, add rule names in names_transformations or values_transformations for the field or pattern:
+#   e.g., field:"replace_space_underscore cust_replace"
+# custom_replacements = 'replace_space_underscore:" =_".cust_replace:"Old text=New text"'
+
+# Custom regex patterns for name/value matching
+# Format: 'pattern_name:"pattern_value"'  # pattern_value supports % (zero or more) and _ (exactly one)
+# To apply, list pattern_name in names_transformations or values_transformations:
+#   e.g., values_transformations = 'regex_temp:"upper"'
+# custom_regex = 'regex_temp:"temp%"'
+
+# Filters to select specific data: 'field:"operatorvalue"'
+# Supported operators: =, !=, >, <, >=, <=
+# filters = 'temp:>=20.hum:<=80'
+
+
+
+###### Example: Create Trigger Using This Config ######
+# influxdb3 create trigger \
+#   --database mydb \
+#   --plugin-filename basic_transformation.py \
+#   --trigger-spec "all_tables" \
+#   --trigger-arguments config_file_path=basic_transformation_config_data_writes.toml \
+#   basic_transform_trigger

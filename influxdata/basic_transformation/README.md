@@ -1,6 +1,6 @@
 # Basic Transformation Plugin for InfluxDB 3
 
-This plugin enables the transformation of time series data stored in InfluxDB 3. It supports transformations for both field/tag names and their values, allowing users to clean, standardize, or convert data as needed. The plugin is designed to run scheduled tasks that periodically transform data from a source measurement and write the results to a target measurement.
+This plugin enables the transformation of time series data stored in InfluxDB 3 through both scheduled tasks and on-write transformations. It supports transformations for field/tag names and their values, allowing users to clean, standardize, or convert data as needed. The plugin can run scheduled tasks that periodically transform historical data or apply transformations in real-time as data is written to the database.
 
 ## Prerequisites
 - **InfluxDB v3 Core/Enterprise**: with the Processing Engine enabled.
@@ -9,10 +9,10 @@ This plugin enables the transformation of time series data stored in InfluxDB 3.
 - `basic_transformation.py`: The main plugin code containing handlers for scheduled tasks.
 
 ## Features
-- **Scheduled Tasks**: Periodically performs data transformation on specified InfluxDB measurements.
+- **Scheduler and Data Write Support**: Run periodically or on data writes via InfluxDB triggers.
 - **Data Transformation**: Applies transformations to field names and values based on predefined and custom rules.
 - **Data Writing**: Writes transformed data to a specified InfluxDB measurement.
-- **Argument Overriding**: Allows overriding arguments for scheduled tasks via a TOML file (requires setting the `PLUGIN_DIR` environment variable and the `config_file_path` parameter, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function).
+- **Argument Overriding**: Allows overriding arguments for scheduler and data write types via a TOML file (requires setting the `PLUGIN_DIR` environment variable and the `config_file_path` parameter, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function).
 - **Time Interval Parsing**: Supports a wide range of time units for intervals, including seconds (`s`), minutes (`min`), hours (`h`), days (`d`), weeks (`w`), months (`m`), quarters (`q`), and years (`y`).
 
 ## Logging
@@ -52,7 +52,7 @@ influxdb3 install package pint
 ### Scheduled Tasks
 The Scheduled Tasks feature periodically performs data transformation on the specified InfluxDB measurement, using the provided configuration to transform field names and values, and writes the transformed data to a target measurement.
 
-#### Arguments
+#### Arguments for Scheduler
 The following arguments are extracted from the `args` dictionary:
 
 | Argument                   | Description                                                                                                                                                          | Required    | Example                                                       |
@@ -78,6 +78,37 @@ influxdb3 create trigger \
   --plugin-filename basic_transformation.py \
   --trigger-spec "every:1d" \
   --trigger-arguments measurement=temperature,window=30d,target_measurement=transformed_temperature,names_transformations='room:"lower".temp:"snake"',values_transformations='temp:"convert_degC_to_degF".something:"upper"' \
+  basic_transform_trigger
+```
+
+### Data Writes
+The Data Writes feature transforms data in real-time as it is written to the database, applying the specified transformations and saving the results to a target measurement. This type does not require the `window` parameter since it processes data on the fly.
+
+#### Arguments for Data Writes
+The following arguments are extracted from the `args` dictionary:
+
+| Argument                   | Description                                                                                                                                                          | Required    | Example                                                       |
+|----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------|---------------------------------------------------------------|
+| `measurement`              | The InfluxDB measurement to query for historical data.                                                                                                               | Yes         | `"temperature"`                                               |
+| `target_measurement`       | Destination measurement for storing transformed data.                                                                                                                | Yes         | `"transformed_temperature"`                                   |
+| `names_transformations`    | Rules for transforming field and tag names. Format: `'field1:"transform1 transform2".pattern_name:"transform3 transform4'`.                                          | Yes         | `'room:"lower snake".temp:"upper".name:"custom_replacement"'` |
+| `values_transformations`   | Rules for transforming field values. Format: `'field1:"transform1 transform2".pattern:"transform3"'`.                                                                | Yes         | `'temp:"convert_degC_to_degF".hum:"upper".something:"lower"'` |
+| `target_database`          | Optional InfluxDB database name for writing transformed data.                                                                                                        | No          | `"transformed_db"`                                            |
+| `included_fields`          | Dot-separated list of field names to include in the query.                                                                                                           | No          | `"temp.hum.something"`                                        |
+| `excluded_fields`          | Dot-separated list of field names to exclude from the query.                                                                                                         | No          | `"co.h-u_m2"`                                                 |
+| `dry_run`                  | If `"true"`, simulates the transformation without writing to the database. Defaults to `"false"`.                                                                    | No          | `"true"`                                                      |
+| `custom_replacements`      | Custom replacement rules for transformations. Format: `'replace_space_underscore:" =_".cust_replace:"Some text=Another text"'`.                                      | No          | `'replace_space_underscore:" =_"'`                            |
+| `custom_regex`             | Custom regex patterns for applying transformations. Format: `'regex_temp:"temp%"'`. Just `%` (zero, one or more) and `_` (exactly one) are allowed in regex patterns | No          | `'regex_temp:"temp%"'`                                        |
+| `filters`                  | Filters for querying specific data. Format: `'field:"=value".field2:">value2"'`. Supported operators: `=`, `!=`, `>`, `<`, `>=`, `<=`.                               | No          | `'temp:>=101.hum:<=182'`                                      |
+| `config_file_path`         | Path to the configuration file from `PLUGIN_DIR` env var. Format: `'example.toml'`.                                                                                  | No          | `'example.toml'`                                              |
+
+#### Example for Data Writes
+```bash
+influxdb3 create trigger \
+  --database mydb \
+  --plugin-filename basic_transformation.py \
+  --trigger-spec "all_tables" \
+  --trigger-arguments measurement=temperature,target_measurement=transformed_temperature,names_transformations='room:"lower".temp:"snake"',values_transformations='temp:"convert_degC_to_degF".something:"upper"' \
   basic_transform_trigger
 ```
 
