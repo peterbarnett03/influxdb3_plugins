@@ -198,7 +198,7 @@ def get_aggregatable_fields(
 
 
 def parse_fields_for_http(
-    influxdb3_local, measurement: str, key: str, args: dict, task_id: str
+    influxdb3_local, measurement: str, key: str, args: dict, aggregatable_fields: list, task_id: str
 ) -> list[str]:
     """
     Parses fields for HTTP-based downsampling.
@@ -208,6 +208,7 @@ def parse_fields_for_http(
         args (dict): Dictionary containing the 'key' key with a list of field names.
         measurement (str): Name of the measurement.
         key (str): The key used to access the 'key' parameter in the 'args' dictionary.
+        aggregatable_fields (list): List of aggregatable field names in the measurement.
         task_id (str): The task ID.
 
     Returns:
@@ -216,11 +217,8 @@ def parse_fields_for_http(
     fields: list | None = args.get(key, None)
     result_fields: list = []
     if fields is not None:
-        measurement_fields: list = get_aggregatable_fields(
-            influxdb3_local, measurement, task_id
-        )
         for field in fields:
-            if field not in measurement_fields:
+            if field not in aggregatable_fields:
                 influxdb3_local.info(
                     f"[{task_id}] Field '{field}' is not available for downsampling '{measurement}'."
                 )
@@ -371,26 +369,28 @@ def parse_field_aggregations_for_scheduler(
     available_calculations: list = ["avg", "sum", "min", "max", "derivative", "median"]
     pattern: str = r"^([^:.]+:[^:.]+)(\.[^:.]+:[^:.]+)*$"
     measurement: str = args["source_measurement"]
+    aggregatable_fields: list = get_aggregatable_fields(
+        influxdb3_local, measurement, task_id
+    )
     excluded_fields: list = parse_fields_for_scheduler(
-        influxdb3_local, measurement, "excluded_fields", args, task_id
+        influxdb3_local, measurement, "excluded_fields", args, aggregatable_fields, task_id
+    )
+    specific_fields: list = parse_fields_for_scheduler(
+        influxdb3_local, measurement, "specific_fields", args, aggregatable_fields, task_id
     )
     calculations_input: str = args.get("calculations", "avg")
-    specific_fields: list = parse_fields_for_scheduler(
-        influxdb3_local, measurement, "specific_fields", args, task_id
-    )
-    all_fields: list = get_aggregatable_fields(influxdb3_local, measurement, task_id)
 
     if specific_fields:
         fields_to_use: list = []
         for field in specific_fields:
-            if field in all_fields:
+            if field in aggregatable_fields:
                 fields_to_use.append(field)
             else:
                 influxdb3_local.info(
                     f"[{task_id}] Field '{field}' is not available for aggregation in measurement '{measurement}'."
                 )
     else:
-        fields_to_use = all_fields
+        fields_to_use = aggregatable_fields
 
     result: list = []
     if not re.match(pattern, calculations_input):
@@ -406,6 +406,7 @@ def parse_field_aggregations_for_scheduler(
         ]
     else:
         calculations: list = calculations_input.split(".")
+        used_fields: list = []
         for calc in calculations:
             field_name, calculation = calc.split(":")
             if calculation not in available_calculations:
@@ -414,10 +415,15 @@ def parse_field_aggregations_for_scheduler(
                 )
             if field_name in fields_to_use and field_name not in excluded_fields:
                 result.append((field_name, calculation))
+                used_fields.append(field_name)
             else:
                 influxdb3_local.info(
                     f"[{task_id}] Field '{field_name}' is not available or excluded."
                 )
+
+        for field in aggregatable_fields:
+            if field not in excluded_fields and field not in used_fields:
+                result.append((field, "avg"))
 
     if not result:
         raise Exception(f"[{task_id}] No aggregatable fields found for measurement.")
@@ -443,27 +449,27 @@ def parse_field_aggregations_for_http(
         Exception: If no aggregatable fields are found, or if the aggregation format or type is invalid.
     """
     measurement: str = data["source_measurement"]
+    aggregatable_fields: list = get_aggregatable_fields(influxdb3_local, measurement, task_id)
     calculations_input: list[list[str, str]] | str = data.get("calculations", "avg")
     excluded_fields: list = parse_fields_for_http(
-        influxdb3_local, measurement, "excluded_fields", data, task_id
+        influxdb3_local, measurement, "excluded_fields", data, aggregatable_fields, task_id
     )
     specific_fields: list = parse_fields_for_http(
-        influxdb3_local, measurement, "specific_fields", data, task_id
+        influxdb3_local, measurement, "specific_fields", data, aggregatable_fields, task_id
     )
-    all_fields: list = get_aggregatable_fields(influxdb3_local, measurement, task_id)
     available_calculations: list = ["avg", "sum", "min", "max", "derivative", "median"]
 
     if specific_fields:
         fields_to_use: list = []
         for field in specific_fields:
-            if field in all_fields and field not in excluded_fields:
+            if field in aggregatable_fields and field not in excluded_fields:
                 fields_to_use.append(field)
             else:
                 influxdb3_local.info(
                     f"[{task_id}] Field '{field}' is not available for aggregation in measurement '{measurement}' or excluded."
                 )
     else:
-        fields_to_use = [field for field in all_fields if field not in excluded_fields]
+        fields_to_use = [field for field in aggregatable_fields if field not in excluded_fields]
 
     result: list = []
 
@@ -474,15 +480,21 @@ def parse_field_aggregations_for_http(
             raise Exception(
                 f"[{task_id}] Invalid calculations format: {calculations_input}."
             )
-        for filed, calc in calculations_input:
+        used_fields: list = []
+        for field, calc in calculations_input:
             if calc not in available_calculations:
                 raise Exception(f"[{task_id}] Aggregation '{calc}' is not available.")
-            if filed in fields_to_use:
-                result.append((filed, calc))
+            if field in fields_to_use:
+                result.append((field, calc))
+                used_fields.append(field)
             else:
                 influxdb3_local.info(
-                    f"[{task_id}] Field '{filed}' is not available or excluded."
+                    f"[{task_id}] Field '{field}' is not available or excluded."
                 )
+
+        for field in aggregatable_fields:
+            if field not in excluded_fields and field not in used_fields:
+                result.append((field, "avg"))
 
     if not result:
         raise Exception(
@@ -492,7 +504,7 @@ def parse_field_aggregations_for_http(
 
 
 def parse_fields_for_scheduler(
-    influxdb3_local, measurement: str, key: str, args: dict, task_id: str
+    influxdb3_local, measurement: str, key: str, args: dict, aggregatable_fields: list, task_id: str
 ) -> list[str]:
     """
     Parses fields for downsampling in scheduler-based requests.
@@ -503,6 +515,7 @@ def parse_fields_for_scheduler(
         args (dict): Dictionary containing the 'key' key with a dot-separated
             string of field names (e.g., 'co.temperature').
         key (str): The key used to access the 'key' parameter in the 'args' dictionary.
+        aggregatable_fields (list): List of aggregatable field names in the measurement.
         task_id (str): The task ID.
 
     Returns:
@@ -523,13 +536,10 @@ def parse_fields_for_scheduler(
         raise Exception(f"[{task_id}] Invalid specific_fields format: {fields!r}.")
 
     requested: list = fields.split(".")
-    measurement_fields: list = get_aggregatable_fields(
-        influxdb3_local, measurement, task_id
-    )
     valid: list = []
 
     for field in requested:
-        if field not in measurement_fields:
+        if field not in aggregatable_fields:
             influxdb3_local.info(
                 f"[{task_id}] Field '{field}' is not available for downsampling '{measurement}'."
             )
