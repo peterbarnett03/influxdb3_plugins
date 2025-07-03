@@ -733,6 +733,7 @@ def process_scheduled_call(
             row: pd.Series = df[df["time"] == pd.Timestamp(idx.isoformat()).value].iloc[
                 0
             ]
+            time_datetime: datetime = pd.to_datetime(row["time"], unit='ns')
             cache_key: str = generate_cache_key(measurement, field, tags, row)
             tag_str: str = ", ".join(f"{t}={row.get(t, 'None')}" for t in tags)
             start_time_str: str = influxdb3_local.cache.get(cache_key, default="")
@@ -742,7 +743,7 @@ def process_scheduled_call(
                     if min_condition_duration > timedelta(0):
                         # Start of a new anomaly
                         influxdb3_local.cache.put(
-                            cache_key, datetime.now(timezone.utc).isoformat()
+                            cache_key, time_datetime.isoformat()
                         )
                         influxdb3_local.info(
                             f"[{task_id}] Anomaly started for {measurement}.{field} (tags: {tag_str}), waiting for duration {min_condition_duration}"
@@ -780,7 +781,7 @@ def process_scheduled_call(
                         start_time_str
                     )
                     elapsed: timedelta = (
-                        datetime.now(timezone.utc) - duration_start_time
+                        time_datetime - duration_start_time
                     )
                     if elapsed >= min_condition_duration:
                         # Send notification
