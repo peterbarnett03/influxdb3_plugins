@@ -770,6 +770,7 @@ def process_scheduled_call(
             merged["is_outlier"] = merged["error"] >= error_threshold
             merged = merged.sort_values("time")  # Sort by time
             for _, row in merged.iterrows():
+                row_time: datetime = row["time"]
                 is_outlier: bool = row["is_outlier"]
                 cache_key: str = generate_cache_key(
                     actual_measurement, actual_field, threshold_level, tags, row
@@ -780,7 +781,7 @@ def process_scheduled_call(
                     start_iso: str = influxdb3_local.cache.get(cache_key, default="")
                     if not start_iso:
                         influxdb3_local.cache.put(
-                            cache_key, datetime.now(timezone.utc).isoformat()
+                            cache_key, row_time.isoformat()
                         )
                         if min_condition_duration > timedelta(0):
                             influxdb3_local.info(
@@ -789,7 +790,7 @@ def process_scheduled_call(
                             continue
                     else:
                         start_dt: datetime = datetime.fromisoformat(start_iso)
-                        elapsed: timedelta = datetime.now(timezone.utc) - start_dt
+                        elapsed: timedelta = row_time - start_dt
                         if elapsed >= min_condition_duration:
                             payload: dict = {
                                 "notification_text": interpolate_notification_text(
