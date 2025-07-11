@@ -283,7 +283,7 @@ EXCLUDED_KEYWORDS = ["headers", "token", "sid"]
 
 def get_all_measurements(influxdb3_local) -> list[str]:
     """
-    Retrieves a list of all tables of type 'BASE TABLE' from the current InfluxDB database.
+    Retrieves a list of all tables of type 'BASE TABLE' from cache or the current InfluxDB database.
 
     Args:
         influxdb3_local: InfluxDB client instance.
@@ -291,15 +291,26 @@ def get_all_measurements(influxdb3_local) -> list[str]:
     Returns:
         list[str]: List of table names (e.g., ["cpu", "memory", "disk"]).
     """
+    # check cache first
+    measurements: list = influxdb3_local.cache.get("measurements")
+    if measurements:
+        return measurements
+
+    # if not in cache, query the database
     result: list = influxdb3_local.query("SHOW TABLES")
-    return [
+    measurements = [
         row["table_name"] for row in result if row.get("table_type") == "BASE TABLE"
     ]
+
+    # cache the result for 1 hour
+    influxdb3_local.cache.put(f"measurements", measurements, 60 * 60)
+
+    return measurements
 
 
 def get_tag_names(influxdb3_local, measurement: str, task_id: str) -> list[str]:
     """
-    Retrieves the list of tag names for a measurement.
+    Retrieves the list of tag names for a measurement from cache or the database.
 
     Args:
         influxdb3_local: InfluxDB client instance.
@@ -309,7 +320,13 @@ def get_tag_names(influxdb3_local, measurement: str, task_id: str) -> list[str]:
     Returns:
         list[str]: List of tag names with 'Dictionary(Int32, Utf8)' data type.
     """
-    query: str = """
+    # check cache first
+    tags: list = influxdb3_local.cache.get(f"{measurement}_tags")
+    if tags:
+        return tags
+
+    # if not in cache, query the database
+    query = """
         SELECT column_name
         FROM information_schema.columns
         WHERE table_name = $measurement
@@ -324,6 +341,10 @@ def get_tag_names(influxdb3_local, measurement: str, task_id: str) -> list[str]:
         return []
 
     tag_names: list[str] = [tag["column_name"] for tag in res]
+
+    # cache the result for 1 hour
+    influxdb3_local.cache.put(f"{measurement}_tags", tag_names, 60 * 60)
+
     return tag_names
 
 

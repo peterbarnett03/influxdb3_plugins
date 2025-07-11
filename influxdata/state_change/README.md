@@ -156,6 +156,7 @@ influxdb3 create trigger \
 - **Retries**: Notifications are retried up to three times with randomized backoff delays.
 - **Row in Notifications (Data Write)**: The `row` variable represents a unique combination of measurement, field, value, and tags (e.g., `cpu:temp:30:host=server1`).
 - **Tags in Notifications (Scheduler)**: The `tags` variable includes all tag names and values for the triggering condition (e.g., `host=server1,region=eu`).
+- **Measurements/Tag Name Caching**: The plugin caches the list of measurements in database and tag names for each measurement for one hour to avoid unnecessary repeated queries and improve performance.
 
 ## Questions/Comments
 For support, open a GitHub issue or contact us via [Discord](https://discord.com/invite/vZe2w2Ds8B) in the `#influxdb3_core` channel, [Slack](https://influxcommunity.slack.com/) in the `#influxdb3_core` channel, or the [Community Forums](https://community.influxdata.com/).
