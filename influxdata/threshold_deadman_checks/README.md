@@ -163,6 +163,8 @@ influxdb3 create trigger \
 - **Environment Variables**: Sensitive data like API tokens can be set via environment variables (e.g., `INFLUXDB3_AUTH_TOKEN`).
 - **Retries**: The plugin retries failed notifications with exponential backoff.
 - **Row in Notifications**: The `row` variable in threshold notifications uniquely identifies the combination of message level, table and tags, ensuring alerts are specific to each tag set.
+- **Measurements/Tag Name Caching**: The plugin caches the list of measurements in database and tag names for each measurement for one hour to avoid unnecessary repeated queries and improve performance.
+
 
 ## Questions/Comments
 For support, open a GitHub issue or contact us via [Discord](https://discord.com/invite/vZe2w2Ds8B) in the `#influxdb3_core` channel, [Slack](https://influxcommunity.slack.com/) in the `#influxdb3_core` channel, or the [Community Forums](https://community.influxdata.com/).
