@@ -24,13 +24,13 @@
             "name": "names_transformations",
             "example": "room:'lower snake'.temp:'upper'.name:'custom_replacement'",
             "description": "Rules for transforming field and tag names. Format: 'field1:'transform1 transform2'.pattern_name:'transform3 transform4'.",
-            "required": true
+            "required": false
         },
         {
             "name": "values_transformations",
             "example": "temp:'convert_degC_to_degF'.hum:'upper'.something:'lower'",
             "description": "Rules for transforming field values. Format: 'field1:'transform1 transform2'.pattern:'transform3'.",
-            "required": true
+            "required": false
         },
         {
             "name": "target_database",
@@ -98,13 +98,13 @@
             "name": "names_transformations",
             "example": "room:'lower snake'.temp:'upper'.name:'custom_replacement'",
             "description": "Rules for transforming field and tag names. Format: 'field1:'transform1 transform2'.pattern_name:'transform3 transform4'.",
-            "required": true
+            "required": false
         },
         {
             "name": "values_transformations",
             "example": "temp:'convert_degC_to_degF'.hum:'upper'.something:'lower'",
             "description": "Rules for transforming field values. Format: 'field1:'transform1 transform2'.pattern:'transform3'.",
-            "required": true
+            "required": false
         },
         {
             "name": "target_database",
@@ -609,7 +609,7 @@ def parse_custom_regex(
 
 def get_fields_names(influxdb3_local, measurement: str, task_id: str) -> list[str]:
     """
-    Retrieves the list of field names for a measurement.
+    Retrieves the list of field names for a measurement from cache or the database.
 
     Args:
         influxdb3_local: InfluxDB client instance.
@@ -619,6 +619,12 @@ def get_fields_names(influxdb3_local, measurement: str, task_id: str) -> list[st
     Returns:
         list[str]: List of field names.
     """
+    # check cache first
+    fields: list = influxdb3_local.cache.get(f"{measurement}_fields")
+    if fields:
+        return fields
+
+    # if not in cache, query the database
     query: str = """
         SELECT column_name
         FROM information_schema.columns
@@ -634,12 +640,16 @@ def get_fields_names(influxdb3_local, measurement: str, task_id: str) -> list[st
         return []
 
     field_names: list[str] = [field["column_name"] for field in res]
+
+    # cache the result for 1 hour
+    influxdb3_local.cache.put(f"{measurement}_fields", field_names, 60 * 60)
+
     return field_names
 
 
 def get_tag_names(influxdb3_local, measurement: str, task_id: str) -> list[str]:
     """
-    Retrieves the list of tag names for a measurement.
+    Retrieves the list of tag names for a measurement from cache or the database.
 
     Args:
         influxdb3_local: InfluxDB client instance.
@@ -649,6 +659,12 @@ def get_tag_names(influxdb3_local, measurement: str, task_id: str) -> list[str]:
     Returns:
         list[str]: List of tag names with 'Dictionary(Int32, Utf8)' data type.
     """
+    # check cache first
+    tags: list = influxdb3_local.cache.get(f"{measurement}_tags")
+    if tags:
+        return tags
+
+    # if not in cache, query the database
     query: str = """
         SELECT column_name
         FROM information_schema.columns
@@ -664,6 +680,10 @@ def get_tag_names(influxdb3_local, measurement: str, task_id: str) -> list[str]:
         return []
 
     tag_names: list[str] = [tag["column_name"] for tag in res]
+
+    # cache the result for 1 hour
+    influxdb3_local.cache.put(f"{measurement}_tags", tag_names, 60 * 60)
+
     return tag_names
 
 
@@ -1154,13 +1174,7 @@ def process_scheduled_call(
                 influxdb3_local.error(f"[{task_id}] Failed to read config file")
                 return
 
-    required_keys: list = [
-        "measurement",
-        "window",
-        "target_measurement",
-        "names_transformations",
-        "values_transformations",
-    ]
+    required_keys: list = ["measurement", "window", "target_measurement"]
 
     if not args or any(key not in args for key in required_keys):
         influxdb3_local.error(
@@ -1189,6 +1203,10 @@ def process_scheduled_call(
         values_transformations: dict = parse_transformation_rules(
             influxdb3_local, args, "values_transformations", task_id
         )
+        if not names_transformations and not values_transformations:
+            influxdb3_local.error(f"[{task_id}] No transformation rules provided")
+            return
+
         custom_replacements: dict = parse_custom_replacements(
             influxdb3_local, args.get("custom_replacements"), task_id
         )
@@ -1444,12 +1462,7 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
                 influxdb3_local.error(f"[{task_id}] Failed to read config file")
                 return
 
-    required_keys: list = [
-        "measurement",
-        "target_measurement",
-        "names_transformations",
-        "values_transformations",
-    ]
+    required_keys: list = ["measurement", "target_measurement"]
 
     if not args or any(key not in args for key in required_keys):
         influxdb3_local.error(
@@ -1477,6 +1490,10 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
         values_transformations: dict = parse_transformation_rules(
             influxdb3_local, args, "values_transformations", task_id
         )
+        if not names_transformations and not values_transformations:
+            influxdb3_local.error(f"[{task_id}] No transformation rules provided")
+            return
+
         custom_replacements: dict = parse_custom_replacements(
             influxdb3_local, args.get("custom_replacements"), task_id
         )

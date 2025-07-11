@@ -9,17 +9,21 @@ measurement = "temperature"         # e.g., "temperature" or "cpu_load"
 # Destination measurement for writing transformed data
 target_measurement = "transformed_temperature"
 
-# Transformations to apply to field and tag names
-# Format: 'field_name:"transform1 transform2".pattern_name:"transform3"'
-names_transformations = 'room:"snake lower".temp:"upper"'
-
-# Transformations to apply to field values
-# Format: 'field_name:"transform1 transform2".pattern_name:"transform3"'
-values_transformations = 'temp:"convert_degC_to_degF".hum:"upper"'
-
 
 
 ########## Optional Parameters ##########
+
+# Transformations to apply to field and tag names
+# Format: 'field_name:"transform1 transform2".pattern_name:"transform3"'
+# names_transformations = 'room:"snake lower".temp:"upper"'
+
+# Transformations to apply to field and tag values
+# Format: 'field_name:"transform1 transform2".pattern_name:"transform3"'
+# values_transformations = 'temp:"convert_degC_to_degF".hum:"upper"'
+
+# If names_transformations and values_transformations are not specified, error will be raised
+
+
 # Optional InfluxDB database for writing transformed data
 # target_database = "transformed_db"
 
