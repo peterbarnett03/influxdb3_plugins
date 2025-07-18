@@ -244,7 +244,15 @@ def parse_senders(influxdb3_local, args: dict, task_id: str) -> dict:
     """
     senders_config: defaultdict = defaultdict(dict)
 
-    senders: list = args["senders"].split(".")
+    senders: str | list = args.get("senders")
+    if args["use_config_file"]:
+        if not isinstance(senders, list):
+            raise Exception(
+                f"[{task_id}] 'senders' must be a list when using config file"
+            )
+    else:
+        senders = senders.split(".")
+
     for sender in senders:
         if sender not in AVAILABLE_SENDERS:
             influxdb3_local.warn(f"[{task_id}] Invalid sender type: {sender}")
@@ -478,7 +486,9 @@ def generate_cache_key(
 def parse_error_thresholds(
     influxdb3_local, args: dict, task_id: str
 ) -> dict[str, float]:
-    """Parses a string of error thresholds into a dictionary mapping severity levels to threshold values.
+    """
+    Parses a string of error thresholds into a dictionary mapping severity
+        levels to threshold values or uses values from a config file.
 
     Args:
         influxdb3_local: An InfluxDB 3 logger instance for logging warnings.
@@ -499,10 +509,18 @@ def parse_error_thresholds(
         parse_error_thresholds(influxdb3_local, args, "task123")
         {'INFO': 10.0, 'WARN': 20.5, 'ERROR': 30.0}
     """
-    threshold_str: str = args["error_thresholds"]
+    threshold_input: str | dict = args["error_thresholds"]
     thresholds: dict = {}
 
-    parts = threshold_str.split(":")
+    if args["use_config_file"]:
+        if isinstance(threshold_input, dict):
+            return threshold_input
+        else:
+            raise Exception(
+                f"[{task_id}] Invalid format of error_threshold, expected a dictionary, got '{type(threshold_input)}'"
+            )
+
+    parts = threshold_input.split(":")
     for part in parts:
         if not "-" in part:
             influxdb3_local.warn(
@@ -617,10 +635,13 @@ def process_scheduled_call(
                 influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
                 with open(file_path, "rb") as f:
                     args = tomllib.load(f)
+                    args["use_config_file"] = True
                 influxdb3_local.info(f"[{task_id}] New args content: {args}")
             except Exception:
                 influxdb3_local.error(f"[{task_id}] Failed to read config file")
                 return
+        else:
+            args["use_config_file"] = False
 
     # Validate required arguments
     required_keys: list = [
@@ -780,9 +801,7 @@ def process_scheduled_call(
                 if is_outlier:
                     start_iso: str = influxdb3_local.cache.get(cache_key, default="")
                     if not start_iso:
-                        influxdb3_local.cache.put(
-                            cache_key, row_time.isoformat()
-                        )
+                        influxdb3_local.cache.put(cache_key, row_time.isoformat())
                         if min_condition_duration > timedelta(0):
                             influxdb3_local.info(
                                 f"[{task_id}] Error threshold exceeded in {actual_measurement}.{actual_field} for row {cache_key}, but waiting for {min_condition_duration}"

@@ -11,7 +11,7 @@ This plugin evaluates the accuracy of forecast models in InfluxDB 3 by comparing
 
 ## Features
 - **Scheduler Plugin**: Periodically queries forecast and actual measurements within a time window, computes error metrics, and detects anomalies based on error thresholds.
-- **Args Overriding**: Allows overriding arguments for scheduler type via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function).
+- **Args Overriding**: Allows overriding arguments for scheduler type via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, see toml files example on [Git](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/forecast_error_evaluator). Override args parameter in handler function).
 - **Error Metrics**: Supports MSE, MAE, and RMSE for evaluating forecast accuracy.
 - **Threshold-based Detection**: Flags anomalies when the computed error exceeds a specified threshold.
 - **Debounce Logic**: Optional minimum condition duration to suppress transient anomalies.

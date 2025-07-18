@@ -1,96 +1,110 @@
-# Forecast Error Evaluator Plugin Scheduler Configuration Template
+# Forecast Error Evaluator Plugin Configuration Template
 # Copy this file to your PLUGIN_DIR and reference it with
 #   --trigger-arguments config_file_path=forecast_error_config_scheduler.toml
 
 ########## Required Parameters ##########
 # InfluxDB measurement containing forecasted values
-forecast_measurement = "forecast_data"      # e.g., "forecast_data"
+# Specify the measurement name (string) for forecasted data
+forecast_measurement = "your_forecast_measurement"  # e.g., "forecast_data", "predictions"
 
 # InfluxDB measurement containing actual (ground truth) values
-actual_measurement = "actual_data"          # e.g., "actual_data"
+# Specify the measurement name (string) for actual data
+actual_measurement = "your_actual_measurement"  # e.g., "actual_data", "ground_truth"
 
 # Field name in forecast_measurement for predicted values
-forecast_field = "predicted_temp"           # e.g., "predicted_temp"
+# Specify the field name (string) for predicted values
+forecast_field = "your_forecast_field"  # e.g., "predicted_temp", "forecast_value"
 
 # Field name in actual_measurement for actual values
-actual_field = "temp"                       # e.g., "temp"
+# Specify the field name (string) for actual values
+actual_field = "your_actual_field"  # e.g., "temp", "actual_value"
 
-# Error metric to compute: mse, mae, or rmse
-error_metric = "rmse"                       # one of "mse", "mae", "rmse"
+# Error metric to compute
+# Specify one of: "mse" (mean squared error), "mae" (mean absolute error), "rmse" (root mean squared error)
+error_metric = "your_error_metric"  # e.g., "mse", "mae", "rmse"
 
-# Thresholds for anomaly levels. Format: LEVEL-"value":LEVEL-"value":...
-error_thresholds = 'INFO-"0.5":WARN-"0.9":ERROR-"1.2":CRITICAL-"1.5"'
+# Time window for analysis
+# Format: <number><unit>, where unit is s (seconds), min (minutes), h (hours), d (days), w (weeks)
+window = "your_window"  # e.g., "10m", "1h"
 
-# Time window for analysis. Format: <number><unit> (s, min, h, d, w)
-window = "1h"                                # e.g., "10m", "1h"
-
-# Notification channels (dot-separated list)
-senders = "slack"                           # e.g., "slack.discord.http"
+# Notification channels
+# Specify a dot-separated list of notification channels (strings)
+senders = ["your_channel"]  # e.g., ["slack"], ["slack", "discord"], ["http"]
 
 ########## Optional Parameters ##########
-# Minimum duration for an anomaly condition before notifying. Format: <number><unit>
-# min_condition_duration = "5m"
+# Minimum duration for an anomaly condition before notifying
+# Format: <number><unit>, where unit is s (seconds), min (minutes), h (hours), d (days), w (weeks)
+#min_condition_duration = "your_duration"  # e.g., "5m", "1h"
 
-# Timestamp rounding frequency. Format: <number><unit> (s, min, h, d, w)
-# rounding_freq = "1s"
+# Timestamp rounding frequency
+# Format: <number><unit>, where unit is s (seconds), min (minutes), h (hours), d (days), w (weeks)
+#rounding_freq = "your_rounding_freq"  # e.g., "1s", "10m"
 
-# Template for notification messages. Variables: $measurement, $level, $field, $error, $metric, $tags
-# notification_text = "[$level] Forecast error in $measurement.$field: $metric=$error. Tags: $tags"
+# Template for notification messages
+# Use variables: $measurement, $level, $field, $error, $metric, $tags
+#notification_text = "your_notification_template"  # e.g., "[$level] Forecast error in $measurement.$field: $metric=$error. Tags: $tags"
 
-# Custom URL path for notification sender plugin (defaults to "notify")
-# notification_path = "custom/notify"
+# Custom URL path for notification sender plugin
+# Specify a custom path (string); defaults to "notify" if omitted
+#notification_path = "your_notification_path"  # e.g., "custom/notify"
 
-# Override InfluxDB port (defaults to 8181)
-# port_override = "8182"
+# Override InfluxDB port
+# Specify a port number (string); defaults to 8181 if omitted
+#port_override = "your_port"  # e.g., "8182"
 
-# InfluxDB 3 API token (can also be provided via INFLUXDB3_AUTH_TOKEN env var)
-# influxdb3_auth_token = "YOUR_API_TOKEN"
-
-
+# InfluxDB 3 API token
+# Specify the token (string); can also be provided via INFLUXDB3_AUTH_TOKEN environment variable
+#influxdb3_auth_token = "your_api_token"  # e.g., "apiv3_zaHVA5iBsXe2hyqqjbx_uka..."
 
 ########## Sender-Specific Settings ##########
-# For each channel listed in senders, uncomment and configure the following parameters:
+# For each channel listed in senders, uncomment and configure the relevant parameters below:
 
 # --- Slack ---
-# Webhook URL for Slack notifications (required)
-# slack_webhook_url = "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+# Webhook URL for Slack notifications (required for Slack)
+#slack_webhook_url = "your_slack_webhook_url"  # e.g., "https://hooks.slack.com/services/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"
 # Optional: Custom headers for Slack webhook (Base64-encoded JSON string)
-# slack_headers = "eyJIb3N0IjogImV4YW1wbGUuY29tIn0="
+#slack_headers = "your_slack_headers"  # e.g., "eyJIb3N0IjogImV4YW1wbGUuY29tIn0="
 
 # --- Discord ---
-# Webhook URL for Discord notifications (required)
-# discord_webhook_url = "https://discord.com/api/webhooks/AAA/BBB"
+# Webhook URL for Discord notifications (required for Discord)
+#discord_webhook_url = "your_discord_webhook_url"  # e.g., "https://discord.com/api/webhooks/AAA/BBB"
 # Optional: Custom headers for Discord webhook (Base64-encoded JSON string)
-# discord_headers = "eyJDb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIn0="
+#discord_headers = "your_discord_headers"  # e.g., "eyJDb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIn0="
 
 # --- HTTP ---
-# HTTP endpoint to send notifications (required)
-# http_webhook_url = "https://example.com/webhook"
+# HTTP endpoint to send notifications (required for HTTP)
+#http_webhook_url = "your_http_webhook_url"  # e.g., "https://example.com/webhook"
 # Optional: Custom HTTP headers (Base64-encoded JSON string)
-# http_headers = "eyJhdXRoIjogIkJlYXJlciBZT1VSX1RPS0VOIn0="
+#http_headers = "your_http_headers"  # e.g., "eyJhdXRoIjogIkJlYXJlciBZT1VSX1RPS0VOIn0="
 
 # --- SMS (Twilio) ---
-# Twilio Account SID (required, or via TWILIO_SID env var)
-# twilio_sid = "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-# Twilio Auth Token (required, or via TWILIO_TOKEN env var)
-# twilio_token = "your_auth_token"
-# Twilio sender number (required, format: +1234567890)
-# twilio_from_number = "+1234567890"
-# Recipient phone number (required, format: +0987654321)
-# twilio_to_number = "+0987654321"
+# Twilio Account SID (required for SMS, or via TWILIO_SID env var)
+#twilio_sid = "your_twilio_sid"  # e.g., "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+# Twilio Auth Token (required for SMS, or via TWILIO_TOKEN env var)
+#twilio_token = "your_twilio_token"  # e.g., "your_auth_token"
+# Twilio sender number (required for SMS, format: +1234567890)
+#twilio_from_number = "your_twilio_from_number"  # e.g., "+1234567890"
+# Recipient phone number (required for SMS, format: +0987654321)
+#twilio_to_number = "your_twilio_to_number"  # e.g., "+0987654321"
 
 # --- WhatsApp (via Twilio) ---
-# WhatsApp sender number (required, format: +1234567890)
-# whatsapp_from_number = "+1234567890"
-# WhatsApp recipient number (required, format: +0987654321)
-# whatsapp_to_number = "+0987654321"
+# WhatsApp sender number (required for WhatsApp, format: +1234567890)
+#whatsapp_from_number = "your_whatsapp_from_number"  # e.g., "+1234567890"
+# WhatsApp recipient number (required for WhatsApp, format: +0987654321)
+#whatsapp_to_number = "your_whatsapp_to_number"  # e.g., "+0987654321"
 
-
+# Thresholds for anomaly levels (Required)
+# Dictionary mapping anomaly levels (strings) to threshold values (floats)
+[error_thresholds]
+INFO = 1.0
+WARN = 2.0
+ERROR = 3.0
+CRITICAL = 4.0
 
 ###### Example: Create Trigger Using This Config ######
 # influxdb3 create trigger \
-#   --database mydb \
+#   --database your_database_name \
 #   --plugin-filename forecast_error_evaluator.py \
-#   --trigger-spec "every:10m" \
+#   --trigger-spec "every:your_interval" \
 #   --trigger-arguments config_file_path=forecast_error_config_scheduler.toml \
-#   forecast_error_trigger
+#   your_trigger_name
