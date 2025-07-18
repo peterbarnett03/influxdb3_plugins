@@ -13,7 +13,7 @@ This plugin enables forecasting of time series data stored in InfluxDB 3 using t
 ## Features
 - **Scheduler Plugin**: Periodically performs forecasting on specified InfluxDB measurements.
 - **HTTP Plugin**: Allows on-demand forecasting via HTTP POST requests.
-- **Args Overriding**: Allows overriding arguments for scheduled tasks via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function). 
+- **Args Overriding**: Allows overriding arguments for scheduled tasks via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function). The `config_file_path` must be specified as a path relative to the directory defined by PLUGIN_DIR.
 - **Model Training and Prediction**: Supports both training new models and using existing ones for prediction.
 - **Forecast Validation**: Optionally validates forecasts against recent actual values using Mean Squared Relative Error (MSRE).
 - **Data Writing**: Writes forecast results to a specified InfluxDB measurement.

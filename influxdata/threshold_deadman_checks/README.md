@@ -12,7 +12,7 @@ This plugin system provides checks capabilities for InfluxDB 3 through two compl
 ## Features
 - **Scheduler Plugin**: Periodically checks for data presence (e.g., for deadman alerts) or evaluates aggregation-based conditions and sends notifications when conditions are met.
 - **Data Write Plugin**: Triggers on data writes to the database, checks threshold conditions, and sends notifications.
-- **Args Overriding**: Allows overriding arguments for scheduler and data write types via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function).
+- **Args Overriding**: Allows overriding arguments for scheduler and data write types via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function). The `config_file_path` must be specified as a path relative to the directory defined by PLUGIN_DIR.
 - **Multi-Channel Notifications**: Notifications are sent via the Notification Sender Plugin, supporting Slack, Discord, HTTP, SMS, or WhatsApp.
 - **Customizable Messages**: Allows dynamic variables in notification text.
 - **Retry Logic**: Retries failed notifications with exponential backoff.
