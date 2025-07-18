@@ -1,54 +1,60 @@
 # Downsampling Plugin Scheduler Configuration Template
 # Copy this file to your PLUGIN_DIR and reference it with `--trigger-arguments config_file_path=downsampling_config_scheduler.toml`
 
-
 ########## Required Parameters ##########
 # Name of the source measurement to downsample
-source_measurement = "home"         # e.g., "cpu_usage", "temperature"
+# Specify the measurement name (string) from your source InfluxDB database
+source_measurement = "your_source_measurement"  # e.g., "cpu_usage", "temperature", "home"
 
 # Name of the target measurement to write downsampled data
-target_measurement = "home_downsampled"
+# Specify the target measurement name (string)
+target_measurement = "your_target_measurement"  # e.g., "downsampled_cpu", "processed_temperature"
 
-# Time interval for aggregation. Format: <number><unit>
-# Units: s, min, h, d, w, m, q, y
-interval = "10min"                  # e.g., "10s", "1h", "1d"
+# Time interval for aggregation
+# Format: <number><unit>, where unit is s (seconds), min (minutes), h (hours), d (days), w (weeks), m (months), q (quarters), y (years)
+interval = "your_interval"  # e.g., "10s", "1h", "1d"
 
-# Time window for each downsampling job. Format: <number><unit>
-# Units: s, min, h, d, w
-window = "1h"                       # e.g., "30min", "24h"
-
+# Time window for each downsampling job
+# Format: <number><unit>, where unit is s (seconds), min (minutes), h (hours), d (days), w (weeks)
+window = "your_window"  # e.g., "30min", "24h"
 
 
 ########## Optional Parameters ##########
-# Time offset to shift the window. Format: <number><unit>
-# offset = "5min"                  # e.g., "10s", "1h"
+# Time offset to shift the window
+# Format: <number><unit>, where unit is s (seconds), min (minutes), h (hours), d (days), w (weeks)
+#offset = "your_offset"  # e.g., "10s", "1h"
 
-# Aggregation functions per field.
-# Either a single function or dot-separated list of field:function pairs
-# calculations = "avg"               # default: "avg"
-# calculations = "field1:sum.field2:max"
+# Specific fields to downsample
+# List of strings representing field names to include; leave empty to downsample all fields
+#specific_fields = ["field1", "field2"]  # e.g., ["temp", "hum"]
 
-# Specific fields to downsample (dot-separated list).
-# specific_fields = "temperature.humidity"
+# Fields to exclude from downsampling
+# List of strings representing field names to exclude; leave commented or empty to include all fields
+#excluded_fields = ["field3", "field4"]  # e.g., ["co", "hum2"]
 
-# Fields to exclude from downsampling (dot-separated list).
-# excluded_fields = "pressure"
+# Maximum number of retries for write operations
+# Integer value ≥ 0; default is typically 5
+#max_retries = 5  # e.g., 3, 10
 
-# Tag filters: dot-separated tag:value1@value2 pairs.
-# tag_values = "room:Kitchen@LivingRoom@'My Bedroom'"
+# Target database for writing downsampled data
+# Specify the target database name (string); if omitted, source database is used
+#target_database = "your_target_database"  # e.g., "analytics_db", "downsampled_data"
 
-# Maximum number of retries for write operations. Integer ≥ 0
-# max_retries = "5"                    # default: 5
+# Aggregation functions per field
+# Either a single function (string, e.g., "avg") or a list of [field, function] pairs
+# Supported functions depend on the plugin; common examples: "avg", "min", "max", "sum"
+#calculations = "avg"  # Single function applied to all fields
+#calculations = [["field1", "function1"], ["field2", "function2"]]  # e.g., [["temp", "avg"], ["hum", "max"]]
 
-# Target database for writing downsampled data.
-# target_database = "analytics_db"
-
-
+# Tag filters
+# Map of tag keys to lists of allowed tag values (strings)
+#[tag_values]
+#tag_key = ["value1", "value2"]  # e.g., room = ["Kitchen", "LivingRoom"]
 
 ###### Example: Create Trigger Using This Config ######
 # influxdb3 create trigger \
-#   --database mydb \
+#   --database your_database_name \
 #   --plugin-filename downsampler.py \
-#   --trigger-spec "every:10min" \
+#   --trigger-spec "every:your_interval" \
 #   --trigger-arguments config_file_path=downsampling_config_scheduler.toml \
-#   downsampling_trigger
+#   your_trigger_name

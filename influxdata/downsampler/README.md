@@ -13,7 +13,7 @@ This plugin enables downsampling of data in an InfluxDB 3 Core/Enterprise instan
 - **Flexible Downsampling**: Aggregate data over specified time intervals (e.g., seconds, minutes, hours, days, weeks, months, quarters, or years) using functions like `avg`, `sum`, `min`, `max`, or `derivative`.  
 - **Field and Tag Filtering**: Select specific fields for aggregation and filter by tag values.  
 - **Scheduler and HTTP Support**: Run periodically via InfluxDB triggers or on-demand via HTTP requests.
-- **Args Overriding**: Allows overriding arguments for scheduler type via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function).
+- **Args Overriding**: Allows overriding arguments for scheduler type via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, see toml files examples on [Git](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/downsampler). Override args parameter in handler function).
 - **Retry Logic**: Configurable retries for robust write operations.  
 - **Batch Processing**: Process large datasets in configurable time batches for HTTP requests.  
 - **Backfill Support**: Downsample historical data within a specified time window.
