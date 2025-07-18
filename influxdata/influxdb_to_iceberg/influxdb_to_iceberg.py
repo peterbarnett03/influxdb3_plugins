@@ -131,24 +131,40 @@ def parse_time_duration(raw: str, task_id: str) -> timedelta:
     return timedelta(**{units[unit_part]: val})
 
 
-def parse_fields(args: dict, key: str) -> list[str]:
-    """Splits a dot-separated string into a list of strings."""
-    string_input: str | None = args.get(key, None)
-    if not string_input:
+def parse_fields(args: dict, key: str, task_id: str) -> list[str]:
+    """Splits a dot-separated string into a list of strings or use config file."""
+    input_val: str | list | None = args.get(key, None)
+    if not input_val:
         return []
-    return string_input.split(".")
+
+    if args["use_config_file"]:
+        if isinstance(input_val, list):
+            return input_val
+        else:
+            raise Exception(f"[{task_id}] {key} must be a list when using config file")
+
+    return input_val.split(".")
 
 
 def parse_catalog_configs(args: dict, task_id: str) -> dict:
-    """Decode and parse a base64-encoded JSON string."""
-    base64_params: str = args["catalog_configs"]
+    """Decode and parse a base64-encoded JSON string or use config file."""
+    input_params: str | dict = args["catalog_configs"]
+
+    if args["use_config_file"]:
+        if isinstance(input_params, dict):
+            return input_params
+        else:
+            raise Exception(
+                f"[{task_id}] catalog_configs must be a dict when using config file"
+            )
+
     try:
         # Decode base64-encoded string
-        decoded_bytes: bytes = base64.b64decode(base64_params)
+        decoded_bytes: bytes = base64.b64decode(input_params)
         decoded_str: str = decoded_bytes.decode("utf-8")
     except Exception:
         raise Exception(
-            f"[{task_id}] Invalid base64 encoding in catalog_configs: {base64_params}"
+            f"[{task_id}] Invalid base64 encoding in catalog_configs: {input_params}"
         )
 
     try:
@@ -347,10 +363,13 @@ def process_scheduled_call(
                 influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
                 with open(file_path, "rb") as f:
                     args = tomllib.load(f)
+                    args["use_config_file"] = True
                 influxdb3_local.info(f"[{task_id}] New args content: {args}")
             except Exception:
                 influxdb3_local.error(f"[{task_id}] Failed to read config file")
                 return
+        else:
+            args["use_config_file"] = False
 
     # Validate required arguments
     required_keys: list = ["measurement", "window", "catalog_configs"]
@@ -372,8 +391,8 @@ def process_scheduled_call(
         # Parse config
         window: timedelta = parse_time_duration(args["window"], task_id)
         catalog_configs: dict = parse_catalog_configs(args, task_id)
-        included_fields: list = parse_fields(args, "included_fields")
-        excluded_fields: list = parse_fields(args, "excluded_fields")
+        included_fields: list = parse_fields(args, "included_fields", task_id)
+        excluded_fields: list = parse_fields(args, "excluded_fields", task_id)
         namespace: str = args.get("namespace", "default")
         table_name: str = args.get("table_name", measurement)
         full_table_name: str = f"{namespace}.{table_name}"

@@ -13,7 +13,7 @@ This plugin transfers data from InfluxDB 3 to Apache Iceberg tables. It supports
 ## Features
 - **Scheduler Plugin**: Periodically queries InfluxDB measurements within a specified time window.
 - **HTTP Plugin**: Allows on-demand replication via HTTP POST requests, supporting batch processing and backfill windows.
-- **Args Overriding**: Allows overriding arguments for scheduler type via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function).
+- **Args Overriding**: Allows overriding arguments for scheduler type via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, see toml files examples on [Git](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/influxdb_to_iceberg). Override args parameter in handler function).
 - **Data Transformation**: Converts InfluxDB query results to a format suitable for Iceberg tables.
 - **Schema Management**: Automatically creates the Iceberg table schema based on the queried data if the table does not exist.
 - **Namespace and Table Naming**: Customizable Iceberg namespace and table names, defaulting to "default" namespace and the measurement name for the table.

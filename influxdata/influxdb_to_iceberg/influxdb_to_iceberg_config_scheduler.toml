@@ -2,40 +2,50 @@
 # Copy this file to your PLUGIN_DIR and reference it with
 #   --trigger-arguments config_file_path=influxdb_to_iceberg_config_scheduler.toml
 
-
 ########## Required Parameters ##########
 # InfluxDB measurement to query and transfer
-measurement = "cpu"             # e.g., "cpu", "temperature"
+# Specify the measurement name (string) from your source InfluxDB database
+measurement = "your_measurement"  # e.g., "cpu", "temperature", "home"
 
-# Time window for each transfer job. Format: <number><unit>
-# Units: s (seconds), min (minutes), h (hours), d (days), w (weeks)
-window = "1h"                          # e.g., "30m", "24h"
-
-# Base64-encoded JSON string for Iceberg catalog configuration.
-# See https://py.iceberg.apache.org/configuration/
-catalog_configs = "eyJ0eXBlIjogInNraXBwIiwgInVyaSI6ICJodHRwOi8vbG9jYWxob3N0OjkwMDAifQ=="  # e.g., {"type":"spark","uri":"thrift://..."}
-
-
+# Time window for each transfer job
+# Format: <number><unit>, where unit is s (seconds), min (minutes), h (hours), d (days), w (weeks)
+window = "your_window"  # e.g., "30m", "24h"
 
 ########## Optional Parameters ##########
-# Include only these fields from the query (dot-separated list)
-# included_fields = "usage_user.usage_idle"
+# Include only these fields from the query
+# List of strings representing field names to include; leave empty to include all fields
+#included_fields = ["field1", "field2"]  # e.g., ["temp", "hum"]
 
-# Exclude these fields from the query (dot-separated list)
-# excluded_fields = "usage_system.usage_user"
+# Exclude these fields from the query
+# List of strings representing field names to exclude; leave commented or empty to include all fields
+#excluded_fields = ["field3", "field4"]  # e.g., ["temp", "hum"]
 
-# Iceberg namespace for the target table (default: "default")
-# namespace = "analytics"
+# Iceberg namespace for the target table
+# Specify the namespace (string); defaults to "default" if omitted
+#namespace = "your_namespace"  # e.g., "analytics", "production"
 
-# Iceberg table name (default: same as data_measurement)
-# table_name = "cpu_metrics"
+# Iceberg table name
+# Specify the target table name (string); defaults to the measurement name if omitted
+#table_name = "your_table_name"  # e.g., "cpu_metrics", "temperature_data"
 
-
+# Iceberg catalog configuration (Required)
+# Dictionary of key-value pairs for configuring the Iceberg catalog
+# See https://py.iceberg.apache.org/configuration/ for supported options
+[catalog_configs]
+type = "your_catalog_type"  # e.g., "sql", "rest", "glue"
+uri = "your_catalog_uri"  # e.g., "sqlite:///catalog.db", "http://rest-catalog:8080"
+warehouse = "your_warehouse_path"  # e.g., "s3://iceberg-warehouse/"
+"s3.endpoint" = "your_s3_endpoint"  # e.g., "http://minio:9000"
+"s3.region" = "your_s3_region"  # e.g., "us-east-1"
+"s3.path-style-access" = true  # Boolean: true or false
+"s3.access-key-id" = "your_access_key"  # e.g., "minioadmin"
+"s3.secret-access-key" = "your_secret_key"  # e.g., "minioadmin"
+supportedAPIVersion = "your_api_version"  # e.g., "2"
 
 ###### Example: Create Trigger Using This Config ######
 # influxdb3 create trigger \
-#   --database mydb \
+#   --database your_database_name \
 #   --plugin-filename influxdb_to_iceberg.py \
-#   --trigger-spec "every:1h" \
+#   --trigger-spec "every:your_interval" \
 #   --trigger-arguments config_file_path=influxdb_to_iceberg_config_scheduler.toml \
-#   influxdb_to_iceberg_scheduler
+#   your_trigger_name
