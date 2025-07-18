@@ -12,7 +12,7 @@ This plugin enables the transformation of time series data stored in InfluxDB 3 
 - **Scheduler and Data Write Support**: Run periodically or on data writes via InfluxDB triggers.
 - **Data Transformation**: Applies transformations to field names and values based on predefined and custom rules.
 - **Data Writing**: Writes transformed data to a specified InfluxDB measurement.
-- **Argument Overriding**: Allows overriding arguments for scheduler and data write types via a TOML file (requires setting the `PLUGIN_DIR` environment variable and the `config_file_path` parameter, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function).
+- **Argument Overriding**: Allows overriding arguments for scheduler and data write types via a TOML file (requires setting the `PLUGIN_DIR` environment variable and the `config_file_path` parameter, see toml files example on [Git](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/basic_transformation). Override args parameter in handler function).
 - **Time Interval Parsing**: Supports a wide range of time units for intervals, including seconds (`s`), minutes (`min`), hours (`h`), days (`d`), weeks (`w`), months (`m`), quarters (`q`), and years (`y`).
 
 ## Logging

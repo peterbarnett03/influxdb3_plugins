@@ -4,57 +4,68 @@
 
 ########## Required Parameters ##########
 # InfluxDB measurement to query
-measurement = "temperature"         # e.g., "temperature" or "cpu_load"
+# Specify the measurement name from your source InfluxDB database
+measurement = "your_measurement"  # e.g., "temperature", "cpu_load", "home"
+
+# Destination measurement for writing transformed data
+# Specify the name of the measurement where transformed data will be written
+target_measurement = "your_target_measurement"  # e.g., "transformed_temperature", "processed_home"
 
 # Historical window duration for data retrieval. Format: <number><unit>
 # Units: s (seconds), min (minutes), h (hours), d (days), w (weeks), m (months), q (quarters), y (years)
 window = "30d"                     # e.g., "1h", "7d", "3m"
 
-# Destination measurement for writing transformed data
-target_measurement = "transformed_temperature"
-
 
 
 ########## Optional Parameters ##########
-
-# Transformations to apply to field and tag names
-# Format: 'field_name:"transform1 transform2".pattern_name:"transform3"'
-# names_transformations = 'room:"snake lower".temp:"upper"'
-
-# Transformations to apply to field and tag values
-# Format: 'field_name:"transform1 transform2".pattern_name:"transform3"'
-# values_transformations = 'temp:"convert_degC_to_degF".hum:"upper"'
-
-# If names_transformations and values_transformations are not specified, error will be raised
-
 # Optional InfluxDB database for writing transformed data
-# target_database = "transformed_db"
+# Specify the target database name; if omitted, the source database is used
+#target_database = "your_target_database"  # e.g., "transformed_db", "processed_data"
 
-# Include only these fields (dot-separated list)
-# included_fields = "temp.hum.pressure"
+# Include only these fields
+# List fields to include in the transformation; leave empty to include all fields
+#included_fields = ["field1", "field2"]  # e.g., ["temp", "hum"]
 
-# Exclude these fields (dot-separated list)
-# excluded_fields = "co.h-u_m2"
+# Exclude these fields
+# List fields to exclude from the transformation; leave commented or empty to include all fields
+#excluded_fields = ["field1", "field2"]  # e.g., ["co", "hum2"]
 
 # Dry run mode: if true, logs transformed data without writing to the database
-# dry_run = true
+# Set to "true" for testing or "false" to write data
+#dry_run = "true"
+
+# Filters to select specific data
+# Format: [[field, operator, value], ...]
+# Supported operators: =, !=, >, <, >=, <=
+# Example: [["temp", ">=", 20], ["hum", "<=", 80]]
+#filters = [["field1", ">=", 0], ["field2", "<=", 100]]
+
+# Transformations to apply to field and tag names
+# Specify transformations like "snake", "upper", "lower", or custom rules
+#[names_transformations]
+#field1 = ["snake", "upper"]  # e.g., ["snake", "upper"]
+#regex_pattern = ["cust_replace", "lower"]  # e.g., ["cust_replace", "lower"]
+
+# Transformations to apply to field and tag values
+# Specify transformations like "convert_degC_to_degF", "upper", or custom rules
+#[values_transformations]
+#field1 = ["transformation1"]  # e.g., ["convert_degC_to_degF"]
+#field2 = ["transformation2"]  # e.g., ["upper"]
+
+# Note: If both names_transformations and values_transformations are empty, an error will be raised
 
 # Custom replacement rules for string-based transformations
-# Format: 'rule_name:"old=new"'
-# To apply, add rule names in names_transformations or values_transformations for the field or pattern:
-#   e.g., field:"replace_space_underscore cust_replace"
-# custom_replacements = 'replace_space_underscore:" =_".cust_replace:"Old text=New text"'
+# Format: rule_name = ["old_string", "new_string"]
+# Apply rules by listing rule names in names_transformations or values_transformations
+#[custom_replacements]
+#replace_space_underscore = [" ", "_"]  # Replace spaces with underscores
+#custom_rule = ["old_value", "new_value"]  # e.g., ["temp", "temperature"]
 
 # Custom regex patterns for name/value matching
-# Format: 'pattern_name:"pattern_value"'  # pattern_value supports % (zero or more) and _ (exactly one)
-# To apply, list pattern_name in names_transformations or values_transformations:
-#   e.g., values_transformations = 'regex_temp:"upper"'
-# custom_regex = 'regex_temp:"temp%"'
-
-# Filters to select specific data: 'field:"operatorvalue"'
-# Supported operators: =, !=, >, <, >=, <=
-# filters = 'temp:>=20.hum:<=80'
-
+# Format: pattern_name = "pattern_value"  # Use % for zero or more chars, _ for one char
+# Apply by listing pattern_name in names_transformations or values_transformations
+#[custom_regex]
+#regex_pattern = "pattern%"  # e.g., "temp%"
 
 
 ###### Example: Create Trigger Using This Config ######

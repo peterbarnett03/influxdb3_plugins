@@ -317,18 +317,26 @@ def parse_time_interval(raw: str, task_id: str) -> timedelta:
 
 
 def parse_fields(args: dict, key: str) -> list[str]:
-    """Splits a dot-separated string into a list of strings."""
-    string_input: str | None = args.get(key, None)
-    if not string_input:
+    """Splits a dot-separated string into a list of strings or reads from a config file."""
+    val_input: str | None | list = args.get(key, None)
+    if not val_input:
         return []
-    return string_input.split(".")
+
+    # Use parameters from config file
+    if args["use_config_file"]:
+        if isinstance(val_input, list):
+            return val_input
+        else:
+            raise Exception(f"Invalid value for {key}: expected list, got {type(val_input)}")
+
+    return val_input.split(".")
 
 
 def parse_transformation_rules(
     influxdb3_local, args: dict, key: str, task_id: str
 ) -> dict[str, list[str]]:
     """
-    Parses a string of the form 'field:"val1 val2 val3".field2:"val1 val2 val3"' into a dictionary.
+    Parses a string of the form 'field:"val1 val2 val3".field2:"val1 val2 val3"' into a dictionary or uses value from config file.
 
     Args:
         influxdb3_local: InfluxDB client instance.
@@ -343,11 +351,20 @@ def parse_transformation_rules(
         ValueError: If the dictionary remains empty after parsing.
     """
     result: dict = {}
-    input_string: str | None = args.get(key, None)
-    if not input_string:
+    input_val: str | None | dict = args.get(key, None)
+    if not input_val:
         return result
 
-    parts: list = input_string.split(".")
+    # Use parameters from config file
+    if args["use_config_file"]:
+        if isinstance(input_val, dict):
+            return input_val
+        else:
+            raise Exception(
+                f"[{task_id}] Invalid {key} type: expected dict, got {type(result)}"
+            )
+
+    parts: list = input_val.split(".")
 
     for part in parts:
         if not part:
@@ -372,9 +389,9 @@ def parse_transformation_rules(
 
 def parse_field_filters(
     influxdb3_local, args: dict, key: str, task_id: str
-) -> list[tuple]:
+) -> list[list]:
     """
-    Parse a filter string into a list of (field, operator, value) tuples.
+    Parse a filter string into a list of (field, operator, value) lists or uses value from config file.
 
     The input string should be in the form:
         'field:>=10.field2:="abc".field3:!=5.5'
@@ -390,18 +407,27 @@ def parse_field_filters(
         task_id (str): Identifier for logging context.
 
     Returns:
-        list[tuple[str, str, str | int | float]]:
-            A list of 3-tuples: (field_name, operator, value).
+        list[list[str, str, str | int | float]]:
+            A list of lists: [field_name, operator, value].
 
     Raises:
         ValueError: If no valid filters are found in the input string.
     """
-    operators = [">=", "<=", "!=", ">", "<", "="]
-    result: list[tuple] = []
+    operators: list = [">=", "<=", "!=", ">", "<", "="]
+    result: list[list] = []
 
-    raw = args.get(key)
-    if not isinstance(raw, str) or not raw:
+    raw: str | None | list = args.get(key)
+    if not raw:
         return result
+
+    # Use parameters from config file
+    if args["use_config_file"]:
+        if isinstance(raw, list):
+            return raw
+        else:
+            raise Exception(
+                f"[{task_id}] Invalid {key} type: expected list, got {type(result)}"
+            )
 
     parts: list = raw.split(".")
 
@@ -442,7 +468,7 @@ def parse_field_filters(
         else:
             value = value_str
 
-        result.append((field, op, value))
+        result.append([field, op, value])
 
     if not result:
         raise Exception(f"[{task_id}] No valid filters parsed for key '{key}'")
@@ -451,12 +477,12 @@ def parse_field_filters(
 
 
 def parse_custom_replacements(
-    influxdb3_local, input_string: str, task_id: str
-) -> dict[str, tuple]:
+    influxdb3_local, args: dict, task_id: str
+) -> dict[str, list]:
     """
-    Parses a custom transformation string into a dictionary of (left, right) tuples.
+    Parses a custom transformation string into a dictionary of (left, right) lists or uses value from config file.
 
-    The expected input format is:
+    The expected string input format is:
         'field:"left_part=right_part".field2:"left2=right2"'
 
     Each part:
@@ -466,22 +492,32 @@ def parse_custom_replacements(
 
     Args:
         influxdb3_local: InfluxDB client instance for logging.
-        input_string (str): String to be parsed.
+        args (dict): dictionary of input arguments.
         task_id (str): Identifier used for logging context.
 
     Returns:
-        dict[str, tuple[str, str]]: A dictionary where:
+        dict[str, list[str, str]]: A dictionary where:
             - keys are field names
-            - values are tuples (left, right), parsed from the quoted value.
+            - values are lists (left, right), parsed from the quoted value.
 
     Raises:
         ValueError: If no valid transformations are found in the string.
     """
-    result: dict[str, tuple[str, str]] = {}
-    if not input_string:
+    result: dict[str, list] = {}
+    input_val: str | None | dict = args.get("custom_replacements")
+    if not input_val:
         return result
 
-    parts: list[str] = input_string.split(".")
+    # Use parameters from config file
+    if args["use_config_file"]:
+        if isinstance(input_val, dict):
+            return input_val
+        else:
+            raise Exception(
+                f"[{task_id}] Invalid custom_replacements type: expected dict, got {type(result)}"
+            )
+
+    parts: list[str] = input_val.split(".")
 
     for part in parts:
         if not part or ":" not in part:
@@ -505,21 +541,21 @@ def parse_custom_replacements(
             continue
 
         left, right = value_str.split("=", 1)
-        result[name] = (left.strip(), right.strip())
+        result[name] = [left.strip(), right.strip()]
 
     if not result:
         raise Exception(
-            f"[{task_id}] No valid custom transformations found in '{input_string}'"
+            f"[{task_id}] No valid custom transformations found in '{input_val}'"
         )
 
     return result
 
 
 def parse_custom_regex(
-    influxdb3_local, input_string: str, task_id: str
+    influxdb3_local, args: dict, task_id: str
 ) -> dict[str, re.Pattern]:
     """
-    Parse a custom pattern string into a dictionary of compiled regex patterns.
+    Parse a custom pattern string into a dictionary of compiled regex patterns or uses value from config file.
 
     Now `%` matches zero, one, or multiple characters (converted to '.*'),
     and `_` matches exactly one character (converted to '.').
@@ -529,7 +565,7 @@ def parse_custom_regex(
 
     Args:
         influxdb3_local: InfluxDB client instance for logging.
-        input_string (str): String to be parsed, e.g. 'name:"foo%bar_".other:"_%baz"'.
+        args (dict): dict with 'custom_regex' key.
         task_id (str): Identifier used for logging context.
 
     Returns:
@@ -541,11 +577,27 @@ def parse_custom_regex(
         Exception: if no valid patterns are found in input_string.
     """
     result: dict[str, re.Pattern] = {}
-    if not input_string:
+    input_val: str | None | dict = args.get("custom_regex")
+    if not input_val:
         return result
 
+    # Use parameters from config file
+    if args["use_config_file"]:
+        if isinstance(input_val, dict):
+            for key, value in input_val.items():
+                regex: re.Pattern | None = build_regex_pattern(
+                    influxdb3_local, value, task_id
+                )
+                if regex:
+                    result[key] = regex
+            return result
+        else:
+            raise Exception(
+                f"[{task_id}] Invalid custom_regex type: expected dict, got {type(result)}"
+            )
+
     # Split into parts by '.', each part should be like name:"pattern"
-    parts: list = input_string.split(".")
+    parts: list = input_val.split(".")
     for part in parts:
         if ":" not in part:
             influxdb3_local.warn(
@@ -574,37 +626,45 @@ def parse_custom_regex(
             )
             continue
 
-        # Build regex pattern by iterating characters:
-        # - '%' -> '.*'  (zero, one, or many characters)
-        # - '_' -> '.'   (exactly one character)
-        # - other chars: escape via re.escape
-        regex_builder: list = []
-        for ch in value_str:
-            if ch == "%":
-                regex_builder.append(".*")
-            elif ch == "_":
-                regex_builder.append(".")
-            else:
-                regex_builder.append(re.escape(ch))
-        pattern_str: str = "".join(regex_builder)
-        # If you want to match the entire string, anchor with ^ and $:
-        # pattern_str = "^" + pattern_str + "$"
-        try:
-            compiled: re.Pattern = re.compile(pattern_str)
-        except re.error as e:
-            influxdb3_local.warn(
-                f"[{task_id}] Failed to compile regex for part '{part}': {e}, skipping"
-            )
+        compiled: re.Pattern | None = build_regex_pattern(
+            influxdb3_local, value_str, task_id
+        )
+        if not compiled:
             continue
 
         result[name] = compiled
 
     if not result:
-        raise Exception(
-            f"[{task_id}] No valid regex patterns found in '{input_string}'"
-        )
+        raise Exception(f"[{task_id}] No valid regex patterns found in '{input_val}'")
 
     return result
+
+
+def build_regex_pattern(
+    influxdb3_local, value_str: str, task_id: str
+) -> re.Pattern | None:
+    # Build regex pattern by iterating characters:
+    # - '%' -> '.*'  (zero, one, or many characters)
+    # - '_' -> '.'   (exactly one character)
+    # - other chars: escape via re.escape
+    regex_builder: list = []
+    for ch in value_str:
+        if ch == "%":
+            regex_builder.append(".*")
+        elif ch == "_":
+            regex_builder.append(".")
+        else:
+            regex_builder.append(re.escape(ch))
+    pattern_str: str = "".join(regex_builder)
+    # If you want to match the entire string, anchor with ^ and $:
+    # pattern_str = "^" + pattern_str + "$"
+    try:
+        compiled: re.Pattern = re.compile(pattern_str)
+        return compiled
+    except re.error as e:
+        influxdb3_local.warn(
+            f"[{task_id}] Failed to compile regex for part '{part}': {e}, skipping"
+        )
 
 
 def get_fields_names(influxdb3_local, measurement: str, task_id: str) -> list[str]:
@@ -698,7 +758,7 @@ def generate_fields_string(tags: list[str], fields: list[str]) -> str:
     Returns:
         str: Formatted string with quoted field names separated by commas and newlines.
     """
-    all_fields: list = tags + fields
+    all_fields: list = tags + fields + ["time"]
     return ",\n\t".join(f'"{field}"' for field in all_fields)
 
 
@@ -1169,10 +1229,13 @@ def process_scheduled_call(
                 influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
                 with open(file_path, "rb") as f:
                     args = tomllib.load(f)
+                    args["use_config_file"] = True
                 influxdb3_local.info(f"[{task_id}] New args content: {args}")
             except Exception:
                 influxdb3_local.error(f"[{task_id}] Failed to read config file")
                 return
+        else:
+            args["use_config_file"] = False
 
     required_keys: list = ["measurement", "window", "target_measurement"]
 
@@ -1208,13 +1271,12 @@ def process_scheduled_call(
             return
 
         custom_replacements: dict = parse_custom_replacements(
-            influxdb3_local, args.get("custom_replacements"), task_id
+            influxdb3_local, args, task_id
         )
-        custom_regex: dict = parse_custom_regex(
-            influxdb3_local, args.get("custom_regex"), task_id
-        )
+        custom_regex: dict = parse_custom_regex(influxdb3_local, args, task_id)
         filters: list = parse_field_filters(influxdb3_local, args, "filters", task_id)
 
+        # Query InfluxDB
         end_time: datetime = call_time.replace(tzinfo=timezone.utc)
         start_time: datetime = end_time - window
 
@@ -1457,10 +1519,13 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
                 influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
                 with open(file_path, "rb") as f:
                     args = tomllib.load(f)
+                    args["use_config_file"] = True
                 influxdb3_local.info(f"[{task_id}] new args content: {args}")
             except Exception:
                 influxdb3_local.error(f"[{task_id}] Failed to read config file")
                 return
+        else:
+            args["use_config_file"] = False
 
     required_keys: list = ["measurement", "target_measurement"]
 
@@ -1495,11 +1560,9 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
             return
 
         custom_replacements: dict = parse_custom_replacements(
-            influxdb3_local, args.get("custom_replacements"), task_id
+            influxdb3_local, args, task_id
         )
-        custom_regex: dict = parse_custom_regex(
-            influxdb3_local, args.get("custom_regex"), task_id
-        )
+        custom_regex: dict = parse_custom_regex(influxdb3_local, args, task_id)
         filters: list = parse_field_filters(influxdb3_local, args, "filters", task_id)
 
         # recognize fields and tags to transform and save
