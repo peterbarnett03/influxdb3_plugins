@@ -1,59 +1,9 @@
-"""
-{
-    "plugin_type": ["scheduled"],
-    "scheduled_args_config": [
-        {
-            "name": "hostname",
-            "example": "localhost",
-            "description": "Hostname to tag metrics with",
-            "required": false
-        },
-        {
-            "name": "include_cpu",
-            "example": "true",
-            "description": "Include CPU metrics collection",
-            "required": false
-        },
-        {
-            "name": "include_memory",
-            "example": "true", 
-            "description": "Include memory metrics collection",
-            "required": false
-        },
-        {
-            "name": "include_disk",
-            "example": "true",
-            "description": "Include disk metrics collection", 
-            "required": false
-        },
-        {
-            "name": "include_network",
-            "example": "true",
-            "description": "Include network metrics collection",
-            "required": false
-        },
-        {
-            "name": "max_retries",
-            "example": "3",
-            "description": "Maximum number of retry attempts on failure",
-            "required": false
-        },
-        {
-            "name": "config_file_path",
-            "example": "system_metrics_config_scheduler.toml",
-            "description": "Path to configuration file from PLUGIN_DIR env var",
-            "required": false
-        }
-    ]
-}
-"""
-
 import psutil
-import uuid
-import os
-import tomllib
 
-def collect_cpu_metrics(influxdb3_local, hostname, task_id):
+# This was made in a few minutes with Claude in a project with the plugin documentation and 
+# a couple of iterations. It's not perfect, but it's a good starting point for a system metrics plugin.
+
+def collect_cpu_metrics(influxdb3_local, hostname):
     # Get CPU frequencies
     cpu_freq = psutil.cpu_freq(percpu=False)
     cpu_stats = psutil.cpu_stats()
@@ -123,10 +73,10 @@ def collect_cpu_metrics(influxdb3_local, hostname, task_id):
             
             influxdb3_local.write(line)
     except Exception as e:
-        influxdb3_local.warn(f"[{task_id}] Error collecting per-core CPU metrics: {str(e)}")
+        influxdb3_local.warn(f"Error collecting per-core CPU metrics: {str(e)}")
 
     
-def collect_memory_metrics(influxdb3_local, hostname, task_id):
+def collect_memory_metrics(influxdb3_local, hostname):
     # Virtual memory metrics
     mem = psutil.virtual_memory()
     swap = psutil.swap_memory()
@@ -175,7 +125,7 @@ def collect_memory_metrics(influxdb3_local, hostname, task_id):
     except (psutil.AccessDenied, psutil.Error):
         pass
 
-def collect_disk_metrics(influxdb3_local, hostname, task_id):
+def collect_disk_metrics(influxdb3_local, hostname):
     # Collect disk partition usage metrics
     for partition in psutil.disk_partitions(all=False):
         try:
@@ -225,10 +175,10 @@ def collect_disk_metrics(influxdb3_local, hostname, task_id):
                 .float64_field("util_percent", getattr(stats, 'busy_time_percent', 0))
             influxdb3_local.write(line)
     except (psutil.Error, AttributeError) as e:
-        influxdb3_local.warn(f"[{task_id}] Error collecting disk I/O metrics: {str(e)}")
+        influxdb3_local.warn(f"Error collecting disk I/O metrics: {str(e)}")
 
 
-def collect_network_metrics(influxdb3_local, hostname, task_id):
+def collect_network_metrics(influxdb3_local, hostname):
     net_io = psutil.net_io_counters(pernic=True)
     
     for interface, stats in net_io.items():
@@ -246,66 +196,14 @@ def collect_network_metrics(influxdb3_local, hostname, task_id):
         influxdb3_local.write(line)
 
 def process_scheduled_call(influxdb3_local, time, args=None):
-    task_id = str(uuid.uuid4())
-    
     try:
-        # Load configuration from TOML file if provided
-        if args and 'config_file_path' in args:
-            plugin_dir = os.environ.get('PLUGIN_DIR')
-            if plugin_dir:
-                config_path = os.path.join(plugin_dir, args['config_file_path'])
-                try:
-                    with open(config_path, 'rb') as f:
-                        config = tomllib.load(f)
-                    # Override args with config values
-                    args.update(config)
-                    influxdb3_local.info(f"[{task_id}] Loaded configuration from {config_path}")
-                except FileNotFoundError:
-                    influxdb3_local.warn(f"[{task_id}] Config file not found: {config_path}")
-                except Exception as e:
-                    influxdb3_local.error(f"[{task_id}] Error loading config file: {e}")
+        # Get hostname from args or default to 'localhost'
+        hostname = args.get("hostname", "localhost") if args else "localhost"
         
-        # Set default values if args is None
-        if args is None:
-            args = {}
-        
-        # Get configuration values with defaults
-        hostname = args.get("hostname", "localhost")
-        include_cpu = str(args.get("include_cpu", "true")).lower() == "true"
-        include_memory = str(args.get("include_memory", "true")).lower() == "true"
-        include_disk = str(args.get("include_disk", "true")).lower() == "true"
-        include_network = str(args.get("include_network", "true")).lower() == "true"
-        max_retries = int(args.get("max_retries", 3))
-        
-        influxdb3_local.info(f"[{task_id}] Starting system metrics collection for host: {hostname}")
-        
-        # Collect metrics with retry logic
-        def collect_with_retry(collect_func, metric_type):
-            for attempt in range(max_retries + 1):
-                try:
-                    collect_func(influxdb3_local, hostname, task_id)
-                    break
-                except Exception as e:
-                    if attempt == max_retries:
-                        influxdb3_local.error(f"[{task_id}] Failed to collect {metric_type} metrics after {max_retries} retries: {e}")
-                        raise
-                    influxdb3_local.warn(f"[{task_id}] {metric_type} metrics collection attempt {attempt + 1} failed, retrying: {e}")
-        
-        # Collect enabled metrics
-        if include_cpu:
-            collect_with_retry(collect_cpu_metrics, "CPU")
-        
-        if include_memory:
-            collect_with_retry(collect_memory_metrics, "memory")
-        
-        if include_disk:
-            collect_with_retry(collect_disk_metrics, "disk")
-        
-        if include_network:
-            collect_with_retry(collect_network_metrics, "network")
-        
-        influxdb3_local.info(f"[{task_id}] Successfully collected system metrics for host: {hostname}")
-        
+        collect_cpu_metrics(influxdb3_local, hostname)
+        collect_memory_metrics(influxdb3_local, hostname)
+        collect_disk_metrics(influxdb3_local, hostname)
+        collect_network_metrics(influxdb3_local, hostname)
+        influxdb3_local.info(f"Successfully collected system metrics for host: {hostname}")
     except Exception as e:
-        influxdb3_local.error(f"[{task_id}] Error collecting system metrics: {str(e)}")
-        raise
+        influxdb3_local.error(f"Error collecting system metrics: {str(e)}")
