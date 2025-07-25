@@ -5,6 +5,7 @@ This plugin provides Median Absolute Deviation (MAD)-based anomaly detection for
 ## Prerequisites
 - **InfluxDB v3 Core/Enterprise**: with the Processing Engine enabled.
 - **Notification Sender Plugin for InfluxDB 3**: Required for sending notifications. [Link to Notification Sender Plugin](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/notifier).
+- **Table schema**: The plugin assumes that the table schema is already defined in the database, as it relies on this schema to retrieve field and tag names required for processing.
 
 ## Files
 - `mad_check_plugin.py`: The main plugin code containing the handler for the `data writes` trigger.
@@ -13,7 +14,7 @@ This plugin provides Median Absolute Deviation (MAD)-based anomaly detection for
 - **MAD-Based Anomaly Detection**: Detects anomalies in field values using Median Absolute Deviation without repeated database queries.
 - **In-Memory Deques**: Maintains recent values in memory for efficient MAD computation.
 - **Count and Duration-Based Triggers**: Supports triggering alerts based on the number of consecutive outliers or the duration of outlier conditions.
-- **Args Overriding**: Allows overriding arguments for  data write type via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function). The `config_file_path` must be specified as a path relative to the directory defined by PLUGIN_DIR.
+- **Args Overriding**: Allows overriding arguments for  data write type via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, see toml files example on [Git](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/mad_check). Override args parameter in handler function). The `config_file_path` must be specified as a path relative to the directory defined by PLUGIN_DIR.
 - **Flip Detection**: Suppresses notifications if field values change too frequently within a specified window.
 - **Multi-Channel Notifications**: Supports Slack, Discord, HTTP, SMS, and WhatsApp via the Notification Sender Plugin.
 - **Customizable Messages**: Notification templates support dynamic variables (e.g., `$table`, `$field`, `$threshold_count`, `$tags`).

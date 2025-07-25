@@ -347,8 +347,16 @@ def parse_senders(influxdb3_local, args: dict, task_id: str) -> dict:
         Exception: If no valid senders are found.
     """
     senders_config: defaultdict = defaultdict(dict)
+    senders: str | list = args.get("senders")
 
-    senders: list = args["senders"].split(".")
+    if args["use_config_file"]:
+        if not isinstance(senders, list):
+            raise Exception(
+                f"[{task_id}] 'senders' must be a list when using config file"
+            )
+    else:
+        senders = senders.split(".")
+
     for sender in senders:
         if sender not in AVAILABLE_SENDERS:
             influxdb3_local.warn(f"[{task_id}] Invalid sender type: {sender}")
@@ -429,7 +437,7 @@ def _coerce_value(raw: str) -> str | int | float | bool:
 
 def parse_field_conditions(influxdb3_local, args: dict, task_id: str) -> list:
     """
-    Parse a semicolon-separated list of field conditions into a list of triples.
+    Parse a semicolon-separated list of field conditions or use values from config file.
 
     Each condition has the form:
         <field><op><value><level>
@@ -442,23 +450,46 @@ def parse_field_conditions(influxdb3_local, args: dict, task_id: str) -> list:
         task_id (str): Unique task identifier.
 
     Returns:
-        List of tuples: (field_name (str), operator_fn (callable), compare_value, level)
+        List of lists: [field_name (str), operator_fn (callable), compare_value, level]
 
     Example:
         parse_field_conditions("temp>30-ERROR:status=='ok'-INFO:count<=100-WARN")
         [
-            ("temp", operator.gt, 30, ERROR),
-            ("status", operator.eq, "ok", INFO),
-            ("count", operator.le, 100, WARN)
+            ["temp", operator.gt, 30, ERROR],
+            ["status", operator.eq, "ok", INFO],
+            ["count", operator.le, 100, WARN]
         ]
     """
     allowed_message_levels: tuple = ("INFO", "WARN", "ERROR")
-    cond_str: str | None = args.get("field_conditions")
-    if not cond_str:
-        raise Exception(f"[{task_id}] Missing required argument: field_conditions")
-
+    cond_input: str | list = args.get("field_conditions")
     conditions: list = []
-    for part in cond_str.split(":"):
+
+    if args["use_config_file"]:
+        if not isinstance(cond_input, list):
+            raise Exception(
+                f"[{task_id}] 'field_conditions' must be a list when using config file"
+            )
+        for part in cond_input:
+            field: str = str(part[0])
+            op: str = str(part[1])
+            if op not in _OP_FUNCS:
+                influxdb3_local.warn(
+                    f"[{task_id}] Unsupported operator '{op}' in condition '{part}'"
+                )
+                continue
+            value = part[2]
+            level = part[3]
+            if level not in allowed_message_levels:
+                influxdb3_local.warn(
+                    f"[{task_id}] Invalid message level '{level}' in condition '{part}'"
+                )
+                continue
+            conditions.append((field, _OP_FUNCS[op], value, level))
+        if not conditions:
+            raise Exception(f"[{task_id}] No valid field conditions provided.")
+        return conditions
+
+    for part in cond_input.split(":"):
         part = part.strip()
         if not part:
             continue
@@ -492,7 +523,7 @@ def parse_field_conditions(influxdb3_local, args: dict, task_id: str) -> list:
             continue
 
         value = _coerce_value(raw_val)
-        conditions.append((field, _OP_FUNCS[op], value, level))
+        conditions.append([field, _OP_FUNCS[op], value, level])
 
     if not conditions:
         raise Exception(f"[{task_id}] No valid field conditions provided.")
@@ -617,10 +648,13 @@ def process_writes(influxdb3_local, table_batches: list, args: dict):
                 influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
                 with open(file_path, "rb") as f:
                     args = tomllib.load(f)
+                    args["use_config_file"] = True
                 influxdb3_local.info(f"[{task_id}] New args content: {args}")
             except Exception:
                 influxdb3_local.error(f"[{task_id}] Failed to read config file")
                 return
+        else:
+            args["use_config_file"] = False
 
     if (
         not args
@@ -647,8 +681,8 @@ def process_writes(influxdb3_local, table_batches: list, args: dict):
         field_conditions: list = parse_field_conditions(influxdb3_local, args, task_id)
         port_override: int = parse_port_override(args, task_id)
         notification_path: str = args.get("notification_path", "notify")
-        influxdb3_auth_token: str = os.getenv("INFLUXDB3_AUTH_TOKEN") or args.get(
-            "influxdb3_auth_token"
+        influxdb3_auth_token: str = args.get("influxdb3_auth_token") or os.getenv(
+            "INFLUXDB3_AUTH_TOKEN"
         )
         if influxdb3_auth_token is None:
             influxdb3_local.error(
@@ -942,9 +976,9 @@ def parse_time_interval(args: dict, task_id: str) -> tuple[int, str]:
 
 def parse_field_aggregation_values(
     influxdb3_local, args: dict, task_id: str
-) -> dict[str, list[tuple]] | None:
+) -> dict[str, list] | None:
     """
-    Parses field aggregation values with comparison operators and message levels.
+    Parses field aggregation values with comparison operators and message levels or use values from config file.
 
     Args:
         influxdb3_local: InfluxDB client instance.
@@ -953,8 +987,8 @@ def parse_field_aggregation_values(
         task_id (str): Task identifier (used for logging/warnings).
 
     Returns:
-        dict[str, list[tuple[str, callable, float, str]]]: Dictionary mapping field names to a list of tuples:
-            (aggregation, comparison_operator_fn, threshold_value, message_level).
+        dict[str, list[list[str, callable, float, str]]]: Dictionary mapping field names to a list of lists:
+            [aggregation, comparison_operator_fn, threshold_value, message_level].
 
     Raises:
         Exception: If no valid entries are found.
@@ -970,12 +1004,46 @@ def parse_field_aggregation_values(
     )
     allowed_operators: tuple = (">", "<", ">=", "<=", "==", "!=")
     allowed_message_levels: tuple = ("INFO", "WARN", "ERROR")
-
     raw_input: str | None = args.get("field_aggregation_values")
     if raw_input is None:
         return {}
 
-    result: dict[str, list[tuple]] = {}
+    result: dict[str, list] = {}
+
+    if args["use_config_file"]:
+        if not isinstance(raw_input, dict):
+            raise Exception(
+                f"[{task_id}] field_aggregation_values must be a dictionary when using config file"
+            )
+        for field, conditions in raw_input.items():
+            try:
+                for aggregation, op, value, level in conditions:
+                    if aggregation not in available_aggregations:
+                        influxdb3_local.warn(
+                            f"[{task_id}] Unsupported aggregation '{aggregation}', skipping..."
+                        )
+                        continue
+                    if level not in allowed_message_levels:
+                        influxdb3_local.warn(
+                            f"[{task_id}] Invalid message level '{level}', skipping..."
+                        )
+                        continue
+                    if op not in allowed_operators:
+                        influxdb3_local.warn(
+                            f"[{task_id}] Invalid operator '{op}', skipping..."
+                        )
+                        continue
+                    entry: list = [aggregation, _OP_FUNCS[op], value, level]
+                    result.setdefault(field, []).append(entry)
+            except Exception as e:
+                influxdb3_local.warn(
+                    f"[{task_id}] Error parsing field aggregation values for field '{field}': {e}"
+                )
+                continue
+
+        if not result:
+            raise Exception(f"[{task_id}] No valid field aggregation values provided.")
+        return result
 
     pairs = raw_input.split("$")
     for pair in pairs:
@@ -1044,7 +1112,7 @@ def parse_field_aggregation_values(
             )
             continue
 
-        entry: tuple = (aggregation, _OP_FUNCS[matched_op], value, level)
+        entry: list = [aggregation, _OP_FUNCS[matched_op], value, level]
         result.setdefault(field_name.strip(), []).append(entry)
 
     if not result:
@@ -1104,10 +1172,13 @@ def process_scheduled_call(influxdb3_local, call_time: datetime, args: dict):
                 influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
                 with open(file_path, "rb") as f:
                     args = tomllib.load(f)
+                    args["use_config_file"] = True
                 influxdb3_local.info(f"[{task_id}] New args content: {args}")
             except Exception:
                 influxdb3_local.error(f"[{task_id}] Failed to read config file")
                 return
+        else:
+            args["use_config_file"] = False
 
     # Configuration
     if (
@@ -1144,8 +1215,8 @@ def process_scheduled_call(influxdb3_local, call_time: datetime, args: dict):
 
         port_override: int = parse_port_override(args, task_id)
         notification_path: str = args.get("notification_path", "notify")
-        influxdb3_auth_token: str = os.getenv("INFLUXDB3_AUTH_TOKEN") or args.get(
-            "influxdb3_auth_token"
+        influxdb3_auth_token: str = args.get("influxdb3_auth_token") or os.getenv(
+            "INFLUXDB3_AUTH_TOKEN"
         )
         if influxdb3_auth_token is None:
             influxdb3_local.error(

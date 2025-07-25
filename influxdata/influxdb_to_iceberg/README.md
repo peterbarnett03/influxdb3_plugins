@@ -6,6 +6,7 @@ This plugin transfers data from InfluxDB 3 to Apache Iceberg tables. It supports
 
 ## Prerequisites
 - **InfluxDB v3 Core/Enterprise**: with the Processing Engine enabled.
+- **Table schema**: The plugin assumes that the table schema is already defined in the database, as it relies on this schema to retrieve field and tag names required for processing.
 
 ## Files
 - `influxdb_to_iceberg.py`: The main plugin code containing handlers for both `scheduler` and `http` triggers.

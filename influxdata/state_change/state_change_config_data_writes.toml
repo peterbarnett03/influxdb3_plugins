@@ -1,88 +1,98 @@
 # State Change Monitoring Plugin Data Write Configuration Template
-# Copy this file to your PLUGIN_DIR and reference it with
-#   --trigger-arguments config_file_path=state_change_config_data_writes.toml
+# Copy this file to your PLUGIN_DIR (e.g., /plugins) and reference it with
+#   --trigger-arguments config_file_path=<relative_path>
+# Example: If the file is at /plugins/configs/state_change_config_data_writes.toml, use
+#   config_file_path=configs/state_change_config_data_writes.toml
 
 
 ########## Required Parameters ##########
-# Measurement to monitor for threshold conditions
-measurement = "cpu"                  # e.g., "cpu", "temperature"
+# InfluxDB measurement (table) to monitor for threshold conditions
+# Specify the measurement name (string) from your source InfluxDB database
+measurement = "your_measurement"  # e.g., "cpu", "temperature", "home"
 
-# Field threshold conditions: field:value:count_or_duration
-# Multiple conditions separated by @. Example: "temp:30:10@status:true:2h"
-field_thresholds = "temp:30:10@status:true:2h"
+# Field threshold conditions
+# Format: [[field, value, count_or_duration], ...]
+#   - field: field name (string)
+#   - value: threshold value (number or boolean)
+#   - count_or_duration: integer (count-based) or duration string (e.g., "10s") for duration-based triggering
+# Supported units for duration: s (seconds), min (minutes), h (hours), d (days), w (weeks)
+field_thresholds = [["field1", 0.0, "your_count_or_duration"]]  # e.g., [["temp", 30, 1], ["temp", 15, "10s"]]
 
-# Notification channels (dot-separated list)
-senders = "slack.discord"            # e.g., "slack.sms"
-
-
+# Notification channels
+# Specify a list of notification channels (strings)
+senders = ["your_channel"]  # e.g., ["slack"], ["sms", "http"]
 
 ########## Optional Parameters ##########
-# InfluxDB 3 API token for notifications (or via INFLUXDB3_AUTH_TOKEN env var)
-# influxdb3_auth_token = "YOUR_API_TOKEN"
+# InfluxDB 3 API token for notifications
+# Specify the token (string); can also be provided via INFLUXDB3_AUTH_TOKEN environment variable
+#influxdb3_auth_token = "your_api_token"  # e.g., "apiv3_AuHk_8LYFHTa1QMccTQECqwO4ivkW..."
 
 # Stability check parameters
 # Number of recent values to assess stability
-# state_change_window = "5"              # default: 1
+# Specify an integer ≥ 1; default is 1
+#state_change_window = 1  # e.g., 5
+
 # Maximum allowed changes in that window
-# state_change_count = "2"               # default: 1
+# Specify an integer ≥ 1; default is 1
+#state_change_count = 1  # e.g., 2
 
-# Templates for notifications
-# Count-based: variables $table, $field, $value, $duration, $row
-# notification_count_text = "Field $field in $table hit threshold $value $duration times. Row: $row"
-# Time-based: variables $table, $field, $value, $duration, $row
-# notification_time_text = "Field $field in $table exceeded $value for $duration. Row: $row"
+# Template for count-based notifications
+# Use variables: $table, $field, $value, $duration, $row
+#notification_count_text = "your_count_notification_template"  # e.g., "Field $field in $table hit threshold $value $duration times. Row: $row"
 
-# Custom URL path for Notification Sender plugin (default: "notify")
-# notification_path = "notify"
+# Template for time-based notifications
+# Use variables: $table, $field, $value, $duration, $row
+#notification_time_text = "your_time_notification_template"  # e.g., "Field $field in $table exceeded $value for $duration. Row: $row"
 
-# Override InfluxDB port for notifications (default: 8181)
-# port_override = 8182
+# Custom URL path for Notification Sender plugin
+# Specify a custom path (string); defaults to "notify" if omitted
+#notification_path = "your_notification_path"  # e.g., "notify", "custom/notify"
 
-
+# Override InfluxDB port for notifications
+# Specify a port number (integer); defaults to 8181 if omitted
+#port_override = 8181  # e.g., 8183
 
 ########## Sender-Specific Settings ##########
-# For each channel listed in senders, uncomment and configure the following parameters:
+# For each channel listed in senders, uncomment and configure the relevant parameters below:
 
 # --- Slack ---
-# Webhook URL for Slack notifications (required)
-# slack_webhook_url = "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+# Webhook URL for Slack notifications (required for Slack)
+#slack_webhook_url = "your_slack_webhook_url"  # e.g., "https://hooks.slack.com/services/XXX/YYY/ZZZ"
 # Optional: Custom headers for Slack webhook (Base64-encoded JSON string)
-# slack_headers = "eyJIb3N0IjogImV4YW1wbGUuY29tIn0="
+#slack_headers = "your_slack_headers"  # e.g., "eyJIb3N0IjogImV4YW1wbGUuY29tIn0="
 
 # --- Discord ---
-# Webhook URL for Discord notifications (required)
-# discord_webhook_url = "https://discord.com/api/webhooks/AAA/BBB"
+# Webhook URL for Discord notifications (required for Discord)
+#discord_webhook_url = "your_discord_webhook_url"  # e.g., "https://discord.com/api/webhooks/AAA/BBB"
 # Optional: Custom headers for Discord webhook (Base64-encoded JSON string)
-# discord_headers = "eyJDb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIn0="
+#discord_headers = "your_discord_headers"  # e.g., "eyJDb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIn0="
 
 # --- HTTP ---
-# HTTP endpoint to send notifications (required)
-# http_webhook_url = "https://example.com/webhook"
+# HTTP endpoint to send notifications (required for HTTP)
+#http_webhook_url = "your_http_webhook_url"  # e.g., "https://example.com/webhook"
 # Optional: Custom HTTP headers (Base64-encoded JSON string)
-# http_headers = "eyJhdXRoIjogIkJlYXJlciBZT1VSX1RPS0VOIn0="
+#http_headers = "your_http_headers"  # e.g., "eyJhdXRoIjogIkJlYXJlciBZT1VSX1RPS0VOIn0="
 
 # --- SMS (Twilio) ---
-# Twilio Account SID (required, or via TWILIO_SID env var)
-# twilio_sid = "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-# Twilio Auth Token (required, or via TWILIO_TOKEN env var)
-# twilio_token = "your_auth_token"
-# Twilio sender number (required, format: +1234567890)
-# twilio_from_number = "+1234567890"
-# Recipient phone number (required, format: +0987654321)
-# twilio_to_number = "+0987654321"
+# Twilio Account SID (required for SMS, or via TWILIO_SID env var)
+#twilio_sid = "your_twilio_sid"  # e.g., "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+# Twilio Auth Token (required for SMS, or via TWILIO_TOKEN env var)
+#twilio_token = "your_twilio_token"  # e.g., "your_auth_token"
+# Twilio sender number (required for SMS, format: +1234567890)
+#twilio_from_number = "your_twilio_from_number"  # e.g., "+1234567890"
+# Recipient phone number (required for SMS, format: +0987654321)
+#twilio_to_number = "your_twilio_to_number"  # e.g., "+0987654321"
 
 # --- WhatsApp (via Twilio) ---
-# WhatsApp sender number (required, format: +1234567890)
-# whatsapp_from_number = "+1234567890"
-# WhatsApp recipient number (required, format: +0987654321)
-# whatsapp_to_number = "+0987654321"
-
-
+# WhatsApp sender number (required for WhatsApp, format: +1234567890)
+#whatsapp_from_number = "your_whatsapp_from_number"  # e.g., "+1234567890"
+# WhatsApp recipient number (required for WhatsApp, format: +0987654321)
+#whatsapp_to_number = "your_whatsapp_to_number"  # e.g., "+0987654321"
 
 ###### Example: Create Trigger Using This Config ######
 # influxdb3 create trigger \
-#   --database mydb \
+#   --database your_database_name \
 #   --plugin-filename state_change_check_plugin.py \
 #   --trigger-spec "all_tables" \
 #   --trigger-arguments config_file_path=state_change_config_data_writes.toml \
-#   state_change_datawrite_trigger
+#   your_trigger_name

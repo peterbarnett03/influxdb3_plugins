@@ -12,7 +12,7 @@ This plugin provides anomaly detection capabilities for time series data in Infl
 ## Features
 - **Scheduler Plugin**: Periodically queries a measurement within a time window, applies one or more ADTK detectors to a numeric field, and sends notifications when anomalies are detected.
 - **Multi-Channel Notifications**: Supports Slack, Discord, HTTP, SMS, and WhatsApp via the Notification Sender Plugin.
-- **Args Overriding**: Allows overriding arguments for scheduler type via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function). The `config_file_path` must be specified as a path relative to the directory defined by PLUGIN_DIR.
+- **Args Overriding**: Allows overriding arguments for scheduler type via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, see toml files example on [Git](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/stateless_adtk_detector). Override args parameter in handler function). The `config_file_path` must be specified as a path relative to the directory defined by PLUGIN_DIR.
 - **Customizable Messages**: Notification templates support dynamic variables (e.g., `$table`, `$field`, `$timestamp`, `$value`, `$detectors`, `$tags`).
 - **ADTK Stateless Detectors**: Supports multiple detectors:
     - `InterQuartileRangeAD`

@@ -1,96 +1,108 @@
-# Threshold and deadman checks Plugin Scheduler Configuration Template
-# # Copy this file to your PLUGIN_DIR and reference it with
-#   --trigger-arguments config_file_path=threshold_deadman_config_scheduler.toml`
+# Threshold and Deadman Checks Plugin Scheduler Configuration Template
+# Copy this file to your PLUGIN_DIR (e.g., /plugins) and reference it with
+#   --trigger-arguments config_file_path=<relative_path>
+# Example: If the file is at /plugins/configs/threshold_deadman_config_scheduler.toml, use
+#   config_file_path=configs/threshold_deadman_config_scheduler.toml
+
+########## Optional Parameters ##########
+# Aggregation interval for threshold checks
+# Format: <number><unit>, where unit is s (seconds), min (minutes), h (hours), d (days), w (weeks)
+#interval = "your_interval"  # e.g., "5min", "10min"
+
+# Consecutive failed checks before alert
+# Specify an integer ≥ 1; default is 1
+#trigger_count = 1  # e.g., 3
+
+# Enable deadman check
+# Specify a boolean (true/false); default is false
+#deadman_check = false  # e.g., true
+
+# Template for deadman notifications
+# Use variables: $table, $time_from, $time_to
+#notification_deadman_text = "your_deadman_notification_template"  # e.g., "Deadman Alert: No data from $table between $time_from and $time_to."
+
+# Template for threshold notifications
+# Use variables: $level, $table, $field, $aggregation, $op_sym, $compare_val, $actual, $row
+#notification_threshold_text = "your_threshold_notification_template"  # e.g., "[$level] $aggregation of $field in $table $op_sym $compare_val (actual: $actual). Row: $row"
+
+# InfluxDB 3 API token for notifications
+# Specify the token (string); can also be provided via INFLUXDB3_AUTH_TOKEN environment variable
+#influxdb3_auth_token = "your_api_token"  # e.g., "apiv3_AuHk_8LYFHTa1QMccTQECqwO4ivkWG39bJLY..."
+
+# Custom URL path for Notification Sender plugin
+# Specify a custom path (string); defaults to "notify" if omitted
+#notification_path = "your_notification_path"  # e.g., "notify", "custom/notify"
+
+# Override InfluxDB port for notifications
+# Specify a port number (integer); defaults to 8181 if omitted
+#port_override = 8181  # e.g., 8183
+
+########## Sender-Specific Settings ##########
+# For each channel listed in senders, uncomment and configure the relevant parameters below:
+
+# --- Slack ---
+# Webhook URL for Slack notifications (required for Slack)
+#slack_webhook_url = "your_slack_webhook_url"  # e.g., "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+# Optional: Custom headers for Slack webhook (Base64-encoded JSON string)
+#slack_headers = "your_slack_headers"  # e.g., "eyJIb3N0IjogImV4YW1wbGUuY29tIn0="
+
+# --- Discord ---
+# Webhook URL for Discord notifications (required for Discord)
+#discord_webhook_url = "your_discord_webhook_url"  # e.g., "https://discord.com/api/webhooks/AAA/BBB"
+# Optional: Custom headers for Discord webhook (Base64-encoded JSON string)
+#discord_headers = "your_discord_headers"  # e.g., "eyJDb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIn0="
+
+# --- HTTP ---
+# HTTP endpoint to send notifications (required for HTTP)
+#http_webhook_url = "your_http_webhook_url"  # e.g., "https://example.com/webhook"
+# Optional: Custom HTTP headers (Base64-encoded JSON string)
+#http_headers = "your_http_headers"  # e.g., "eyJhdXRoIjogIkJlYXJlciBZT1VSX1RPS0VOIn0="
+
+# --- SMS (Twilio) ---
+# Twilio Account SID (required for SMS, or via TWILIO_SID env var)
+#twilio_sid = "your_twilio_sid"  # e.g., "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+# Twilio Auth Token (required for SMS, or via TWILIO_TOKEN env var)
+#twilio_token = "your_twilio_token"  # e.g., "your_auth_token"
+# Twilio sender number (required for SMS, format: +1234567890)
+#twilio_from_number = "your_twilio_from_number"  # e.g., "+1234567890"
+# Recipient phone number (required for SMS, format: +0987654321)
+#twilio_to_number = "your_twilio_to_number"  # e.g., "+0987654321"
+
+# --- WhatsApp (via Twilio) ---
+# WhatsApp sender number (required for WhatsApp, format: +1234567890)
+#whatsapp_from_number = "your_whatsapp_from_number"  # e.g., "+1234567890"
+# WhatsApp recipient number (required for WhatsApp, format: +0987654321)
+#whatsapp_to_number = "your_whatsapp_to_number"  # e.g., "+0987654321"
 
 
 ########## Required Parameters ##########
-# Measurement to monitor for deadman and threshold checks
-measurement = "cpu"                  # e.g., "cpu", "temperature"
+# InfluxDB measurement (table) to monitor for deadman and threshold checks
+# Specify the measurement name (string) from your source InfluxDB database
+measurement = "your_measurement"  # e.g., "cpu", "temperature", "home"
 
-# Notification channels (dot-separated list)
-senders = "slack.discord"            # e.g., "slack.http.sms"
+# Notification channels
+# Specify a list of notification channels (strings)
+senders = ["your_channel"]  # e.g., ["slack"], ["slack", "http"]
 
-# Time window to check for data and threshold conditions. Format: <number><unit>
-# Units: s, min, h, d, w
-window = "5m"                        # e.g., "10m", "1h"
+# Time window to check for data and threshold conditions
+# Format: <number><unit>, where unit is s (seconds), min (minutes), h (hours), d (days), w (weeks)
+window = "your_window"  # e.g., "10m", "1h"
 
-
-
-########## Optional Parameters ##########
-# Aggregation interval for threshold checks. Format: <number><unit>
-# interval = "10min"                # default: "5min"
-
-# Consecutive failed checks before alert
-# trigger_count = "3"                  # default: 1
-
-# Enable deadman check (True/False)
-# deadman_check = "true"               # default: false
-
-# Aggregation-based threshold conditions
-# Format: field:aggregation@"operator value-level"
-# Multiple separated by $: e.g., "temp:avg@'>=30-INFO'$status:count@'>=5-ERROR'"
-# field_aggregation_values = "temp:avg@'>=30-INFO'"
-
-# Templates for notifications:
-# Deadman: $table, $time_from, $time_to
-# notification_deadman_text = "Deadman Alert: No data from $table between $time_from and $time_to."
-# Threshold: $level, $table, $field, $aggregation, $op_sym, $compare_val, $actual, $row
-# notification_threshold_text = "[$level] $aggregation of $field in $table $op_sym $compare_val (actual: $actual). Row: $row"
-
-# InfluxDB auth token (or via INFLUXDB3_AUTH_TOKEN env var)
-# influxdb3_auth_token = "YOUR_API_TOKEN"
-
-# Notification Sender path and port
-# notification_path = "notify"         # default: notify
-# port_override = 8182                 # default: 8181
-
-
-
-########## Sender-Specific Settings ##########
-# For each channel listed in senders, uncomment and configure the following parameters:
-
-# --- Slack ---
-# Webhook URL for Slack notifications (required)
-# slack_webhook_url = "https://hooks.slack.com/services/XXX/YYY/ZZZ"
-# Optional: Custom headers for Slack webhook (Base64-encoded JSON string)
-# slack_headers = "eyJIb3N0IjogImV4YW1wbGUuY29tIn0="
-
-# --- Discord ---
-# Webhook URL for Discord notifications (required)
-# discord_webhook_url = "https://discord.com/api/webhooks/AAA/BBB"
-# Optional: Custom headers for Discord webhook (Base64-encoded JSON string)
-# discord_headers = "eyJDb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIn0="
-
-# --- HTTP ---
-# HTTP endpoint to send notifications (required)
-# http_webhook_url = "https://example.com/webhook"
-# Optional: Custom HTTP headers (Base64-encoded JSON string)
-# http_headers = "eyJhdXRoIjogIkJlYXJlciBZT1VSX1RPS0VOIn0="
-
-# --- SMS (Twilio) ---
-# Twilio Account SID (required, or via TWILIO_SID env var)
-# twilio_sid = "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-# Twilio Auth Token (required, or via TWILIO_TOKEN env var)
-# twilio_token = "your_auth_token"
-# Twilio sender number (required, format: +1234567890)
-# twilio_from_number = "+1234567890"
-# Recipient phone number (required, format: +0987654321)
-# twilio_to_number = "+0987654321"
-
-# --- WhatsApp (via Twilio) ---
-# WhatsApp sender number (required, format: +1234567890)
-# whatsapp_from_number = "+1234567890"
-# WhatsApp recipient number (required, format: +0987654321)
-# whatsapp_to_number = "+0987654321"
-
+# Aggregation-based threshold conditions (Required if deadman check is disabled)
+# Format: {field = [[aggregation, operator, value, level], ...], ...}
+#   - field: field name (string)
+#   - aggregation: aggregation function (string, e.g., "avg", "min", "max")
+#   - operator: comparison operator (string, e.g., ">", ">=", "<", "<=", "==")
+#   - value: threshold value (number)
+#   - level: alert level (string, e.g., "INFO", "WARN", "ERROR", "CRITICAL")
+[field_aggregation_values]
+field1 = [["aggregation", ">", 0.0, "your_level"]]  # e.g., temp = [["avg", ">", 200, "ERROR"], ["avg", ">", 100, "WARN"]]
 
 
 ###### Example: Create Trigger Using This Config ######
 # influxdb3 create trigger \
-#   --database mydb \
+#   --database your_database_name \
 #   --plugin-filename threshold_deadman_checks_plugin.py \
-#   --trigger-spec "every:10m" \
+#   --trigger-spec "every:your_interval" \
 #   --trigger-arguments config_file_path=threshold_deadman_config_scheduler.toml \
-#   threshold_deadman_scheduler_trigger
-
-
+#   your_trigger_name

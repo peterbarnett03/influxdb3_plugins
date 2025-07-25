@@ -4,6 +4,7 @@ This plugin enables the transformation of time series data stored in InfluxDB 3 
 
 ## Prerequisites
 - **InfluxDB v3 Core/Enterprise**: with the Processing Engine enabled.
+- **Table schema**: The plugin assumes that the table schema is already defined in the database, as it relies on this schema to retrieve field and tag names required for processing.
 
 ## Files
 - `basic_transformation.py`: The main plugin code containing handlers for scheduled tasks.

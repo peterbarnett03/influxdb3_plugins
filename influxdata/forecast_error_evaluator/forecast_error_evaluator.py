@@ -689,9 +689,9 @@ def process_scheduled_call(
         min_condition_duration: timedelta = parse_time_duration(
             args.get("min_condition_duration", "0s"), task_id
         )
-        influxdb3_auth_token: str | None = os.getenv(
+        influxdb3_auth_token: str | None = args.get("influxdb3_auth_token") or os.getenv(
             "INFLUXDB3_AUTH_TOKEN"
-        ) or args.get("influxdb3_auth_token")
+        )
         if not influxdb3_auth_token:
             influxdb3_local.error(f"[{task_id}] Missing influxdb3_auth_token")
             return
