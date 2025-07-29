@@ -129,7 +129,7 @@ except Exception as e:
 
 ## Testing Plugin Functionality
 
-1. Start InfluxDB 3 with plugin support:
+1. Start InfluxDB 3 with plugin support by including the `--plugin-dir` option when starting the InfluxDB 3 server:
    ```bash
    influxdb3 serve --node-id node0 --object-store file --data-dir ~/.influxdb3 --plugin-dir ~/.plugins
    ```
