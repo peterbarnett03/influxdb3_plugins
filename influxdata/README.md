@@ -1,9 +1,17 @@
 # influxdata
 Official Python plugins for InfluxDB 3, developed by InfluxData.
 
+## Available Plugins
+
+See each plugin's README for details on configuration, requirements, and usage.
+
+## Plugin metadata
+
+These plugins include a JSON metadata schema in their docstring that defines supported trigger types and configuration parameters. This metadata enables the [InfluxDB 3 Explorer](https://docs.influxdata.com/influxdb3/explorer/) UI to display and configure the plugin.
+
 ## Test the plugins
 
-From the root directory, use Docker Compose to test plugins:
+From the repository root, use Docker Compose to run tests against the InfluxDB 3 Core image:
 
 ```bash
 # Test all influxdata plugins
@@ -19,6 +27,8 @@ PLUGIN_FILE="basic_transformation.py" \
 TOML_CONFIG="basic_transformation_config_scheduler.toml" \
 docker compose --profile test run --rm test-core-toml
 ```
+
+See the [compose file](/compose.yml) for details on the test setup.
 
 ## Support
 

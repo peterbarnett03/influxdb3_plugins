@@ -23,9 +23,9 @@ See [README.md](/README.md#plugin-organization) for directory structure and nami
 All plugins must include JSON metadata schema in docstring defining:
 - Supported trigger types (`scheduled`, `onwrite`, `http`)
 - Configuration parameters for each trigger type
-- Enable InfluxDB 3 Explorer UI integration
+- Enable[InfluxDB 3 Explorer](https://docs.influxdata.com/influxdb3/explorer/) UI integration
 
-See [REQUIRED_PLUGIN_METADATA.md](../REQUIRED_PLUGIN_METADATA.md) for complete metadata specifications.
+See [REQUIRED_PLUGIN_METADATA.md](/REQUIRED_PLUGIN_METADATA.md) for complete metadata specifications.
 
 ## Key Components
 

@@ -69,7 +69,7 @@ This metadata:
 (`scheduled`, `onwrite`, `http`)
 - Specifies configuration parameters for each
 trigger type
-- Enables the InfluxDB 3 Explorer UI to display
+- Enables the [InfluxDB 3 Explorer](https://docs.influxdata.com/influxdb3/explorer/) UI to display
 and configure the plugin
 
 To display the plugin metadata in the Explorer UI,

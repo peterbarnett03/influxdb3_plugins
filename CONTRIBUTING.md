@@ -41,7 +41,7 @@ Each plugin README should include:
 ### Plugin Metadata
 
 Each plugin must include JSON metadata in a docstring at the top of the plugin file. This metadata is required for:
-- InfluxDB 3 Explorer UI integration and configuration
+-[InfluxDB 3 Explorer](https://docs.influxdata.com/influxdb3/explorer/) UI integration and configuration
 - Automated testing with the repository test scripts
 
 For complete metadata specifications, formatting requirements, and examples, see [REQUIRED_PLUGIN_METADATA.md](REQUIRED_PLUGIN_METADATA.md).
@@ -130,7 +130,7 @@ result = plugin.process(data)
 ```
 
 ## Voice, tone, and grammar
-- Use Google Developer Documentation style
+- Use [Google Developer Documentation style](https://developers.google.com/style)
 - Use active voice--state who or what is performing the action
 - Use present tense
 - Use simple, clear language

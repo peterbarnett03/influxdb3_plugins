@@ -46,8 +46,8 @@ Each argument in the `*_args_config` arrays must include:
 - **required**: Boolean indicating whether the argument is mandatory
 
 **Important**: The header structure must comply with valid JSON format.
-## Plugin Library Metadata
 
+## Plugin Library Metadata
 
 Generated `plugin_library.json` files contain a "plugins" field with a list of plugins, where each plugin entry includes metadata extracted from the plugin's JSON docstring along with additional repository information.
 

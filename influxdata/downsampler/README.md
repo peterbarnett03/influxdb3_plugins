@@ -13,7 +13,7 @@ Each downsampled record includes metadata about the original data points compres
 
 ### Plugin metadata
 
-This plugin includes a JSON metadata schema in its docstring that defines supported trigger types and configuration parameters. This metadata enables the InfluxDB 3 Explorer UI to display and configure the plugin.
+This plugin includes a JSON metadata schema in its docstring that defines supported trigger types and configuration parameters. This metadata enables the [InfluxDB 3 Explorer](https://docs.influxdata.com/influxdb3/explorer/) UI to display and configure the plugin.
 
 ## Configuration
 
@@ -130,6 +130,7 @@ influxdb3 query \
 ```
 
 ### Expected output
+
 ```
 host    | usage_user | usage_system | usage_idle | record_count | time_from           | time_to             | time
 --------|------------|--------------|------------|--------------|---------------------|---------------------|-----
@@ -166,6 +167,7 @@ influxdb3 query \
 ```
 
 ### Expected output
+
 ```
 location | temperature | humidity | pressure | record_count | time
 ---------|-------------|----------|----------|--------------|-----
@@ -257,6 +259,7 @@ Log columns:
 ### Main functions
 
 #### `process_scheduled_call(influxdb3_local, call_time, args)`
+
 Handles scheduled downsampling tasks.
 Queries historical data within the specified window and applies aggregation functions.
 
@@ -267,6 +270,7 @@ Key operations:
 4. Writes downsampled data with metadata columns
 
 #### `process_http_request(influxdb3_local, request_body, args)`
+
 Handles HTTP-triggered on-demand downsampling.
 Processes batch downsampling with configurable time ranges for backfill scenarios.
 
@@ -277,6 +281,7 @@ Key operations:
 4. Returns processing statistics and results
 
 #### `aggregate_data(data, interval, calculations)`
+
 Core aggregation engine that applies statistical functions to time-series data.
 
 Supported aggregation functions:
@@ -292,24 +297,28 @@ Supported aggregation functions:
 ### Common issues
 
 #### Issue: No data in target measurement
+
 **Solution**: Check that source measurement exists and contains data in the specified time window:
 ```bash
 influxdb3 query --database mydb "SELECT COUNT(*) FROM source_measurement WHERE time >= now() - 1h"
 ```
 
 #### Issue: Aggregation function not working
+
 **Solution**: Verify field names and aggregation syntax. Use SHOW FIELD KEYS to check available fields:
 ```bash
 influxdb3 query --database mydb "SHOW FIELD KEYS FROM source_measurement"
 ```
 
 #### Issue: Tag filters not applied
+
 **Solution**: Check tag value format. Use @ separator for multiple values:
 ```bash
 --trigger-arguments 'tag_values=host:server1@server2@server3'
 ```
 
 #### Issue: HTTP endpoint not accessible
+
 **Solution**: Verify the trigger was created with correct request specification:
 ```bash
 influxdb3 list triggers --database mydb

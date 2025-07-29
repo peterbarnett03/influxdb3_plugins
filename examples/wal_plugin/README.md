@@ -12,7 +12,7 @@ This plugin provides insights into write patterns and can help monitor data inge
 ### Plugin metadata
 
 This plugin includes a JSON metadata schema in its docstring that defines supported trigger types and configuration parameters.
-This metadata enables the InfluxDB 3 Explorer UI to display and configure the plugin.
+This metadata enables the [InfluxDB 3 Explorer](https://docs.influxdata.com/influxdb3/explorer/) UI to display and configure the plugin.
 
 ## Configuration
 
@@ -25,6 +25,7 @@ This metadata enables the InfluxDB 3 Explorer UI to display and configure the pl
 ## Requirements
 
 ### Software requirements
+
 - InfluxDB 3 Core or InfluxDB 3 Enterprise with Processing Engine enabled
 - No additional Python packages required (uses built-in libraries)
 
@@ -199,6 +200,7 @@ influxdb3 query --database _internal "SELECT * FROM system.processing_engine_log
 ### Common issues
 
 #### Issue: No write reports appearing
+
 **Solution**: 
 1. Verify the trigger was created successfully:
    ```bash
@@ -208,11 +210,20 @@ influxdb3 query --database _internal "SELECT * FROM system.processing_engine_log
 3. Review logs for errors
 
 #### Issue: Infinite recursion with write_reports
+
 **Solution**: This shouldn't happen as the plugin automatically skips the `write_reports` table, but if you see this:
 1. Check that you haven't modified the plugin to remove the skip logic
 2. Verify the table name comparison is working correctly
 
 #### Issue: Row counts seem incorrect
+
+**Solution**: 
+1. Remember that row counts represent WAL flush batches, not individual write operations
+
+**Solution**: 
+1. Remember that row counts represent WAL flush batches, not individual write operations
+#### Issue: Row counts seem incorrect
+
 **Solution**: 
 1. Remember that row counts represent WAL flush batches, not individual write operations
 2. Multiple write operations may be batched together before the plugin processes them

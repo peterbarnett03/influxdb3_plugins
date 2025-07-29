@@ -12,7 +12,7 @@ Supports both scheduled batch forecasting and on-demand HTTP-triggered forecasts
 
 ### Plugin metadata
 
-This plugin includes a JSON metadata schema in its docstring that defines supported trigger types and configuration parameters. This metadata enables the InfluxDB 3 Explorer UI to display and configure the plugin.
+This plugin includes a JSON metadata schema in its docstring that defines supported trigger types and configuration parameters. This metadata enables the [InfluxDB 3 Explorer](https://docs.influxdata.com/influxdb3/explorer/) UI to display and configure the plugin.
 
 ## Configuration
 
