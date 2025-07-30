@@ -56,8 +56,7 @@ This plugin includes a JSON metadata schema in its docstring that defines suppor
 - [basic_transformation_config_scheduler.toml](basic_transformation_config_scheduler.toml) - for scheduled triggers
 - [basic_transformation_config_data_writes.toml](basic_transformation_config_data_writes.toml) - for data write triggers
 
-For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [influxdb3_plugins
-/README.md](/README.md).
+For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [influxdb3_plugins/README.md](/README.md).
 
 ## Data requirements
 

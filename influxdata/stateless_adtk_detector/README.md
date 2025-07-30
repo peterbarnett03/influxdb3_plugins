@@ -56,8 +56,7 @@ This plugin includes a JSON metadata schema in its docstring that defines suppor
 
 [adtk_anomaly_config_scheduler.toml](adtk_anomaly_config_scheduler.toml)
 
-For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [influxdb3_plugins
-/README.md](/README.md).
+For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [influxdb3_plugins/README.md](/README.md).
 
 ### Supported ADTK detectors
 

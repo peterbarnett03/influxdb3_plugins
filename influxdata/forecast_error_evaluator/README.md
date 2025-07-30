@@ -94,8 +94,7 @@ This plugin includes a JSON metadata schema in its docstring that defines suppor
 
 [forecast_error_config_scheduler.toml](forecast_error_config_scheduler.toml)
 
-For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [influxdb3_plugins
-/README.md](/README.md).
+For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [influxdb3_plugins/README.md](/README.md).
 
 ## Software Requirements
 
