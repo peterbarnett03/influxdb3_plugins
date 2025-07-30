@@ -62,13 +62,13 @@ Example TOML configuration files provided:
 - [threshold_deadman_config_scheduler.toml](threshold_deadman_config_scheduler.toml) - for scheduled triggers
 - [threshold_deadman_config_data_writes.toml](threshold_deadman_config_data_writes.toml) - for data write triggers
 
-For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [project README](/README.md).
+For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [influxdb3_plugins/README.md](/README.md).
 
 ### Channel-specific configuration
 
 Notification channels require additional parameters based on the sender type (same as the [influxdata/notifier plugin](../notifier/README.md)).
 
-## Data requirements
+## Schema requirement
 
 The plugin assumes that the table schema is already defined in the database, as it relies on this schema to retrieve field and tag names required for processing.
 

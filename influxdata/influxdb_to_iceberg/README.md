@@ -43,9 +43,11 @@ This plugin includes a JSON metadata schema in its docstring that defines suppor
 
 *To use a TOML configuration file, set the `PLUGIN_DIR` environment variable and specify the `config_file_path` in the trigger arguments.* This is in addition to the `--plugin-dir` flag when starting InfluxDB 3.
 
-Example TOML configuration file provided: [influxdb_to_iceberg_config_scheduler.toml](influxdb_to_iceberg_config_scheduler.toml)
+#### Example TOML configuration
 
-For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [project README](/README.md).
+[influxdb_to_iceberg_config_scheduler.toml](influxdb_to_iceberg_config_scheduler.toml)
+
+For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [influxdb3_plugins/README.md](/README.md).
 
 ### HTTP trigger parameters
 
@@ -110,7 +112,7 @@ For more information on using TOML configuration files, see the Using TOML Confi
 - `[sql-sqlite]` for SQL catalog with SQLite
 - See [PyIceberg documentation](https://py.iceberg.apache.org/#installation) for all options
 
-## Data requirements
+## Schema requirement
 
 The plugin assumes that the table schema is already defined in the database, as it relies on this schema to retrieve field and tag names required for processing.
 

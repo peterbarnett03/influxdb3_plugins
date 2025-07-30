@@ -56,9 +56,11 @@ This plugin includes a JSON metadata schema in its docstring that defines suppor
 
 *To use a TOML configuration file, set the `PLUGIN_DIR` environment variable and specify the `config_file_path` in the trigger arguments.* This is in addition to the `--plugin-dir` flag when starting InfluxDB 3.
 
-Example TOML configuration file provided: [downsampling_config_scheduler.toml](downsampling_config_scheduler.toml)
+#### Example TOML configuration
 
-For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [project README](/README.md).
+[downsampling_config_scheduler.toml](downsampling_config_scheduler.toml)
+
+For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [influxdb3_plugins/README.md](/README.md).
 
 ## Schema management
 
@@ -68,12 +70,7 @@ Each downsampled record includes three additional metadata columns:
 - `time_from` — the minimum timestamp among the original points in the interval  
 - `time_to` — the maximum timestamp among the original points in the interval
 
-## Software requirements
-
-- **InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
-- **Python packages**: No additional packages required
-
-### Installation steps
+## Installation steps
 
 1. Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
 

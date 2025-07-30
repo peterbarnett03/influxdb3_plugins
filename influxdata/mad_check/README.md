@@ -51,18 +51,6 @@ Multiple thresholds are separated by `@`: `temp:2.5:20:5@load:3:10:2m`
 - Count: `"MAD count alert: Field $field in $table outlier for $threshold_count consecutive points. Tags: $tags"`
 - Time: `"MAD duration alert: Field $field in $table outlier for $threshold_time. Tags: $tags"`
 
-### TOML configuration
-
-| Parameter          | Type   | Default | Description                                                                      |
-|--------------------|--------|---------|----------------------------------------------------------------------------------|
-| `config_file_path` | string | none    | TOML config file path relative to `PLUGIN_DIR` (required for TOML configuration) |
-
-*To use a TOML configuration file, set the `PLUGIN_DIR` environment variable and specify the `config_file_path` in the trigger arguments.* This is in addition to the `--plugin-dir` flag when starting InfluxDB 3.
-
-Example TOML configuration file provided: [mad_anomaly_config_data_writes.toml](mad_anomaly_config_data_writes.toml)
-
-For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [project README](/README.md).
-
 ### Notification channel parameters
 
 #### Slack
@@ -95,6 +83,20 @@ For more information on using TOML configuration files, see the Using TOML Confi
 | `twilio_from_number` | string | Yes      | Sender phone number                             |
 | `twilio_to_number`   | string | Yes      | Recipient phone number                          |
 
+### TOML configuration
+
+| Parameter          | Type   | Default | Description                                                                      |
+|--------------------|--------|---------|----------------------------------------------------------------------------------|
+| `config_file_path` | string | none    | TOML config file path relative to `PLUGIN_DIR` (required for TOML configuration) |
+
+*To use a TOML configuration file, set the `PLUGIN_DIR` environment variable and specify the `config_file_path` in the trigger arguments.* This is in addition to the `--plugin-dir` flag when starting InfluxDB 3.
+
+#### Example TOML configuration
+
+[mad_anomaly_config_data_writes.toml](mad_anomaly_config_data_writes.toml)
+
+For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [influxdb3_plugins/README.md](/README.md).
+
 ## Software Requirements
 
 - **InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
@@ -122,7 +124,7 @@ For more information on using TOML configuration files, see the Using TOML Confi
 
 3. *Optional*: For notifications, install and configure the [influxdata/notifier plugin](../notifier/README.md)
 
-## Data requirements
+## Schema requirement
 
 The plugin assumes that the table schema is already defined in the database, as it relies on this schema to retrieve field and tag names required for processing.
 
