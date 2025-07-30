@@ -19,24 +19,22 @@ This plugin includes a JSON metadata schema in its docstring that defines suppor
 |----------------------|--------|---------|-------------------------------------------------------------------------------------------|
 | `double_count_table` | string | none    | Table name for which to double the row count in write reports (for testing/demonstration) |
 
-## Requirements
-
 ## Software requirements
 
--	InfluxDB 3 Core or InfluxDB 3 Enterprise with Processing Engine enabled
--	No additional Python packages required (uses built-in libraries)
+- **InfluxDB 3 Core/Enterprise**: with Processing Engine enabled
+- No additional Python packages required (uses built-in libraries)
 
 ### Installation steps
 
-1.	Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
+1. Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
 
-	```bash
-	influxdb3 serve \
-	--node-id node0 \
-	--object-store file \
-	--data-dir ~/.influxdb3 \
-	--plugin-dir ~/.plugins
-	```
+   ```bash
+   influxdb3 serve \
+     --node-id node0 \
+     --object-store file \
+     --data-dir ~/.influxdb3 \
+     --plugin-dir ~/.plugins
+   ```
 
 ## Trigger setup
 
@@ -100,11 +98,11 @@ influxdb3 query \
 
 ### Expected output
 
-	table_name  | row_count | time
-	------------|-----------|-----
-	pressure    | 1         | 2024-01-01T12:02:00Z
-	humidity    | 1         | 2024-01-01T12:01:00Z
-	temperature | 1         | 2024-01-01T12:00:00Z
+ table_name  | row_count | time
+ ------------|-----------|-----
+ pressure    | 1         | 2024-01-01T12:02:00Z
+ humidity    | 1         | 2024-01-01T12:01:00Z
+ temperature | 1         | 2024-01-01T12:00:00Z
 
 ### Example: Monitoring with special table handling
 
@@ -153,22 +151,22 @@ Tracks the number of rows written to each table during WAL flush events.
 
 **Tags:**
 
--	`table_name`: Name of the table that received writes
+- `table_name`: Name of the table that received writes
 
 **Fields:**
 
--	`row_count`: Number of rows written in this WAL flush (integer)
+- `row_count`: Number of rows written in this WAL flush (integer)
 
 **Special behavior:**
 
--	If `double_count_table` parameter matches the table name, the row count will be doubled
--	The plugin automatically skips the `write_reports` table to avoid infinite recursion
+- If `double_count_table` parameter matches the table name, the row count will be doubled
+- The plugin automatically skips the `write_reports` table to avoid infinite recursion
 
 ## Code overview
 
 ### Files
 
--	`wal_plugin.py`: Main plugin code that processes write batches and generates reports
+- `wal_plugin.py`: Main plugin code that processes write batches and generates reports
 
 ### Main functions
 
@@ -178,17 +176,17 @@ Entry point for processing write batches. Called each time data is written to th
 
 **Parameters:**
 
--	`influxdb3_local`: InfluxDB client for writing and logging
--	`table_batches`: List of table batches containing written data
--	`args`: Configuration arguments from trigger setup
+- `influxdb3_local`: InfluxDB client for writing and logging
+- `table_batches`: List of table batches containing written data
+- `args`: Configuration arguments from trigger setup
 
 **Processing logic:**
 
-1.	Iterates through each table batch in the write operation
-2.	Skips the `write_reports` table to prevent recursion
-3.	Counts rows in each batch
-4.	Applies special handling if `double_count_table` matches
-5.	Writes report record to `write_reports` measurement
+1. Iterates through each table batch in the write operation
+2. Skips the `write_reports` table to prevent recursion
+3. Counts rows in each batch
+4. Applies special handling if `double_count_table` matches
+5. Writes report record to `write_reports` measurement
 
 ### Logging
 
@@ -206,50 +204,43 @@ influxdb3 query --database _internal "SELECT * FROM system.processing_engine_log
 
 **Solution**:
 
-1.	Verify the trigger was created successfully:`bash
-	influxdb3 list triggers --database your_database
-	`
-2.	Check that data is actually being written to tables other than `write_reports`
-3.	Review logs for errors
+1. Verify the trigger was created successfully:
+
+   ```bash
+   influxdb3 list triggers --database your_database
+   ```
+
+2. Check that data is actually being written to tables other than `write_reports`
+3. Review logs for errors
 
 #### Issue: Infinite recursion with write_reports
 
 **Solution**: This shouldn't happen as the plugin automatically skips the `write_reports` table, but if you see this:
 
-1.	Check that you haven't modified the plugin to remove the skip logic
-2.	Verify the table name comparison is working correctly
+1. Check that you haven't modified the plugin to remove the skip logic
+2. Verify the table name comparison is working correctly
 
 #### Issue: Row counts seem incorrect
 
 **Solution**:
 
-1.	Remember that row counts represent WAL flush batches, not individual write operations
-
-**Solution**:
-
-1.	Remember that row counts represent WAL flush batches, not individual write operations
-
-	#### Issue: Row counts seem incorrect
-
-**Solution**:
-
-1.	Remember that row counts represent WAL flush batches, not individual write operations
-2.	Multiple write operations may be batched together before the plugin processes them
-3.	Check if `double_count_table` is set and affecting specific tables
+1. Remember that row counts represent WAL flush batches, not individual write operations
+2. Multiple write operations may be batched together before the plugin processes them
+3. Check if `double_count_table` is set and affecting specific tables
 
 ### Performance considerations
 
--	This plugin processes every write operation, so it adds minimal overhead
--	The plugin generates one additional write per table per WAL flush batch
--	Consider the storage impact of write reports for high-volume systems
+- This plugin processes every write operation, so it adds minimal overhead
+- The plugin generates one additional write per table per WAL flush batch
+- Consider the storage impact of write reports for high-volume systems
 
 ### Use cases
 
--	**Write monitoring**: Track data ingestion patterns and volumes
--	**Debugging**: Identify which tables are receiving writes
--	**Performance analysis**: Monitor write batch sizes and patterns
--	**Data validation**: Verify expected write volumes
--	**Testing**: Use `double_count_table` parameter for testing scenarios
+- **Write monitoring**: Track data ingestion patterns and volumes
+- **Debugging**: Identify which tables are receiving writes
+- **Performance analysis**: Monitor write batch sizes and patterns
+- **Data validation**: Verify expected write volumes
+- **Testing**: Use `double_count_table` parameter for testing scenarios
 
 ## Questions/Comments
 

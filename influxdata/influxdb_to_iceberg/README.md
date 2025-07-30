@@ -43,6 +43,10 @@ This plugin includes a JSON metadata schema in its docstring that defines suppor
 
 *To use a TOML configuration file, set the `PLUGIN_DIR` environment variable and specify the `config_file_path` in the trigger arguments.* This is in addition to the `--plugin-dir` flag when starting InfluxDB 3.
 
+Example TOML configuration file provided: [influxdb_to_iceberg_config_scheduler.toml](influxdb_to_iceberg_config_scheduler.toml)
+
+For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [project README](/README.md).
+
 ### HTTP trigger parameters
 
 #### Request body structure
@@ -61,50 +65,50 @@ This plugin includes a JSON metadata schema in its docstring that defines suppor
 
 ## Schema management
 
--	Automatically creates Iceberg table schema from the first batch of data
--	Maps Pandas data types to Iceberg types:
-	-	`int64` → `IntegerType`
-	-	`float64` → `FloatType`
-	-	`datetime64[us]` → `TimestampType`
-	-	`object` → `StringType`
--	Fields with no null values are marked as `required`
--	The `time` column is converted to `datetime64[us]` for Iceberg compatibility
--	Tables are created in format: `<namespace>.<table_name>`
+- Automatically creates Iceberg table schema from the first batch of data
+- Maps Pandas data types to Iceberg types:
+ 	- `int64` → `IntegerType`
+ 	- `float64` → `FloatType`
+ 	- `datetime64[us]` → `TimestampType`
+ 	- `object` → `StringType`
+- Fields with no null values are marked as `required`
+- The `time` column is converted to `datetime64[us]` for Iceberg compatibility
+- Tables are created in format: `<namespace>.<table_name>`
 
 ## Software Requirements
 
--	**InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled
--	**Python packages**:
-	-	`pandas` (for data manipulation)
-	-	`pyarrow` (for Parquet support)
-	-	`pyiceberg[catalog-options]` (for Iceberg integration)
+- **InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled
+- **Python packages**:
+ 	- `pandas` (for data manipulation)
+ 	- `pyarrow` (for Parquet support)
+ 	- `pyiceberg[catalog-options]` (for Iceberg integration)
 
 ### Installation steps
 
-1.	Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
+1. Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
 
-	```bash
-	influxdb3 serve \
-	 --node-id node0 \
-	 --object-store file \
-	 --data-dir ~/.influxdb3 \
-	 --plugin-dir ~/.plugins
-	```
+   ```bash
+   influxdb3 serve \
+     --node-id node0 \
+     --object-store file \
+     --data-dir ~/.influxdb3 \
+     --plugin-dir ~/.plugins
+   ```
 
-2.	Install required Python packages:
+2. Install required Python packages:
 
-	```bash
-	influxdb3 install package pandas
-	influxdb3 install package pyarrow
-	influxdb3 install package "pyiceberg[s3fs,hive,sql-sqlite]"
-	```
+   ```bash
+   influxdb3 install package pandas
+   influxdb3 install package pyarrow
+   influxdb3 install package "pyiceberg[s3fs,hive,sql-sqlite]"
+   ```
 
 **Note:** Include the appropriate PyIceberg extras based on your catalog type:
 
--	`[s3fs]` for S3 storage
--	`[hive]` for Hive metastore
--	`[sql-sqlite]` for SQL catalog with SQLite
--	See [PyIceberg documentation](https://py.iceberg.apache.org/#installation) for all options
+- `[s3fs]` for S3 storage
+- `[hive]` for Hive metastore
+- `[sql-sqlite]` for SQL catalog with SQLite
+- See [PyIceberg documentation](https://py.iceberg.apache.org/#installation) for all options
 
 ## Data requirements
 
@@ -172,9 +176,9 @@ influxdb3 write \
 
 ### Expected results
 
--	Creates Iceberg table `default.cpu` with schema matching the measurement
--	Transfers all CPU data from the last 24 hours
--	Appends new data on each hourly run
+- Creates Iceberg table `default.cpu` with schema matching the measurement
+- Transfers all CPU data from the last 24 hours
+- Appends new data on each hourly run
 
 ### Example 2: HTTP backfill with field filtering
 
@@ -210,10 +214,10 @@ curl -X POST http://localhost:8181/api/v3/engine/replicate \
 
 ### Expected results
 
--	Creates Iceberg table `weather.temperature_history`
--	Transfers only `temp_celsius` and `humidity` fields
--	Processes data in 12-hour batches for the specified week
--	Returns status of the backfill operation
+- Creates Iceberg table `weather.temperature_history`
+- Transfers only `temp_celsius` and `humidity` fields
+- Processes data in 12-hour batches for the specified week
+- Returns status of the backfill operation
 
 ### Example 3: S3-backed Iceberg catalog
 
@@ -245,56 +249,13 @@ influxdb3 create trigger \
   s3_iceberg_transfer
 ```
 
-## Using TOML Configuration Files
-
-This plugin supports using TOML configuration files to specify all plugin arguments. This is useful for complex configurations or when you want to version control your plugin settings.
-
-### Important Requirements
-
-**To use TOML configuration files, you must set the `PLUGIN_DIR` environment variable in the InfluxDB 3 host environment.** This is required in addition to the `--plugin-dir` flag when starting InfluxDB 3:
-
--	`--plugin-dir` tells InfluxDB 3 where to find plugin Python files
--	`PLUGIN_DIR` environment variable tells the plugins where to find TOML configuration files
-
-### Setting Up TOML Configuration
-
-1.	**Start InfluxDB 3 with the PLUGIN_DIR environment variable set**:
-
-	```bash
-	PLUGIN_DIR=~/.plugins influxdb3 serve --node-id node0 --object-store file --data-dir ~/.influxdb3 --plugin-dir ~/.plugins
-	```
-
-2.	**Copy the example TOML configuration file to your plugin directory**:
-
-	```bash
-	cp influxdb_to_iceberg_config_scheduler.toml ~/.plugins/
-	```
-
-3.	**Edit the TOML file** to match your requirements:\`\``toml
-
-	# Required parameters
-
-	measurement = "cpu" window = "1h"
-
-# Optional parameters namespace = "monitoring" table_name = "cpu_metrics"
-
-# Iceberg catalog configuration [catalog_configs] type = "sql" uri = "http://nessie:9000" warehouse = "s3://iceberg-warehouse/"
-
-	4. **Create a trigger using the `config_file_path` argument**:
-	   ```bash
-	   influxdb3 create trigger \
-	     --database mydb \
-	     --plugin-filename influxdb_to_iceberg.py \
-	     --trigger-spec "every:1h" \
-	     --trigger-arguments config_file_path=influxdb_to_iceberg_config_scheduler.toml \
-	     iceberg_toml_trigger
 
 ## Code overview
 
 ### Files
 
--	`influxdb_to_iceberg.py`: The main plugin code containing handlers for scheduled and HTTP triggers
--	`influxdb_to_iceberg_config_scheduler.toml`: Example TOML configuration file for scheduled triggers
+- `influxdb_to_iceberg.py`: The main plugin code containing handlers for scheduled and HTTP triggers
+- `influxdb_to_iceberg_config_scheduler.toml`: Example TOML configuration file for scheduled triggers
 
 ### Logging
 
@@ -306,10 +267,10 @@ influxdb3 query --database _internal "SELECT * FROM system.processing_engine_log
 
 Log columns:
 
--	**event_time**: Timestamp of the log event
--	**trigger_name**: Name of the trigger that generated the log
--	**log_level**: Severity level (INFO, WARN, ERROR)
--	**log_text**: Message describing the action or error
+- **event_time**: Timestamp of the log event
+- **trigger_name**: Name of the trigger that generated the log
+- **log_level**: Severity level (INFO, WARN, ERROR)
+- **log_text**: Message describing the action or error
 
 ### Main functions
 
@@ -319,10 +280,10 @@ Handles scheduled data transfers. Queries data within the specified window and a
 
 Key operations:
 
-1.	Parses configuration and decodes catalog settings
-2.	Queries source measurement with optional field filtering
-3.	Creates Iceberg table if needed
-4.	Appends data to Iceberg table
+1. Parses configuration and decodes catalog settings
+2. Queries source measurement with optional field filtering
+3. Creates Iceberg table if needed
+4. Appends data to Iceberg table
 
 #### `process_http_request(influxdb3_local, request_body, args)`
 
@@ -330,10 +291,10 @@ Handles on-demand data transfers via HTTP. Supports backfill operations with con
 
 Key operations:
 
-1.	Validates request body parameters
-2.	Determines backfill time range
-3.	Processes data in batches
-4.	Returns transfer status
+1. Validates request body parameters
+2. Determines backfill time range
+3. Processes data in batches
+4. Returns transfer status
 
 ## Troubleshooting
 
@@ -354,61 +315,61 @@ base64 config.json
 
 **Solution**:
 
-1.	Verify catalog configuration is correct
-2.	Check warehouse path permissions
-3.	Ensure required PyIceberg extras are installed:`bash
-	influxdb3 install package "pyiceberg[s3fs]"
-	`
+1. Verify catalog configuration is correct
+2. Check warehouse path permissions
+3. Ensure required PyIceberg extras are installed:`bash
+ influxdb3 install package "pyiceberg[s3fs]"
+ `
 
 #### Issue: No data in Iceberg table after transfer
 
 **Solution**:
 
-1.	Check if source measurement contains data:`bash
-	influxdb3 query --database mydb "SELECT COUNT(*) FROM measurement"
-	`
-2.	Verify time window covers data:`bash
-	influxdb3 query --database mydb "SELECT MIN(time), MAX(time) FROM measurement"
-	`
-3.	Check logs for errors:`bash
-	influxdb3 query --database _internal "SELECT * FROM system.processing_engine_logs WHERE log_level = 'ERROR'"
-	`
+1. Check if source measurement contains data:`bash
+ influxdb3 query --database mydb "SELECT COUNT(*) FROM measurement"
+ `
+2. Verify time window covers data:`bash
+ influxdb3 query --database mydb "SELECT MIN(time), MAX(time) FROM measurement"
+ `
+3. Check logs for errors:`bash
+ influxdb3 query --database _internal "SELECT * FROM system.processing_engine_logs WHERE log_level = 'ERROR'"
+ `
 
 #### Issue: "Schema evolution not supported" error
 
 **Solution**: The plugin doesn't handle schema changes. If fields change:
 
-1.	Create a new table with different name
-2.	Or manually update the Iceberg table schema
+1. Create a new table with different name
+2. Or manually update the Iceberg table schema
 
 ### Debugging tips
 
-1.	**Test catalog connectivity**:
+1. **Test catalog connectivity**:
 
-	```python
-	from pyiceberg.catalog import load_catalog
-	catalog = load_catalog("my_catalog", **catalog_configs)
-	print(catalog.list_namespaces())
-	```
+ ```python
+ from pyiceberg.catalog import load_catalog
+ catalog = load_catalog("my_catalog", **catalog_configs)
+ print(catalog.list_namespaces())
+ ```
 
-2.	**Verify field names**:
+2. **Verify field names**:
 
-	```bash
-	influxdb3 query --database mydb "SHOW FIELD KEYS FROM measurement"
-	```
+   ```bash
+   influxdb3 query --database mydb "SHOW FIELD KEYS FROM measurement"
+   ```
 
-3.	**Use smaller windows** for initial testing:
+3. **Use smaller windows** for initial testing:
 
-	```bash
-	--trigger-arguments 'window=5m,...'
-	```
+   ```bash
+   --trigger-arguments 'window=5m,...'
+   ```
 
 ### Performance considerations
 
--	**File sizing**: Each scheduled run creates new Parquet files. Use appropriate window sizes to balance file count and size
--	**Batch processing**: For HTTP transfers, adjust `batch_size` based on available memory
--	**Field filtering**: Use `included_fields` to reduce data volume when only specific fields are needed
--	**Catalog choice**: SQL catalogs (SQLite) are simpler but REST catalogs scale better
+- **File sizing**: Each scheduled run creates new Parquet files. Use appropriate window sizes to balance file count and size
+- **Batch processing**: For HTTP transfers, adjust `batch_size` based on available memory
+- **Field filtering**: Use `included_fields` to reduce data volume when only specific fields are needed
+- **Catalog choice**: SQL catalogs (SQLite) are simpler but REST catalogs scale better
 
 ## Questions/Comments
 

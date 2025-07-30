@@ -19,30 +19,30 @@ This plugin includes a JSON metadata schema in its docstring that defines suppor
 
 ### Required parameters
 
-| Parameter         | Type   | Default  | Description                                      |
-|-------------------|--------|----------|--------------------------------------------------|
-| `measurement`     | string | required | Measurement to analyze for anomalies             |
-| `field`           | string | required | Numeric field to evaluate                        |
-| `detectors`       | string | required | Dot-separated list of ADTK detectors             |
-| `detector_params` | string | required | Base64-encoded JSON parameters for each detector |
-| `window`          | string | required | Data analysis window. Format: `<number><unit>`   |
-| `senders`         | string | required | Dot-separated notification channels              |
+| Parameter         | Type   | Default  | Description                                                                                 |
+|-------------------|--------|----------|---------------------------------------------------------------------------------------------|
+| `measurement`     | string | required | Measurement to analyze for anomalies                                                        |
+| `field`           | string | required | Numeric field to evaluate                                                                   |
+| `detectors`       | string | required | Dot-separated list of advanced ADTK detectors for different anomaly types                  |
+| `detector_params` | string | required | Base64-encoded JSON parameters for each detector                                            |
+| `window`          | string | required | Data analysis window with flexible scheduling. Format: `<number><unit>` (e.g., "1h", "30m") |
+| `senders`         | string | required | Dot-separated notification channels with multi-channel notification support                 |
 
 ### Advanced parameters
 
-| Parameter                | Type   | Default | Description                                              |
-|--------------------------|--------|---------|----------------------------------------------------------|
-| `min_consensus`          | number | 1       | Minimum detectors required to agree for anomaly flagging |
-| `min_condition_duration` | string | "0s"    | Minimum duration for anomaly persistence                 |
+| Parameter                | Type   | Default | Description                                                                                      |
+|--------------------------|--------|---------|--------------------------------------------------------------------------------------------------|
+| `min_consensus`          | number | 1       | Minimum detectors required to agree for consensus-based filtering to reduce false positives     |
+| `min_condition_duration` | string | "0s"    | Minimum duration for configurable anomaly persistence before alerting                           |
 
 ### Notification parameters
 
-| Parameter              | Type   | Default  | Description                          |
-|------------------------|--------|----------|--------------------------------------|
-| `influxdb3_auth_token` | string | env var  | InfluxDB 3 API token                 |
-| `notification_text`    | string | template | Custom notification message template |
-| `notification_path`    | string | "notify" | Notification endpoint path           |
-| `port_override`        | number | 8181     | InfluxDB port override               |
+| Parameter              | Type   | Default  | Description                                                              |
+|------------------------|--------|----------|--------------------------------------------------------------------------|
+| `influxdb3_auth_token` | string | env var  | InfluxDB 3 API token                                                     |
+| `notification_text`    | string | template | Customizable notification template message with dynamic variables        |
+| `notification_path`    | string | "notify" | Notification endpoint path                                               |
+| `port_override`        | number | 8181     | InfluxDB port override                                                   |
 
 ### TOML configuration
 
@@ -51,6 +51,10 @@ This plugin includes a JSON metadata schema in its docstring that defines suppor
 | `config_file_path` | string | none    | TOML config file path relative to `PLUGIN_DIR` (required for TOML configuration) |
 
 *To use a TOML configuration file, set the `PLUGIN_DIR` environment variable and specify the `config_file_path` in the trigger arguments.* This is in addition to the `--plugin-dir` flag when starting InfluxDB 3.
+
+Example TOML configuration file provided: [adtk_anomaly_config_scheduler.toml](adtk_anomaly_config_scheduler.toml)
+
+For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [project README](/README.md).
 
 ### Supported ADTK detectors
 
@@ -66,29 +70,29 @@ This plugin includes a JSON metadata schema in its docstring that defines suppor
 
 ## Requirements
 
--	**InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
--	**Python packages**:
-	-	`adtk` (for anomaly detection)
-	-	`pandas` (for data manipulation)
-	-	`requests` (for HTTP notifications)
+- **InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
+- **Python packages**:
+ 	- `adtk` (for anomaly detection)
+ 	- `pandas` (for data manipulation)
+ 	- `requests` (for HTTP notifications)
 
-1.	Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
+1. Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
 
-	```bash
-	influxdb3 serve \
-	 --node-id node0 \
-	 --object-store file \
-	 --data-dir ~/.influxdb3 \
-	 --plugin-dir ~/.plugins
-	```
+   ```bash
+   influxdb3 serve \
+     --node-id node0 \
+     --object-store file \
+     --data-dir ~/.influxdb3 \
+     --plugin-dir ~/.plugins
+   ```
 
-2.	Install required Python packages:
+2. Install required Python packages:
 
-```bash
+   ```bash
    influxdb3 install package requests
    influxdb3 install package adtk
    influxdb3 install package pandas
-```
+   ```
 
 ### Create trigger
 
@@ -159,14 +163,6 @@ influxdb3 create trigger \
   volatility_detector
 ```
 
-## Features
-
--	**Advanced detection methods**: Multiple ADTK detectors for different anomaly types
--	**Consensus-based filtering**: Reduce false positives with multi-detector agreement
--	**Configurable persistence**: Require anomalies to persist before alerting
--	**Multi-channel notifications**: Integration with various notification channels
--	**Template messages**: Customizable notification templates with dynamic variables
--	**Flexible scheduling**: Configurable detection intervals and time windows
 
 ## Troubleshooting
 
@@ -174,26 +170,26 @@ influxdb3 create trigger \
 
 **Detector parameter encoding**
 
--	Ensure detector_params is valid Base64-encoded JSON
--	Use command line Base64 encoding: `echo '{"QuantileAD": {"low": 0.05}}' | base64`
--	Verify JSON structure matches detector requirements
+- Ensure detector_params is valid Base64-encoded JSON
+- Use command line Base64 encoding: `echo '{"QuantileAD": {"low": 0.05}}' | base64`
+- Verify JSON structure matches detector requirements
 
 **False positive notifications**
 
--	Increase `min_consensus` to require more detectors to agree
--	Add `min_condition_duration` to require anomalies to persist
--	Adjust detector-specific thresholds in `detector_params`
+- Increase `min_consensus` to require more detectors to agree
+- Add `min_condition_duration` to require anomalies to persist
+- Adjust detector-specific thresholds in `detector_params`
 
 **Missing dependencies**
 
--	Install required packages: `adtk`, `pandas`, `requests`
--	Ensure the Notifier Plugin is installed for notifications
+- Install required packages: `adtk`, `pandas`, `requests`
+- Ensure the Notifier Plugin is installed for notifications
 
 **Data quality issues**
 
--	Verify sufficient data points in the specified window
--	Check for null values or data gaps that affect detection
--	Ensure field contains numeric data suitable for analysis
+- Verify sufficient data points in the specified window
+- Check for null values or data gaps that affect detection
+- Ensure field contains numeric data suitable for analysis
 
 ### Base64 parameter encoding
 
@@ -214,12 +210,12 @@ echo '{"ThresholdAD": {"high": 100, "low": 10}}' | base64 -w 0
 
 Available variables for notification templates:
 
--	`$table`: Measurement name
--	`$field`: Field name with anomaly
--	`$value`: Anomalous value
--	`$detectors`: List of detecting methods
--	`$tags`: Tag values
--	`$timestamp`: Anomaly timestamp
+- `$table`: Measurement name
+- `$field`: Field name with anomaly
+- `$value`: Anomalous value
+- `$detectors`: List of detecting methods
+- `$tags`: Tag values
+- `$timestamp`: Anomaly timestamp
 
 ### Detector configuration reference
 

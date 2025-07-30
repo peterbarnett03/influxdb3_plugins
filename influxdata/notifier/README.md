@@ -69,29 +69,29 @@ The `senders_config` parameter accepts channel configurations where keys are sen
 
 ## Software Requirements
 
--	**InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
--	**Python packages**:
-	-	`httpx` (for HTTP requests)
-	-	`twilio` (for SMS/WhatsApp notifications)
+- **InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
+- **Python packages**:
+ 	- `httpx` (for HTTP requests)
+ 	- `twilio` (for SMS/WhatsApp notifications)
 
 ### Installation steps
 
-1.	Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
+1. Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
 
-	```bash
-	influxdb3 serve \
-	 --node-id node0 \
-	 --object-store file \
-	 --data-dir ~/.influxdb3 \
-	 --plugin-dir ~/.plugins
-	```
+   ```bash
+   influxdb3 serve \
+     --node-id node0 \
+     --object-store file \
+     --data-dir ~/.influxdb3 \
+     --plugin-dir ~/.plugins
+   ```
 
-2.	Install required Python packages:
+2. Install required Python packages:
 
-```bash
+   ```bash
    influxdb3 install package httpx
    influxdb3 install package twilio
-```
+   ```
 
 ### Create trigger
 
@@ -183,19 +183,19 @@ curl -X POST http://localhost:8181/api/v3/engine/notify \
 
 **Notification not delivered**
 
--	Verify webhook URLs are correct and accessible
--	Check Twilio credentials and phone number formats
--	Review logs for specific error messages
+- Verify webhook URLs are correct and accessible
+- Check Twilio credentials and phone number formats
+- Review logs for specific error messages
 
 **Authentication errors**
 
--	Ensure Twilio credentials are set via environment variables or request parameters
--	Verify webhook URLs have proper authentication if required
+- Ensure Twilio credentials are set via environment variables or request parameters
+- Verify webhook URLs have proper authentication if required
 
 **Rate limiting**
 
--	Plugin includes built-in retry logic with exponential backoff
--	Consider implementing client-side rate limiting for high-frequency notifications
+- Plugin includes built-in retry logic with exponential backoff
+- Consider implementing client-side rate limiting for high-frequency notifications
 
 ### Environment variables
 

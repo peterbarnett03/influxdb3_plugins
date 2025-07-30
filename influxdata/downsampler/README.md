@@ -56,32 +56,36 @@ This plugin includes a JSON metadata schema in its docstring that defines suppor
 
 *To use a TOML configuration file, set the `PLUGIN_DIR` environment variable and specify the `config_file_path` in the trigger arguments.* This is in addition to the `--plugin-dir` flag when starting InfluxDB 3.
 
+Example TOML configuration file provided: [downsampling_config_scheduler.toml](downsampling_config_scheduler.toml)
+
+For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [project README](/README.md).
+
 ## Schema management
 
 Each downsampled record includes three additional metadata columns:
 
--	`record_count` — the number of original points compressed into this single downsampled row
--	`time_from` — the minimum timestamp among the original points in the interval  
--	`time_to` — the maximum timestamp among the original points in the interval
+- `record_count` — the number of original points compressed into this single downsampled row
+- `time_from` — the minimum timestamp among the original points in the interval  
+- `time_to` — the maximum timestamp among the original points in the interval
 
 ## Software requirements
 
--	**InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
--	**Python packages**: No additional packages required
+- **InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
+- **Python packages**: No additional packages required
 
 ### Installation steps
 
-1.	Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
+1. Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
 
-	```bash
-	influxdb3 serve \
-	 --node-id node0 \
-	 --object-store file \
-	 --data-dir ~/.influxdb3 \
-	 --plugin-dir ~/.plugins
-	```
+   ```bash
+   influxdb3 serve \
+     --node-id node0 \
+     --object-store file \
+     --data-dir ~/.influxdb3 \
+     --plugin-dir ~/.plugins
+   ```
 
-2.	No additional Python packages required for this plugin.
+2. No additional Python packages required for this plugin.
 
 ## Trigger setup
 
@@ -138,15 +142,15 @@ influxdb3 query \
 
 ### Expected output
 
-	host    | usage_user | usage_system | usage_idle | record_count | time_from           | time_to             | time
-	--------|------------|--------------|------------|--------------|---------------------|---------------------|-----
-	server1 | 44.8       | 11.9         | 43.3       | 60           | 2024-01-01T00:00:00Z| 2024-01-01T00:59:59Z| 2024-01-01T01:00:00Z
+ host    | usage_user | usage_system | usage_idle | record_count | time_from           | time_to             | time
+ --------|------------|--------------|------------|--------------|---------------------|---------------------|-----
+ server1 | 44.8       | 11.9         | 43.3       | 60           | 2024-01-01T00:00:00Z| 2024-01-01T00:59:59Z| 2024-01-01T01:00:00Z
 
 **Aggregation details:**
 
--	Before: 60 individual CPU measurements over 1 hour
--	After: 1 aggregated measurement with averages and metadata
--	Metadata shows original record count and time range
+- Before: 60 individual CPU measurements over 1 hour
+- After: 1 aggregated measurement with averages and metadata
+- Metadata shows original record count and time range
 
 ### Example 2: Multi-field aggregation with different functions
 
@@ -174,9 +178,9 @@ influxdb3 query \
 
 ### Expected output
 
-	location | temperature | humidity | pressure | record_count | time
-	---------|-------------|----------|----------|--------------|-----
-	office   | 22.3        | 44.8     | 1015.1   | 10           | 2024-01-01T00:10:00Z
+ location | temperature | humidity | pressure | record_count | time
+ ---------|-------------|----------|----------|--------------|-----
+ office   | 22.3        | 44.8     | 1015.1   | 10           | 2024-01-01T00:10:00Z
 
 ### Example 3: HTTP API downsampling with backfill
 
@@ -199,52 +203,13 @@ curl -X POST http://localhost:8181/api/v3/engine/downsample \
   }'
 ```
 
-## Using TOML Configuration Files
-
-This plugin supports using TOML configuration files for complex configurations.
-
-### Important Requirements
-
-**To use TOML configuration files, you must set the `PLUGIN_DIR` environment variable in the InfluxDB 3 host environment:**
-
-```bash
-PLUGIN_DIR=~/.plugins influxdb3 serve --node-id node0 --object-store file --data-dir ~/.influxdb3 --plugin-dir ~/.plugins
-```
-
-### Example TOML Configuration
-
-```toml
-# downsampling_config_scheduler.toml
-source_measurement = "cpu"
-target_measurement = "cpu_hourly"
-target_database = "analytics"
-interval = "1h"
-window = "6h"
-calculations = "avg"
-specific_fields = "usage_user.usage_system.usage_idle"
-max_retries = 3
-
-[tag_values]
-host = ["server1", "server2", "server3"]
-```
-
-### Create trigger using TOML config
-
-```bash
-influxdb3 create trigger \
-  --database mydb \
-  --plugin-filename downsampler.py \
-  --trigger-spec "every:1h" \
-  --trigger-arguments config_file_path=downsampling_config_scheduler.toml \
-  downsample_trigger
-```
 
 ## Code overview
 
 ### Files
 
--	`downsampler.py`: The main plugin code containing handlers for scheduled and HTTP-triggered downsampling
--	`downsampling_config_scheduler.toml`: Example TOML configuration file for scheduled triggers
+- `downsampler.py`: The main plugin code containing handlers for scheduled and HTTP-triggered downsampling
+- `downsampling_config_scheduler.toml`: Example TOML configuration file for scheduled triggers
 
 ### Logging
 
@@ -256,10 +221,10 @@ influxdb3 query --database _internal "SELECT * FROM system.processing_engine_log
 
 Log columns:
 
--	**event_time**: Timestamp of the log event (with nanosecond precision)
--	**trigger_name**: Name of the trigger that generated the log
--	**log_level**: Severity level (INFO, WARN, ERROR)
--	**log_text**: Message describing the action or error with unique task_id for traceability
+- **event_time**: Timestamp of the log event (with nanosecond precision)
+- **trigger_name**: Name of the trigger that generated the log
+- **log_level**: Severity level (INFO, WARN, ERROR)
+- **log_text**: Message describing the action or error with unique task_id for traceability
 
 ### Main functions
 
@@ -269,10 +234,10 @@ Handles scheduled downsampling tasks. Queries historical data within the specifi
 
 Key operations:
 
-1.	Parses configuration from arguments or TOML file
-2.	Queries source measurement with optional tag filters
-3.	Applies time-based aggregation with specified functions
-4.	Writes downsampled data with metadata columns
+1. Parses configuration from arguments or TOML file
+2. Queries source measurement with optional tag filters
+3. Applies time-based aggregation with specified functions
+4. Writes downsampled data with metadata columns
 
 #### `process_http_request(influxdb3_local, request_body, args)`
 
@@ -280,10 +245,10 @@ Handles HTTP-triggered on-demand downsampling. Processes batch downsampling with
 
 Key operations:
 
-1.	Parses JSON request body parameters
-2.	Processes data in configurable time batches
-3.	Applies aggregation functions to historical data
-4.	Returns processing statistics and results
+1. Parses JSON request body parameters
+2. Processes data in configurable time batches
+3. Applies aggregation functions to historical data
+4. Returns processing statistics and results
 
 #### `aggregate_data(data, interval, calculations)`
 
@@ -291,12 +256,12 @@ Core aggregation engine that applies statistical functions to time-series data.
 
 Supported aggregation functions:
 
--	`avg`: Average value
--	`sum`: Sum of values
--	`min`: Minimum value
--	`max`: Maximum value
--	`derivative`: Rate of change
--	`median`: Median value
+- `avg`: Average value
+- `sum`: Sum of values
+- `min`: Minimum value
+- `max`: Maximum value
+- `derivative`: Rate of change
+- `median`: Median value
 
 ## Troubleshooting
 
@@ -336,32 +301,32 @@ influxdb3 list triggers --database mydb
 
 ### Debugging tips
 
-1.	**Check execution logs** with task ID filtering:
+1. **Check execution logs** with task ID filtering:
 
-	```bash
-	influxdb3 query --database _internal \
-	 "SELECT * FROM system.processing_engine_logs WHERE log_text LIKE '%task_id%' ORDER BY event_time DESC LIMIT 10"
-	```
+   ```bash
+   influxdb3 query --database _internal \
+     "SELECT * FROM system.processing_engine_logs WHERE log_text LIKE '%task_id%' ORDER BY event_time DESC LIMIT 10"
+   ```
 
-2.	**Test with smaller time windows** for debugging:
+2. **Test with smaller time windows** for debugging:
 
-	```bash
-	--trigger-arguments 'window=5min,interval=1min'
-	```
+   ```bash
+   --trigger-arguments 'window=5min,interval=1min'
+   ```
 
-3.	**Verify field types** before aggregation:
+3. **Verify field types** before aggregation:
 
-	```bash
-	influxdb3 query --database mydb "SELECT * FROM source_measurement LIMIT 1"
-	```
+   ```bash
+   influxdb3 query --database mydb "SELECT * FROM source_measurement LIMIT 1"
+   ```
 
 ### Performance considerations
 
--	**Batch processing**: Use appropriate batch_size for HTTP requests to balance memory usage and performance
--	**Field filtering**: Use specific_fields to process only necessary data
--	**Retry logic**: Configure max_retries based on network reliability
--	**Metadata overhead**: Metadata columns add ~20% storage overhead but provide valuable debugging information
--	**Index optimization**: Tag filters are more efficient than field filters for large datasets
+- **Batch processing**: Use appropriate batch_size for HTTP requests to balance memory usage and performance
+- **Field filtering**: Use specific_fields to process only necessary data
+- **Retry logic**: Configure max_retries based on network reliability
+- **Metadata overhead**: Metadata columns add ~20% storage overhead but provide valuable debugging information
+- **Index optimization**: Tag filters are more efficient than field filters for large datasets
 
 ## Questions/Comments
 

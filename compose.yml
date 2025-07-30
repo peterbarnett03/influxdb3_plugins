@@ -147,14 +147,14 @@ services:
       - PACKAGES=${PACKAGES:-pint}
     command: ["sh", "-c", "python /plugins/test/test_plugin_toml.py \"${PLUGIN_PATH}\" \"${PLUGIN_FILE}\" ${TOML_CONFIG:+--toml-config \"${TOML_CONFIG}\"} --packages ${PACKAGES}"]
 
-  # Markdown formatting service
-  markdownfmt:
-    container_name: markdownfmt
-    image: tianon/markdownfmt
+  # Markdown linting service
+  markdownlint:
+    container_name: markdownlint
+    image: davidanson/markdownlint-cli2
     profiles: ["format"]
     volumes:
       - type: bind
         source: .
         target: /workspace
     working_dir: /workspace
-    command: ["sh", "-c", "find . -name '*.md' -not -path './node_modules/*' -not -path './.git/*' -exec markdownfmt -w {} +"]
+    command: ["sh", "-c", "markdownlint-cli2 --config '{\"MD030\":{\"ul_single\":1,\"ol_single\":1,\"ul_multi\":1,\"ol_multi\":1}}' --fix '**/*.md' '!node_modules/**' '!.git/**'"]

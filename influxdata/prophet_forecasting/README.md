@@ -7,11 +7,11 @@
 
 The Prophet Forecasting Plugin enables time series forecasting for data in InfluxDB 3 using Facebook's Prophet library. Generate predictions for future data points based on historical patterns, including seasonality, trends, and custom events. Supports both scheduled batch forecasting and on-demand HTTP-triggered forecasts with model persistence and validation capabilities.
 
--	**Model persistence**: Save and reuse trained models for consistent predictions
--	**Forecast validation**: Built-in accuracy assessment using Mean Squared Relative Error (MSRE)
--	**Holiday support**: Built-in holiday calendars and custom holiday configuration
--	**Advanced seasonality**: Configurable seasonality modes and changepoint detection
--	**Flexible time intervals**: Support for seconds, minutes, hours, days, weeks, months, quarters, and years
+- **Model persistence**: Save and reuse trained models for consistent predictions
+- **Forecast validation**: Built-in accuracy assessment using Mean Squared Relative Error (MSRE)
+- **Holiday support**: Built-in holiday calendars and custom holiday configuration
+- **Advanced seasonality**: Configurable seasonality modes and changepoint detection
+- **Flexible time intervals**: Support for seconds, minutes, hours, days, weeks, months, quarters, and years
 
 ## Configuration
 
@@ -83,35 +83,39 @@ This plugin includes a JSON metadata schema in its docstring that defines suppor
 
 *To use a TOML configuration file, set the `PLUGIN_DIR` environment variable and specify the `config_file_path` in the trigger arguments.* This is in addition to the `--plugin-dir` flag when starting InfluxDB 3.
 
+Example TOML configuration file provided: [prophet_forecasting_scheduler.toml](prophet_forecasting_scheduler.toml)
+
+For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [project README](/README.md).
+
 ## Software Requirements
 
--	**InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
--	**Python packages**:
-	-	`pandas` (for data manipulation)
-	-	`numpy` (for numerical operations)
-	-	`requests` (for HTTP requests)
-	-	`prophet` (for time series forecasting)
+- **InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
+- **Python packages**:
+ 	- `pandas` (for data manipulation)
+ 	- `numpy` (for numerical operations)
+ 	- `requests` (for HTTP requests)
+ 	- `prophet` (for time series forecasting)
 
 ### Installation steps
 
-1.	Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
+1. Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
 
-	```bash
-	influxdb3 serve \
-	 --node-id node0 \
-	 --object-store file \
-	 --data-dir ~/.influxdb3 \
-	 --plugin-dir ~/.plugins
-	```
+   ```bash
+   influxdb3 serve \
+     --node-id node0 \
+     --object-store file \
+     --data-dir ~/.influxdb3 \
+     --plugin-dir ~/.plugins
+   ```
 
-2.	Install required Python packages:
+2. Install required Python packages:
 
-```bash
+   ```bash
    influxdb3 install package pandas
    influxdb3 install package numpy
    influxdb3 install package requests
    influxdb3 install package prophet
-```
+   ```
 
 ### Create scheduled trigger
 
@@ -200,19 +204,19 @@ Forecast results are written to the target measurement with the following struct
 
 ### Tags
 
--	`model_version`: Model identifier from unique_suffix parameter
--	Additional tags from original measurement query filters
+- `model_version`: Model identifier from unique_suffix parameter
+- Additional tags from original measurement query filters
 
 ### Fields
 
--	`forecast`: Predicted value (yhat from Prophet model)
--	`yhat_lower`: Lower bound of confidence interval
--	`yhat_upper`: Upper bound of confidence interval  
--	`run_time`: Forecast execution timestamp (ISO 8601 format)
+- `forecast`: Predicted value (yhat from Prophet model)
+- `yhat_lower`: Lower bound of confidence interval
+- `yhat_upper`: Upper bound of confidence interval  
+- `run_time`: Forecast execution timestamp (ISO 8601 format)
 
 ### Timestamp
 
--	`time`: Forecast timestamp in nanoseconds
+- `time`: Forecast timestamp in nanoseconds
 
 ## Troubleshooting
 
@@ -220,51 +224,51 @@ Forecast results are written to the target measurement with the following struct
 
 **Model training failures**
 
--	Ensure sufficient historical data points for the specified window
--	Verify data contains required time column and forecast field
--	Check for data gaps that might affect frequency inference
--	Set `inferred_freq` manually if automatic detection fails
+- Ensure sufficient historical data points for the specified window
+- Verify data contains required time column and forecast field
+- Check for data gaps that might affect frequency inference
+- Set `inferred_freq` manually if automatic detection fails
 
 **Validation failures**
 
--	Review MSRE threshold settings - values too low may cause frequent failures
--	Ensure validation window provides sufficient data for comparison
--	Check that validation data aligns temporally with forecast period
+- Review MSRE threshold settings - values too low may cause frequent failures
+- Ensure validation window provides sufficient data for comparison
+- Check that validation data aligns temporally with forecast period
 
 **HTTP trigger issues**
 
--	Verify JSON request body format matches expected schema
--	Check authentication tokens and database permissions
--	Ensure start_time and end_time are in valid ISO 8601 format with timezone
+- Verify JSON request body format matches expected schema
+- Check authentication tokens and database permissions
+- Ensure start_time and end_time are in valid ISO 8601 format with timezone
 
 **Model persistence problems**
 
--	Verify plugin directory permissions for model storage
--	Check disk space availability in plugin directory
--	Ensure unique_suffix values don't conflict between different model versions
+- Verify plugin directory permissions for model storage
+- Check disk space availability in plugin directory
+- Ensure unique_suffix values don't conflict between different model versions
 
 ### Model storage
 
--	**Location**: Models stored in `prophet_models/` directory within plugin directory
--	**Naming**: Files named `prophet_model_{unique_suffix}.json`
--	**Versioning**: Use descriptive unique_suffix values for model management
+- **Location**: Models stored in `prophet_models/` directory within plugin directory
+- **Naming**: Files named `prophet_model_{unique_suffix}.json`
+- **Versioning**: Use descriptive unique_suffix values for model management
 
 ### Time format support
 
 Supported time units for window, forecast_horizont, and validation_window:
 
--	`s` (seconds), `min` (minutes), `h` (hours)  
--	`d` (days), `w` (weeks)
--	`m` (months ≈30.42 days), `q` (quarters ≈91.25 days), `y` (years = 365 days)
+- `s` (seconds), `min` (minutes), `h` (hours)  
+- `d` (days), `w` (weeks)
+- `m` (months ≈30.42 days), `q` (quarters ≈91.25 days), `y` (years = 365 days)
 
 ### Validation process
 
 When validation_window is set:
 
-1.	Training data: `current_time - window` to `current_time - validation_window`
-2.	Validation data: `current_time - validation_window` to `current_time`
-3.	MSRE calculation: `mean((actual - predicted)² / actual²)`
-4.	Threshold comparison and optional alert dispatch
+1. Training data: `current_time - window` to `current_time - validation_window`
+2. Validation data: `current_time - validation_window` to `current_time`
+3. MSRE calculation: `mean((actual - predicted)² / actual²)`
+4. Threshold comparison and optional alert dispatch
 
 ## Questions/Comments
 

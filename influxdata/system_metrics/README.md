@@ -35,29 +35,33 @@ This plugin includes a JSON metadata schema in its docstring that defines suppor
 
 *To use a TOML configuration file, set the `PLUGIN_DIR` environment variable and specify the `config_file_path` in the trigger arguments.* This is in addition to the `--plugin-dir` flag when starting InfluxDB 3.
 
+Example TOML configuration file provided: [system_metrics_config_scheduler.toml](system_metrics_config_scheduler.toml)
+
+For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [project README](/README.md).
+
 ## Software Requirements
 
--	**InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
--	**Python packages**:
-	-	`psutil` (for system metrics collection)
+- **InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
+- **Python packages**:
+ 	- `psutil` (for system metrics collection)
 
 ### Installation steps
 
-1.	Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
+1. Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
 
-	```bash
-	influxdb3 serve \
-	 --node-id node0 \
-	 --object-store file \
-	 --data-dir ~/.influxdb3 \
-	 --plugin-dir ~/.plugins
-	```
+   ```bash
+   influxdb3 serve \
+     --node-id node0 \
+     --object-store file \
+     --data-dir ~/.influxdb3 \
+     --plugin-dir ~/.plugins
+   ```
 
-2.	Install required Python packages:
+2. Install required Python packages:
 
-	```bash
-	influxdb3 install package psutil
-	```
+   ```bash
+   influxdb3 install package psutil
+   ```
 
 ## Trigger Setup
 
@@ -143,15 +147,15 @@ influxdb3 query \
 
 #### Sample Output
 
-	+------+--------+-------+--------+------+--------+-------+--------+-------+-------+------------+------------------+
-	| host | cpu    | user  | system | idle | iowait | nice  | irq    | load1 | load5 | load15     | time             |
-	+------+--------+-------+--------+------+--------+-------+--------+-------+-------+------------+------------------+
-	| srv1 | total  | 12.5  | 5.3    | 81.2 | 0.8    | 0.0   | 0.2    | 0.85  | 0.92  | 0.88       | 2024-01-15 10:00 |
-	| srv1 | total  | 13.1  | 5.5    | 80.4 | 0.7    | 0.0   | 0.3    | 0.87  | 0.93  | 0.88       | 2024-01-15 10:01 |
-	| srv1 | total  | 11.8  | 5.1    | 82.0 | 0.9    | 0.0   | 0.2    | 0.83  | 0.91  | 0.88       | 2024-01-15 10:02 |
-	| srv1 | total  | 14.2  | 5.8    | 79.0 | 0.8    | 0.0   | 0.2    | 0.89  | 0.92  | 0.88       | 2024-01-15 10:03 |
-	| srv1 | total  | 12.9  | 5.4    | 80.6 | 0.9    | 0.0   | 0.2    | 0.86  | 0.92  | 0.88       | 2024-01-15 10:04 |
-	+------+--------+-------+--------+------+--------+-------+--------+-------+-------+------------+------------------+
+ +------+--------+-------+--------+------+--------+-------+--------+-------+-------+------------+------------------+
+ | host | cpu    | user  | system | idle | iowait | nice  | irq    | load1 | load5 | load15     | time             |
+ +------+--------+-------+--------+------+--------+-------+--------+-------+-------+------------+------------------+
+ | srv1 | total  | 12.5  | 5.3    | 81.2 | 0.8    | 0.0   | 0.2    | 0.85  | 0.92  | 0.88       | 2024-01-15 10:00 |
+ | srv1 | total  | 13.1  | 5.5    | 80.4 | 0.7    | 0.0   | 0.3    | 0.87  | 0.93  | 0.88       | 2024-01-15 10:01 |
+ | srv1 | total  | 11.8  | 5.1    | 82.0 | 0.9    | 0.0   | 0.2    | 0.83  | 0.91  | 0.88       | 2024-01-15 10:02 |
+ | srv1 | total  | 14.2  | 5.8    | 79.0 | 0.8    | 0.0   | 0.2    | 0.89  | 0.92  | 0.88       | 2024-01-15 10:03 |
+ | srv1 | total  | 12.9  | 5.4    | 80.6 | 0.9    | 0.0   | 0.2    | 0.86  | 0.92  | 0.88       | 2024-01-15 10:04 |
+ +------+--------+-------+--------+------+--------+-------+--------+-------+-------+------------+------------------+
 
 ## Code Overview
 
@@ -204,64 +208,64 @@ def collect_cpu_metrics(influxdb3_local, hostname):
 
 Overall CPU statistics and metrics:
 
--	**Tags**: `host`, `cpu=total`
--	**Fields**: `user`, `system`, `idle`, `iowait`, `nice`, `irq`, `softirq`, `steal`, `guest`, `guest_nice`, `frequency_current`, `frequency_min`, `frequency_max`, `ctx_switches`, `interrupts`, `soft_interrupts`, `syscalls`, `load1`, `load5`, `load15`
+- **Tags**: `host`, `cpu=total`
+- **Fields**: `user`, `system`, `idle`, `iowait`, `nice`, `irq`, `softirq`, `steal`, `guest`, `guest_nice`, `frequency_current`, `frequency_min`, `frequency_max`, `ctx_switches`, `interrupts`, `soft_interrupts`, `syscalls`, `load1`, `load5`, `load15`
 
 #### system_cpu_cores
 
 Per-core CPU statistics:
 
--	**Tags**: `host`, `core` (core number)
--	**Fields**: `usage`, `user`, `system`, `idle`, `iowait`, `nice`, `irq`, `softirq`, `steal`, `guest`, `guest_nice`, `frequency_current`, `frequency_min`, `frequency_max`
+- **Tags**: `host`, `core` (core number)
+- **Fields**: `usage`, `user`, `system`, `idle`, `iowait`, `nice`, `irq`, `softirq`, `steal`, `guest`, `guest_nice`, `frequency_current`, `frequency_min`, `frequency_max`
 
 #### system_memory
 
 System memory statistics:
 
--	**Tags**: `host`
--	**Fields**: `total`, `available`, `used`, `free`, `active`, `inactive`, `buffers`, `cached`, `shared`, `slab`, `percent`
+- **Tags**: `host`
+- **Fields**: `total`, `available`, `used`, `free`, `active`, `inactive`, `buffers`, `cached`, `shared`, `slab`, `percent`
 
 #### system_swap
 
 Swap memory statistics:
 
--	**Tags**: `host`
--	**Fields**: `total`, `used`, `free`, `percent`, `sin`, `sout`
+- **Tags**: `host`
+- **Fields**: `total`, `used`, `free`, `percent`, `sin`, `sout`
 
 #### system_memory_faults
 
 Memory page fault information (when available):
 
--	**Tags**: `host`
--	**Fields**: `page_faults`, `major_faults`, `minor_faults`, `rss`, `vms`, `dirty`, `uss`, `pss`
+- **Tags**: `host`
+- **Fields**: `page_faults`, `major_faults`, `minor_faults`, `rss`, `vms`, `dirty`, `uss`, `pss`
 
 #### system_disk_usage
 
 Disk partition usage:
 
--	**Tags**: `host`, `device`, `mountpoint`, `fstype`
--	**Fields**: `total`, `used`, `free`, `percent`
+- **Tags**: `host`, `device`, `mountpoint`, `fstype`
+- **Fields**: `total`, `used`, `free`, `percent`
 
 #### system_disk_io
 
 Disk I/O statistics:
 
--	**Tags**: `host`, `device`
--	**Fields**: `reads`, `writes`, `read_bytes`, `write_bytes`, `read_time`, `write_time`, `busy_time`, `read_merged_count`, `write_merged_count`
+- **Tags**: `host`, `device`
+- **Fields**: `reads`, `writes`, `read_bytes`, `write_bytes`, `read_time`, `write_time`, `busy_time`, `read_merged_count`, `write_merged_count`
 
 #### system_disk_performance
 
 Calculated disk performance metrics:
 
--	**Tags**: `host`, `device`
--	**Fields**: `read_bytes_per_sec`, `write_bytes_per_sec`, `read_iops`, `write_iops`, `avg_read_latency_ms`, `avg_write_latency_ms`, `util_percent`
+- **Tags**: `host`, `device`
+- **Fields**: `read_bytes_per_sec`, `write_bytes_per_sec`, `read_iops`, `write_iops`, `avg_read_latency_ms`, `avg_write_latency_ms`, `util_percent`
 
 #### system_network
 
 Network interface statistics:
 
--	**Tags**: `host`, `interface`
--	**Fields**: `bytes_sent`, `bytes_recv`, `packets_sent`, `packets_recv`, `errin`, `errout`, `dropin`, `dropout`
+- **Tags**: `host`, `interface`
+- **Fields**: `bytes_sent`, `bytes_recv`, `packets_sent`, `packets_recv`, `errin`, `errout`, `dropin`, `dropout`
 
 ## Troubleshooting
 
@@ -271,13 +275,13 @@ Network interface statistics:
 
 Some disk I/O metrics may require elevated permissions:
 
-	ERROR: [Permission denied] Unable to access disk I/O statistics
+ ERROR: [Permission denied] Unable to access disk I/O statistics
 
 **Solution**: The plugin will continue collecting other metrics even if some require elevated permissions.
 
 #### Missing psutil Library
 
-	ERROR: No module named 'psutil'
+ ERROR: No module named 'psutil'
 
 **Solution**: Install the psutil package:
 
@@ -289,9 +293,9 @@ influxdb3 install package psutil
 
 If the plugin causes high CPU usage, consider:
 
--	Increasing the trigger interval (e.g., from `every:10s` to `every:30s`)
--	Disabling unnecessary metric types
--	Reducing the number of disk partitions monitored
+- Increasing the trigger interval (e.g., from `every:10s` to `every:30s`)
+- Disabling unnecessary metric types
+- Reducing the number of disk partitions monitored
 
 ### Viewing Logs
 

@@ -90,34 +90,38 @@ This plugin includes a JSON metadata schema in its docstring that defines suppor
 
 *To use a TOML configuration file, set the `PLUGIN_DIR` environment variable and specify the `config_file_path` in the trigger arguments.* This is in addition to the `--plugin-dir` flag when starting InfluxDB 3.
 
+Example TOML configuration file provided: [forecast_error_config_scheduler.toml](forecast_error_config_scheduler.toml)
+
+For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [project README](/README.md).
+
 ## Software Requirements
 
--	**InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
--	**Notification Sender Plugin for InfluxDB 3**: Required for sending notifications. See the [influxdata/notifier plugin](../notifier/README.md).
--	**Python packages**:
-	-	`pandas` (for data processing)
-	-	`requests` (for HTTP notifications)
+- **InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
+- **Notification Sender Plugin for InfluxDB 3**: Required for sending notifications. See the [influxdata/notifier plugin](../notifier/README.md).
+- **Python packages**:
+ 	- `pandas` (for data processing)
+ 	- `requests` (for HTTP notifications)
 
 ### Installation steps
 
-1.	Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
+1. Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
 
-	```bash
-	influxdb3 serve \
-	 --node-id node0 \
-	 --object-store file \
-	 --data-dir ~/.influxdb3 \
-	 --plugin-dir ~/.plugins
-	```
+   ```bash
+   influxdb3 serve \
+     --node-id node0 \
+     --object-store file \
+     --data-dir ~/.influxdb3 \
+     --plugin-dir ~/.plugins
+   ```
 
-2.	Install required Python packages:
+2. Install required Python packages:
 
-	```bash
-	influxdb3 install package pandas
-	influxdb3 install package requests
-	```
+   ```bash
+   influxdb3 install package pandas
+   influxdb3 install package requests
+   ```
 
-3.	Install the [influxdata/notifier plugin](../notifier/README.md) (required)
+3. Install the [influxdata/notifier plugin](../notifier/README.md) (required)
 
 ## Trigger setup
 
@@ -167,14 +171,14 @@ influxdb3 query \
 
 ### Expected behavior
 
--	Plugin computes RMSE between forecast and actual values
--	If RMSE > 0.5, sends INFO-level notification
--	If RMSE > 1.0, sends WARN-level notification
--	Only triggers if condition persists for 10+ minutes (debounce)
+- Plugin computes RMSE between forecast and actual values
+- If RMSE > 0.5, sends INFO-level notification
+- If RMSE > 1.0, sends WARN-level notification
+- Only triggers if condition persists for 10+ minutes (debounce)
 
 **Notification example:**
 
-	[WARN] Forecast error alert in temp_forecast.predicted: rmse=1.2. Tags: location=station1
+ [WARN] Forecast error alert in temp_forecast.predicted: rmse=1.2. Tags: location=station1
 
 ### Example 2: Multi-metric validation with multiple channels
 
@@ -217,7 +221,11 @@ This plugin supports using TOML configuration files for complex configurations.
 **To use TOML configuration files, you must set the `PLUGIN_DIR` environment variable in the InfluxDB 3 host environment:**
 
 ```bash
-PLUGIN_DIR=~/.plugins influxdb3 serve --node-id node0 --object-store file --data-dir ~/.influxdb3 --plugin-dir ~/.plugins
+PLUGIN_DIR=~/.plugins influxdb3 serve \
+  --node-id node0 \
+  --object-store file \
+  --data-dir ~/.influxdb3 \
+  --plugin-dir ~/.plugins
 ```
 
 ### Example TOML Configuration
@@ -256,8 +264,8 @@ influxdb3 create trigger \
 
 ### Files
 
--	`forecast_error_evaluator.py`: The main plugin code containing scheduler handler for forecast validation
--	`forecast_error_config_scheduler.toml`: Example TOML configuration file
+- `forecast_error_evaluator.py`: The main plugin code containing scheduler handler for forecast validation
+- `forecast_error_config_scheduler.toml`: Example TOML configuration file
 
 ### Logging
 
@@ -269,10 +277,10 @@ influxdb3 query --database _internal "SELECT * FROM system.processing_engine_log
 
 Log columns:
 
--	**event_time**: Timestamp of the log event
--	**trigger_name**: Name of the trigger that generated the log
--	**log_level**: Severity level (INFO, WARN, ERROR)
--	**log_text**: Message describing validation results or errors
+- **event_time**: Timestamp of the log event
+- **trigger_name**: Name of the trigger that generated the log
+- **log_level**: Severity level (INFO, WARN, ERROR)
+- **log_text**: Message describing validation results or errors
 
 ### Main functions
 
@@ -282,12 +290,12 @@ Handles scheduled forecast validation tasks. Queries forecast and actual measure
 
 Key operations:
 
-1.	Parses configuration from arguments or TOML file
-2.	Queries forecast and actual measurements within time window
-3.	Aligns timestamps using rounding frequency
-4.	Computes specified error metric (MSE, MAE, or RMSE)
-5.	Evaluates thresholds and applies debounce logic
-6.	Sends notifications via configured channels
+1. Parses configuration from arguments or TOML file
+2. Queries forecast and actual measurements within time window
+3. Aligns timestamps using rounding frequency
+4. Computes specified error metric (MSE, MAE, or RMSE)
+5. Evaluates thresholds and applies debounce logic
+6. Sends notifications via configured channels
 
 #### `compute_error_metric(forecast_values, actual_values, metric_type)`
 
@@ -295,9 +303,9 @@ Core error computation engine that calculates forecast accuracy metrics.
 
 Supported error metrics:
 
--	`mse`: Mean Squared Error
--	`mae`: Mean Absolute Error  
--	`rmse`: Root Mean Squared Error (square root of MSE)
+- `mse`: Mean Squared Error
+- `mae`: Mean Absolute Error  
+- `rmse`: Root Mean Squared Error (square root of MSE)
 
 #### `evaluate_thresholds(error_value, threshold_config)`
 
@@ -305,10 +313,10 @@ Evaluates computed error against configured thresholds to determine alert level.
 
 Returns alert level based on threshold ranges:
 
--	`INFO`: Informational threshold exceeded
--	`WARN`: Warning threshold exceeded
--	`ERROR`: Error threshold exceeded
--	`CRITICAL`: Critical threshold exceeded
+- `INFO`: Informational threshold exceeded
+- `WARN`: Warning threshold exceeded
+- `ERROR`: Error threshold exceeded
+- `CRITICAL`: Critical threshold exceeded
 
 ## Troubleshooting
 
@@ -355,39 +363,39 @@ influxdb3 serve --plugin-dir ~/.plugins
 
 ### Debugging tips
 
-1.	**Check data availability** in both measurements:
+1. **Check data availability** in both measurements:
 
-	```bash
-	influxdb3 query --database mydb \
-	 "SELECT COUNT(*) FROM forecast_measurement WHERE time >= now() - window"
-	```
+ ```bash
+ influxdb3 query --database mydb \
+  "SELECT COUNT(*) FROM forecast_measurement WHERE time >= now() - window"
+ ```
 
-2.	**Verify timestamp alignment** with rounding frequency:
+2. **Verify timestamp alignment** with rounding frequency:
 
-	```bash
-	--trigger-arguments 'rounding_freq=5min'
-	```
+ ```bash
+ --trigger-arguments 'rounding_freq=5min'
+ ```
 
-3.	**Test with shorter windows** for faster debugging:
+3. **Test with shorter windows** for faster debugging:
 
-	```bash
-	--trigger-arguments 'window=10m,min_condition_duration=1m'
-	```
+ ```bash
+ --trigger-arguments 'window=10m,min_condition_duration=1m'
+ ```
 
-4.	**Monitor notification delivery** in logs:
+4. **Monitor notification delivery** in logs:
 
-	```bash
-	influxdb3 query --database _internal \
-	 "SELECT * FROM system.processing_engine_logs WHERE log_text LIKE '%notification%'"
-	```
+ ```bash
+ influxdb3 query --database _internal \
+  "SELECT * FROM system.processing_engine_logs WHERE log_text LIKE '%notification%'"
+ ```
 
 ### Performance considerations
 
--	**Data alignment**: Use appropriate `rounding_freq` to balance accuracy and performance
--	**Window size**: Larger windows increase computation time but provide more robust error estimates
--	**Debounce duration**: Balance between noise suppression and alert responsiveness
--	**Notification throttling**: Built-in retry logic prevents notification spam
--	**Memory usage**: Plugin processes data in pandas DataFrames - consider memory for large datasets
+- **Data alignment**: Use appropriate `rounding_freq` to balance accuracy and performance
+- **Window size**: Larger windows increase computation time but provide more robust error estimates
+- **Debounce duration**: Balance between noise suppression and alert responsiveness
+- **Notification throttling**: Built-in retry logic prevents notification spam
+- **Memory usage**: Plugin processes data in pandas DataFrames - consider memory for large datasets
 
 ## Questions/Comments
 
