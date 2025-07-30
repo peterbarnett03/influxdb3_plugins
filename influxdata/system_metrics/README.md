@@ -1,54 +1,65 @@
 # System Metrics Plugin
 
-⚡ scheduled
-🏷️ monitoring, system-metrics, performance
-🔧 InfluxDB 3 Core, InfluxDB 3 Enterprise
+⚡ scheduled 🏷️ monitoring, system-metrics, performance 🔧 InfluxDB 3 Core, InfluxDB 3 Enterprise
 
 ## Description
 
-A comprehensive system monitoring plugin that collects CPU, memory, disk, and network metrics from the host system.
-This plugin provides detailed performance insights including per-core CPU statistics, memory usage breakdowns, disk I/O performance, and network interface statistics.
+The System Metrics Plugin provides comprehensive system monitoring capabilities for InfluxDB 3, collecting CPU, memory, disk, and network metrics from the host system. Monitor detailed performance insights including per-core CPU statistics, memory usage breakdowns, disk I/O performance, and network interface statistics. Features configurable metric collection with robust error handling and retry logic for reliable monitoring.
 
 ## Configuration
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `hostname` | string | `localhost` | Hostname to tag metrics with |
-| `include_cpu` | boolean | `true` | Include CPU metrics collection |
-| `include_memory` | boolean | `true` | Include memory metrics collection |
-| `include_disk` | boolean | `true` | Include disk metrics collection |
-| `include_network` | boolean | `true` | Include network metrics collection |
-| `max_retries` | integer | `3` | Maximum number of retry attempts on failure |
-| `config_file_path` | string | None | Path to configuration file from PLUGIN_DIR env var |
+Plugin parameters may be specified as key-value pairs in the `--trigger-arguments` flag (CLI) or in the `trigger_arguments` field (API) when creating a trigger. Some plugins support TOML configuration files, which can be specified using the plugin's `config_file_path` parameter.
 
-## Requirements
+If a plugin supports multiple trigger specifications, some parameters may depend on the trigger specification that you use.
 
-- InfluxDB 3 Core or InfluxDB 3 Enterprise
-- Python psutil library (automatically installed)
+### Plugin metadata
 
-### Files
+This plugin includes a JSON metadata schema in its docstring that defines supported trigger types and configuration parameters. This metadata enables the [InfluxDB 3 Explorer](https://docs.influxdata.com/influxdb3/explorer/) UI to display and configure the plugin.
 
-- `system_metrics.py`: Main plugin file containing metric collection logic
-- `system_metrics_config_scheduler.toml`: Configuration template for scheduled triggers
-- `README.md`: This documentation file
+### System monitoring parameters
 
-### Features
+| Parameter         | Type    | Default     | Description                                                                    |
+|-------------------|---------|-------------|--------------------------------------------------------------------------------|
+| `hostname`        | string  | `localhost` | Hostname to tag all metrics with for system identification                     |
+| `include_cpu`     | boolean | `true`      | Include comprehensive CPU metrics collection (overall and per-core statistics) |
+| `include_memory`  | boolean | `true`      | Include memory metrics collection (RAM usage, swap statistics, page faults)    |
+| `include_disk`    | boolean | `true`      | Include disk metrics collection (partition usage, I/O statistics, performance) |
+| `include_network` | boolean | `true`      | Include network metrics collection (interface statistics and error counts)     |
+| `max_retries`     | integer | `3`         | Maximum retry attempts on failure with graceful error handling                 |
 
-- **CPU Metrics**: Overall and per-core CPU usage, frequency, load averages, context switches, and interrupts
-- **Memory Metrics**: RAM usage, swap statistics, and memory page fault information
-- **Disk Metrics**: Partition usage, I/O statistics, throughput, IOPS, and latency calculations
-- **Network Metrics**: Interface statistics including bytes/packets sent/received and error counts
-- **Configurable Collection**: Enable/disable specific metric types via configuration
-- **Robust Error Handling**: Retry logic and graceful handling of permission errors
-- **Task Tracking**: UUID-based task identification for debugging and log correlation
+### TOML configuration
+
+| Parameter          | Type   | Default | Description                                                                      |
+|--------------------|--------|---------|----------------------------------------------------------------------------------|
+| `config_file_path` | string | none    | TOML config file path relative to `PLUGIN_DIR` (required for TOML configuration) |
+
+*To use a TOML configuration file, set the `PLUGIN_DIR` environment variable and specify the `config_file_path` in the trigger arguments.* This is in addition to the `--plugin-dir` flag when starting InfluxDB 3.
+
+## Software Requirements
+
+-	**InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
+-	**Python packages**:
+	-	`psutil` (for system metrics collection)
+
+### Installation steps
+
+1.	Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
+
+	```bash
+	influxdb3 serve \
+	 --node-id node0 \
+	 --object-store file \
+	 --data-dir ~/.influxdb3 \
+	 --plugin-dir ~/.plugins
+	```
+
+2.	Install required Python packages:
+
+	```bash
+	influxdb3 install package psutil
+	```
 
 ## Trigger Setup
-
-### Install Required Dependencies
-
-```bash
-influxdb3 install package psutil
-```
 
 ### Basic Scheduled Trigger
 
@@ -132,17 +143,15 @@ influxdb3 query \
 
 #### Sample Output
 
-```
-+------+--------+-------+--------+------+--------+-------+--------+-------+-------+------------+------------------+
-| host | cpu    | user  | system | idle | iowait | nice  | irq    | load1 | load5 | load15     | time             |
-+------+--------+-------+--------+------+--------+-------+--------+-------+-------+------------+------------------+
-| srv1 | total  | 12.5  | 5.3    | 81.2 | 0.8    | 0.0   | 0.2    | 0.85  | 0.92  | 0.88       | 2024-01-15 10:00 |
-| srv1 | total  | 13.1  | 5.5    | 80.4 | 0.7    | 0.0   | 0.3    | 0.87  | 0.93  | 0.88       | 2024-01-15 10:01 |
-| srv1 | total  | 11.8  | 5.1    | 82.0 | 0.9    | 0.0   | 0.2    | 0.83  | 0.91  | 0.88       | 2024-01-15 10:02 |
-| srv1 | total  | 14.2  | 5.8    | 79.0 | 0.8    | 0.0   | 0.2    | 0.89  | 0.92  | 0.88       | 2024-01-15 10:03 |
-| srv1 | total  | 12.9  | 5.4    | 80.6 | 0.9    | 0.0   | 0.2    | 0.86  | 0.92  | 0.88       | 2024-01-15 10:04 |
-+------+--------+-------+--------+------+--------+-------+--------+-------+-------+------------+------------------+
-```
+	+------+--------+-------+--------+------+--------+-------+--------+-------+-------+------------+------------------+
+	| host | cpu    | user  | system | idle | iowait | nice  | irq    | load1 | load5 | load15     | time             |
+	+------+--------+-------+--------+------+--------+-------+--------+-------+-------+------------+------------------+
+	| srv1 | total  | 12.5  | 5.3    | 81.2 | 0.8    | 0.0   | 0.2    | 0.85  | 0.92  | 0.88       | 2024-01-15 10:00 |
+	| srv1 | total  | 13.1  | 5.5    | 80.4 | 0.7    | 0.0   | 0.3    | 0.87  | 0.93  | 0.88       | 2024-01-15 10:01 |
+	| srv1 | total  | 11.8  | 5.1    | 82.0 | 0.9    | 0.0   | 0.2    | 0.83  | 0.91  | 0.88       | 2024-01-15 10:02 |
+	| srv1 | total  | 14.2  | 5.8    | 79.0 | 0.8    | 0.0   | 0.2    | 0.89  | 0.92  | 0.88       | 2024-01-15 10:03 |
+	| srv1 | total  | 12.9  | 5.4    | 80.6 | 0.9    | 0.0   | 0.2    | 0.86  | 0.92  | 0.88       | 2024-01-15 10:04 |
+	+------+--------+-------+--------+------+--------+-------+--------+-------+-------+------------+------------------+
 
 ## Code Overview
 
@@ -150,8 +159,7 @@ influxdb3 query \
 
 #### `process_scheduled_call()`
 
-The main entry point for scheduled triggers.
-Collects system metrics based on configuration and writes them to InfluxDB.
+The main entry point for scheduled triggers. Collects system metrics based on configuration and writes them to InfluxDB.
 
 ```python
 def process_scheduled_call(influxdb3_local, call_time, args):
@@ -195,56 +203,65 @@ def collect_cpu_metrics(influxdb3_local, hostname):
 #### system_cpu
 
 Overall CPU statistics and metrics:
-- **Tags**: `host`, `cpu=total`
-- **Fields**: `user`, `system`, `idle`, `iowait`, `nice`, `irq`, `softirq`, `steal`, `guest`, `guest_nice`, `frequency_current`, `frequency_min`, `frequency_max`, `ctx_switches`, `interrupts`, `soft_interrupts`, `syscalls`, `load1`, `load5`, `load15`
+
+-	**Tags**: `host`, `cpu=total`
+-	**Fields**: `user`, `system`, `idle`, `iowait`, `nice`, `irq`, `softirq`, `steal`, `guest`, `guest_nice`, `frequency_current`, `frequency_min`, `frequency_max`, `ctx_switches`, `interrupts`, `soft_interrupts`, `syscalls`, `load1`, `load5`, `load15`
 
 #### system_cpu_cores
 
 Per-core CPU statistics:
-- **Tags**: `host`, `core` (core number)
-- **Fields**: `usage`, `user`, `system`, `idle`, `iowait`, `nice`, `irq`, `softirq`, `steal`, `guest`, `guest_nice`, `frequency_current`, `frequency_min`, `frequency_max`
+
+-	**Tags**: `host`, `core` (core number)
+-	**Fields**: `usage`, `user`, `system`, `idle`, `iowait`, `nice`, `irq`, `softirq`, `steal`, `guest`, `guest_nice`, `frequency_current`, `frequency_min`, `frequency_max`
 
 #### system_memory
 
 System memory statistics:
-- **Tags**: `host`
-- **Fields**: `total`, `available`, `used`, `free`, `active`, `inactive`, `buffers`, `cached`, `shared`, `slab`, `percent`
+
+-	**Tags**: `host`
+-	**Fields**: `total`, `available`, `used`, `free`, `active`, `inactive`, `buffers`, `cached`, `shared`, `slab`, `percent`
 
 #### system_swap
 
 Swap memory statistics:
-- **Tags**: `host`
-- **Fields**: `total`, `used`, `free`, `percent`, `sin`, `sout`
+
+-	**Tags**: `host`
+-	**Fields**: `total`, `used`, `free`, `percent`, `sin`, `sout`
 
 #### system_memory_faults
 
 Memory page fault information (when available):
-- **Tags**: `host`
-- **Fields**: `page_faults`, `major_faults`, `minor_faults`, `rss`, `vms`, `dirty`, `uss`, `pss`
+
+-	**Tags**: `host`
+-	**Fields**: `page_faults`, `major_faults`, `minor_faults`, `rss`, `vms`, `dirty`, `uss`, `pss`
 
 #### system_disk_usage
 
 Disk partition usage:
-- **Tags**: `host`, `device`, `mountpoint`, `fstype`
-- **Fields**: `total`, `used`, `free`, `percent`
+
+-	**Tags**: `host`, `device`, `mountpoint`, `fstype`
+-	**Fields**: `total`, `used`, `free`, `percent`
 
 #### system_disk_io
 
 Disk I/O statistics:
-- **Tags**: `host`, `device`
-- **Fields**: `reads`, `writes`, `read_bytes`, `write_bytes`, `read_time`, `write_time`, `busy_time`, `read_merged_count`, `write_merged_count`
+
+-	**Tags**: `host`, `device`
+-	**Fields**: `reads`, `writes`, `read_bytes`, `write_bytes`, `read_time`, `write_time`, `busy_time`, `read_merged_count`, `write_merged_count`
 
 #### system_disk_performance
 
 Calculated disk performance metrics:
-- **Tags**: `host`, `device`
-- **Fields**: `read_bytes_per_sec`, `write_bytes_per_sec`, `read_iops`, `write_iops`, `avg_read_latency_ms`, `avg_write_latency_ms`, `util_percent`
+
+-	**Tags**: `host`, `device`
+-	**Fields**: `read_bytes_per_sec`, `write_bytes_per_sec`, `read_iops`, `write_iops`, `avg_read_latency_ms`, `avg_write_latency_ms`, `util_percent`
 
 #### system_network
 
 Network interface statistics:
-- **Tags**: `host`, `interface`
-- **Fields**: `bytes_sent`, `bytes_recv`, `packets_sent`, `packets_recv`, `errin`, `errout`, `dropin`, `dropout`
+
+-	**Tags**: `host`, `interface`
+-	**Fields**: `bytes_sent`, `bytes_recv`, `packets_sent`, `packets_recv`, `errin`, `errout`, `dropin`, `dropout`
 
 ## Troubleshooting
 
@@ -254,17 +271,13 @@ Network interface statistics:
 
 Some disk I/O metrics may require elevated permissions:
 
-```
-ERROR: [Permission denied] Unable to access disk I/O statistics
-```
+	ERROR: [Permission denied] Unable to access disk I/O statistics
 
 **Solution**: The plugin will continue collecting other metrics even if some require elevated permissions.
 
 #### Missing psutil Library
 
-```
-ERROR: No module named 'psutil'
-```
+	ERROR: No module named 'psutil'
 
 **Solution**: Install the psutil package:
 
@@ -275,9 +288,10 @@ influxdb3 install package psutil
 #### High CPU Usage
 
 If the plugin causes high CPU usage, consider:
-- Increasing the trigger interval (e.g., from `every:10s` to `every:30s`)
-- Disabling unnecessary metric types
-- Reducing the number of disk partitions monitored
+
+-	Increasing the trigger interval (e.g., from `every:10s` to `every:30s`)
+-	Disabling unnecessary metric types
+-	Reducing the number of disk partitions monitored
 
 ### Viewing Logs
 

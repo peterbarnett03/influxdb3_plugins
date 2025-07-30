@@ -1,4 +1,5 @@
 # influxdata
+
 Official Python plugins for InfluxDB 3, developed by InfluxData.
 
 ## Available Plugins
@@ -33,6 +34,7 @@ See the [compose file](/compose.yml) for details on the test setup.
 ## Support
 
 For additional support with InfluxData plugins, visit:
-- [Discord](https://discord.com/invite/influxdata) - #influxdb3_core channel
-- [Community Forums](https://community.influxdata.com/)
-- [GitHub Issues](https://github.com/influxdata/influxdb3_plugins/issues)
+
+-	[Discord](https://discord.com/invite/influxdata) - #influxdb3_core channel
+-	[Community Forums](https://community.influxdata.com/)
+-	[GitHub Issues](https://github.com/influxdata/influxdb3_plugins/issues)

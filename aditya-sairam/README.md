@@ -2,9 +2,9 @@
 
 This **WAL plugin** automatically collects statistical metrics for a table whenever data is written to it. It generates a new table that records the following statistics for each numerical column:
 
-- **Min**, **Max**  
-- **Mean**, **Median**, **Mode**  
-- **95th Percentile**  
+-	**Min**, **Max**  
+-	**Mean**, **Median**, **Mode**  
+-	**95th Percentile**  
 
 This functionality is similar to the `.describe()` method in Python, which summarizes numerical columns in a DataFrame.
 
@@ -63,6 +63,7 @@ When data is written to the specified table (e.g., `sensor_data`), the plugin cr
 ## **Time Bucket Feature**
 
 The time bucket feature allows the user to specify the a particular time bucket based on which the data can be grouped together to calcuate the said statistical metrics. The time bucket can be given in the following format: d representing days,m representing minutes and s representing seconds.
+
 ```bash
 influxdb3 create trigger \
   --database <database-name> \
@@ -70,6 +71,7 @@ influxdb3 create trigger \
   --trigger-arguments 'table_name:<table-name>,time_sampling:time 10d' \
   --plugin-filename <path-to-file>/stats_metrics.py stats_metrics_trigger
 ```
+
 ```bash
 +--------------+---------+-------------+--------------+-----------------------+--------------------+--------------+-----------+-------------------------------+---------------------+
 | 95Percentile | count   | field_name  | max          | mean                  | median             | min          | mode      | time                          | time_bucket         |
@@ -103,42 +105,47 @@ influxdb3 create trigger \
 +--------------+---------+-------------+--------------+-----------------------+--------------------+--------------+-----------+-------------------------------+---------------------+
 ```
 
-## API endpoint through Redis and FastAPI 
-This feature exposes analytics data saved in a Redis cache through a FastAPI endpoint. 
+## API endpoint through Redis and FastAPI
+
+This feature exposes analytics data saved in a Redis cache through a FastAPI endpoint.
 
 ### **1. Set Up Redis Service**
 
 First, Redis is used as an in-memory data store to cache the analytics data. In this setup, Redis runs in a Docker container, and the data is stored under a key format `database:table_name`.
 
 ### Steps to run Redis in Docker:
-1. **Pull and run the Redis Docker image** (if you haven't already):
-   ```bash
-   docker run -d --name redis_container -p 6380:6379 redis
-   ```
 
-2. **Setup FastAPI endpoint:**  FastAPI is used to create a REST API endpoint that fetches the cached analytics data from Redis and exposes it to users. Make sure to install the same using the **influxdb3 install package** command
-    ```bash 
-      influxdb3 install package fastapi
-      influxdb3 install package uvicorn
-    ```
+1.	**Pull and run the Redis Docker image** (if you haven't already):
 
-3. **Build and run the docker-compose file**:
-    ```bash 
-      docker-compose up --build
-    ```
-4. **Testing the endpoint** : Once the above setup is done, the fastAPI and Redis server should be running in ports 8001 and 6379 respectively. In order to check if the endpoint works correctly, you can try ingesting some data into a table with the plugin enabled, and check the endpoint with the following CURL command.
+	```bash
+	docker run -d --name redis_container -p 6380:6379 redis
+	```
 
-    ```bash
-    influxdb3 create trigger \
-      --database <database-name> \
-      --trigger-spec 'table:<table-name>' \
-      --trigger-arguments 'table_name:<table-name>,database_name:<database_name>' \
-      --plugin-filename <path-to-file>/stats_metrics.py stats_metrics_trigger
-    ```
-    ```bash
-      curl -X 'GET' \
-    'http://localhost:8001/analytics/{table_name}?database={database_name}' \
-    -H 'accept: application/json'
-    ```
+2.	**Setup FastAPI endpoint:** FastAPI is used to create a REST API endpoint that fetches the cached analytics data from Redis and exposes it to users. Make sure to install the same using the **influxdb3 install package** command
 
+	```bash
+	  influxdb3 install package fastapi
+	  influxdb3 install package uvicorn
+	```
 
+3.	**Build and run the docker-compose file**:
+
+	```bash
+	  docker-compose up --build
+	```
+
+4.	**Testing the endpoint** : Once the above setup is done, the fastAPI and Redis server should be running in ports 8001 and 6379 respectively. In order to check if the endpoint works correctly, you can try ingesting some data into a table with the plugin enabled, and check the endpoint with the following CURL command.
+
+	```bash
+	influxdb3 create trigger \
+	  --database <database-name> \
+	  --trigger-spec 'table:<table-name>' \
+	  --trigger-arguments 'table_name:<table-name>,database_name:<database_name>' \
+	  --plugin-filename <path-to-file>/stats_metrics.py stats_metrics_trigger
+	```
+
+	```bash
+	  curl -X 'GET' \
+	'http://localhost:8001/analytics/{table_name}?database={database_name}' \
+	-H 'accept: application/json'
+	```

@@ -1,14 +1,11 @@
 # Threshold Deadman Checks Plugin
 
 ⚡ scheduled, data-write  
-🏷️ monitoring, alerting, thresholds, deadman-detection
-🔧 InfluxDB 3 Core, InfluxDB 3 Enterprise
+🏷️ monitoring, alerting, thresholds, deadman-detection 🔧 InfluxDB 3 Core, InfluxDB 3 Enterprise
 
 ## Description
 
-The Threshold Deadman Checks Plugin provides comprehensive monitoring capabilities for time series data in InfluxDB 3, combining real-time threshold detection with deadman monitoring.
-Monitor field values against configurable thresholds, detect data absence patterns, and trigger multi-level alerts based on aggregated metrics.
-Features both scheduled batch monitoring and real-time data write monitoring with configurable trigger counts and severity levels.
+The Threshold Deadman Checks Plugin provides comprehensive monitoring capabilities for time series data in InfluxDB 3, combining real-time threshold detection with deadman monitoring. Monitor field values against configurable thresholds, detect data absence patterns, and trigger multi-level alerts based on aggregated metrics. Features both scheduled batch monitoring and real-time data write monitoring with configurable trigger counts and severity levels.
 
 ## Plugin metadata
 
@@ -18,70 +15,80 @@ This plugin includes a JSON metadata schema in its docstring that defines suppor
 
 ### Scheduled trigger parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `measurement` | string | required | Measurement to monitor |
-| `senders` | string | required | Dot-separated notification channels |
-| `window` | string | required | Time window for data checking |
+| Parameter     | Type   | Default  | Description                                                                |
+|---------------|--------|----------|----------------------------------------------------------------------------|
+| `measurement` | string | required | Measurement to monitor for deadman alerts and aggregation-based conditions |
+| `senders`     | string | required | Dot-separated notification channels (Slack, Discord, HTTP, SMS, WhatsApp)  |
+| `window`      | string | required | Time window for periodic data presence checking                            |
 
 ### Data write trigger parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `measurement` | string | required | Measurement to monitor for threshold conditions |
-| `field_conditions` | string | required | Threshold conditions (e.g., "temp>30-WARN:status==ok-INFO") |
-| `senders` | string | required | Dot-separated notification channels |
+| Parameter          | Type   | Default  | Description                                                                                |
+|--------------------|--------|----------|--------------------------------------------------------------------------------------------|
+| `measurement`      | string | required | Measurement to monitor for real-time threshold violations                                  |
+| `field_conditions` | string | required | Real-time threshold conditions with severity levels (e.g., "temp>30-WARN:status==ok-INFO") |
+| `senders`          | string | required | Dot-separated notification channels with multi-channel delivery                            |
 
 ### Threshold check parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `field_aggregation_values` | string | none | Aggregation conditions for scheduled checks |
-| `deadman_check` | boolean | false | Enable deadman data presence checking |
-| `interval` | string | "5min" | Aggregation time interval |
-| `trigger_count` | number | 1 | Consecutive failures before alerting |
+| Parameter                  | Type    | Default | Description                                                                                             |
+|----------------------------|---------|---------|---------------------------------------------------------------------------------------------------------|
+| `field_aggregation_values` | string  | none    | Multi-level aggregation conditions with severity levels (avg, min, max, count, sum, derivative, median) |
+| `deadman_check`            | boolean | false   | Enable deadman data absence detection and monitoring                                                    |
+| `interval`                 | string  | "5min"  | Configurable aggregation time interval for batch processing                                             |
+| `trigger_count`            | number  | 1       | Consecutive failure threshold before triggering alerts                                                  |
 
 ### Notification parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `influxdb3_auth_token` | string | env var | InfluxDB 3 API token |
-| `notification_deadman_text` | string | template | Deadman alert message template |
-| `notification_threshold_text` | string | template | Threshold alert message template |
-| `notification_text` | string | template | General notification template (data write) |
-| `notification_path` | string | "notify" | Notification endpoint path |
-| `port_override` | number | 8181 | InfluxDB port override |
-| `config_file_path` | string | none | TOML config file path relative to PLUGIN_DIR |
+| Parameter                     | Type   | Default  | Description                                                         |
+|-------------------------------|--------|----------|---------------------------------------------------------------------|
+| `influxdb3_auth_token`        | string | env var  | InfluxDB 3 API token with environment variable support              |
+| `notification_deadman_text`   | string | template | Customizable deadman alert template with dynamic variables          |
+| `notification_threshold_text` | string | template | Customizable threshold alert template with dynamic variables        |
+| `notification_text`           | string | template | Customizable notification template for data write triggers          |
+| `notification_path`           | string | "notify" | Notification endpoint path with retry logic and exponential backoff |
+| `port_override`               | number | 8181     | InfluxDB port override for notification delivery                    |
+
+### TOML configuration
+
+| Parameter          | Type   | Default | Description                                                                      |
+|--------------------|--------|---------|----------------------------------------------------------------------------------|
+| `config_file_path` | string | none    | TOML config file path relative to `PLUGIN_DIR` (required for TOML configuration) |
+
+*To use a TOML configuration file, set the `PLUGIN_DIR` environment variable and specify the `config_file_path` in the trigger arguments.* This is in addition to the `--plugin-dir` flag when starting InfluxDB 3.
 
 ### Channel-specific configuration
 
-Notification channels require additional parameters based on the sender type (same as the [Notifier Plugin](../notifier/README.md)).
+Notification channels require additional parameters based on the sender type (same as the [influxdata/notifier plugin](../notifier/README.md)).
 
-## Features
+## Data requirements
 
-- **Scheduler Plugin**: Periodically checks for data presence (e.g., for deadman alerts) or evaluates aggregation-based conditions and sends notifications when conditions are met.
-- **Data Write Plugin**: Triggers on data writes to the database, checks threshold conditions, and sends notifications.
-- **Args Overriding**: Allows overriding arguments for scheduler and data write types via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, see toml files example on [Git](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/threshold_deadman_checks). Override args parameter in handler function). The `config_file_path` must be specified as a path relative to the directory defined by PLUGIN_DIR.
-- **Multi-Channel Notifications**: Notifications are sent via the Notification Sender Plugin, supporting Slack, Discord, HTTP, SMS, or WhatsApp.
-- **Customizable Messages**: Allows dynamic variables in notification text.
-- **Retry Logic**: Retries failed notifications with exponential backoff.
-- **Environment Variable Support**: Can be configured using environment variables (e.g., `INFLUXDB3_AUTH_TOKEN`).
+The plugin assumes that the table schema is already defined in the database, as it relies on this schema to retrieve field and tag names required for processing.
 
-## Requirements 
+## Software requirements
 
-- **InfluxDB v3 Core/Enterprise**: with the Processing Engine enabled.
-- **Table schema**: The plugin assumes that the table schema is already defined in the database, as it relies on this schema to retrieve field and tag names required for processing.
-- **Notification Sender Plugin for InfluxDB 3**: This plugin is required for sending notifications. See the InfluxData [Notification Sender Plugin](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/notifier).
+-	**InfluxDB v3 Core/Enterprise**: with the Processing Engine enabled.
+-	**Notification Sender Plugin for InfluxDB 3**: This plugin is required for sending notifications. See the [influxdata/notifier plugin](../notifier/README.md).
 
-## Installation
+## Installation steps
 
-### Install dependencies
+1.	Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
 
-Install required Python packages:
+	```bash
+	influxdb3 serve \
+	 --node-id node0 \
+	 --object-store file \
+	 --data-dir ~/.influxdb3 \
+	 --plugin-dir ~/.plugins
+	```
+
+2.	Install required Python packages:
 
 ```bash
-influxdb3 install package requests
+   influxdb3 install package requests
 ```
+
+1.	*Optional*: For notifications, install and configure the [influxdata/notifier plugin](../notifier/README.md)
 
 ### Create scheduled trigger
 
@@ -172,92 +179,101 @@ influxdb3 create trigger \
 
 ## Features
 
-- **Dual monitoring modes**: Scheduled aggregation checks and real-time data write monitoring
-- **Deadman detection**: Monitor for data absence and missing data streams
-- **Multi-level alerting**: Support for INFO, WARN, ERROR, and CRITICAL severity levels
-- **Aggregation support**: Monitor avg, min, max, count, sum, derivative, and median values
-- **Configurable triggers**: Require multiple consecutive failures before alerting
-- **Multi-channel notifications**: Integration with various notification systems
-- **Template messages**: Customizable alert templates with dynamic variables
-- **Performance optimization**: Measurement and tag caching for improved efficiency
+-	**Dual monitoring modes**: Scheduled aggregation checks and real-time data write monitoring
+-	**Deadman detection**: Monitor for data absence and missing data streams
+-	**Multi-level alerting**: Support for INFO, WARN, ERROR, and CRITICAL severity levels
+-	**Aggregation support**: Monitor avg, min, max, count, sum, derivative, and median values
+-	**Configurable triggers**: Require multiple consecutive failures before alerting
+-	**Multi-channel notifications**: Integration with various notification systems
+-	**Template messages**: Customizable alert templates with dynamic variables
+-	**Performance optimization**: Measurement and tag caching for improved efficiency
 
 ## Troubleshooting
 
 ### Common issues
 
 **No alerts triggered**
-- Verify threshold values are appropriate for your data ranges
-- Check that notification channels are properly configured
-- Ensure the Notifier Plugin is installed and accessible
-- Review plugin logs for configuration errors
+
+-	Verify threshold values are appropriate for your data ranges
+-	Check that notification channels are properly configured
+-	Ensure the Notifier Plugin is installed and accessible
+-	Review plugin logs for configuration errors
 
 **False positive alerts**
-- Increase `trigger_count` to require more consecutive failures
-- Adjust threshold values to be less sensitive
-- Consider longer aggregation intervals for noisy data
+
+-	Increase `trigger_count` to require more consecutive failures
+-	Adjust threshold values to be less sensitive
+-	Consider longer aggregation intervals for noisy data
 
 **Missing deadman alerts**
-- Verify `deadman_check=true` is set in configuration
-- Check that the measurement name matches existing data
-- Ensure the time window is appropriate for your data frequency
+
+-	Verify `deadman_check=true` is set in configuration
+-	Check that the measurement name matches existing data
+-	Ensure the time window is appropriate for your data frequency
 
 **Authentication issues**
-- Set `INFLUXDB3_AUTH_TOKEN` environment variable
-- Verify API token has required database permissions
-- Check Twilio credentials for SMS/WhatsApp notifications
+
+-	Set `INFLUXDB3_AUTH_TOKEN` environment variable
+-	Verify API token has required database permissions
+-	Check Twilio credentials for SMS/WhatsApp notifications
 
 ### Configuration formats
 
 **Aggregation conditions (scheduled)**
-- Format: `field:aggregation@"operator value-level"`
-- Example: `temp:avg@">=30-ERROR"`
-- Multiple conditions: `temp:avg@">=30-WARN"$humidity:min@"<40-INFO"`
+
+-	Format: `field:aggregation@"operator value-level"`
+-	Example: `temp:avg@">=30-ERROR"`
+-	Multiple conditions: `temp:avg@">=30-WARN"$humidity:min@"<40-INFO"`
 
 **Field conditions (data write)**
-- Format: `field operator value-level`
-- Example: `temp>30-WARN:status==ok-INFO`
-- Supported operators: `>`, `<`, `>=`, `<=`, `==`, `!=`
+
+-	Format: `field operator value-level`
+-	Example: `temp>30-WARN:status==ok-INFO`
+-	Supported operators: `>`, `<`, `>=`, `<=`, `==`, `!=`
 
 **Supported aggregations**
-- `avg`: Average value
-- `min`: Minimum value  
-- `max`: Maximum value
-- `count`: Count of records
-- `sum`: Sum of values
-- `derivative`: Rate of change
-- `median`: Median value
+
+-	`avg`: Average value
+-	`min`: Minimum value  
+-	`max`: Maximum value
+-	`count`: Count of records
+-	`sum`: Sum of values
+-	`derivative`: Rate of change
+-	`median`: Median value
 
 ### Message template variables
 
 **Deadman notifications**
-- `$table`: Measurement name
-- `$time_from`: Start of checked period
-- `$time_to`: End of checked period
+
+-	`$table`: Measurement name
+-	`$time_from`: Start of checked period
+-	`$time_to`: End of checked period
 
 **Threshold notifications (scheduled)**
-- `$level`: Alert severity level
-- `$table`: Measurement name
-- `$field`: Field name
-- `$aggregation`: Aggregation type
-- `$op_sym`: Operator symbol
-- `$compare_val`: Threshold value
-- `$actual`: Actual measured value
-- `$row`: Unique identifier
+
+-	`$level`: Alert severity level
+-	`$table`: Measurement name
+-	`$field`: Field name
+-	`$aggregation`: Aggregation type
+-	`$op_sym`: Operator symbol
+-	`$compare_val`: Threshold value
+-	`$actual`: Actual measured value
+-	`$row`: Unique identifier
 
 **Threshold notifications (data write)**
-- `$level`: Alert severity level
-- `$field`: Field name
-- `$op_sym`: Operator symbol
-- `$compare_val`: Threshold value
-- `$actual`: Actual field value
+
+-	`$level`: Alert severity level
+-	`$field`: Field name
+-	`$op_sym`: Operator symbol
+-	`$compare_val`: Threshold value
+-	`$actual`: Actual field value
 
 ### Row identification
 
-The `row` variable uniquely identifies alert contexts using format:
-`measurement:level:tag1=value1:tag2=value2`
+The `row` variable uniquely identifies alert contexts using format: `measurement:level:tag1=value1:tag2=value2`
 
 This ensures trigger counts are maintained independently for each unique combination of measurement, severity level, and tag values.
 
-
 ## Questions/Comments
+
 For support, open a GitHub issue or contact us via [Discord](https://discord.com/invite/vZe2w2Ds8B) in the `#influxdb3_core` channel, [Slack](https://influxcommunity.slack.com/) in the `#influxdb3_core` channel, or the [Community Forums](https://community.influxdata.com/).

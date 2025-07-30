@@ -1,121 +1,126 @@
 # MAD-Based Anomaly Detection Plugin
 
-⚡ data-write
-🏷️ anomaly-detection, mad, alerting, monitoring
-🔧 InfluxDB 3 Core, InfluxDB 3 Enterprise
+⚡ data-write 🏷️ anomaly-detection, mad, alerting, monitoring 🔧 InfluxDB 3 Core, InfluxDB 3 Enterprise
 
 ## Description
 
-The MAD-Based Anomaly Detection Plugin provides real-time anomaly detection for time series data in InfluxDB 3 using Median Absolute Deviation (MAD).
-Detect outliers in your field values as data is written, with configurable thresholds for both count-based and duration-based alerts.
-The plugin maintains in-memory deques for efficient computation and integrates with the Notification Sender Plugin to deliver alerts via multiple channels.
+The MAD-Based Anomaly Detection Plugin provides real-time anomaly detection for time series data in InfluxDB 3 using Median Absolute Deviation (MAD). Detect outliers in your field values as data is written, with configurable thresholds for both count-based and duration-based alerts. The plugin maintains in-memory deques for efficient computation and integrates with the Notification Sender Plugin to deliver alerts via multiple channels.
+
+## Configuration
+
+Plugin parameters may be specified as key-value pairs in the `--trigger-arguments` flag (CLI) or in the `trigger_arguments` field (API) when creating a trigger. Some plugins support TOML configuration files, which can be specified using the plugin's `config_file_path` parameter.
+
+If a plugin supports multiple trigger specifications, some parameters may depend on the trigger specification that you use.
 
 ### Plugin metadata
 
 This plugin includes a JSON metadata schema in its docstring that defines supported trigger types and configuration parameters. This metadata enables the [InfluxDB 3 Explorer](https://docs.influxdata.com/influxdb3/explorer/) UI to display and configure the plugin.
 
-## Configuration
-
 ### Required parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `measurement` | string | required | Source measurement to monitor for anomalies |
-| `mad_thresholds` | string | required | MAD threshold conditions. Format: `field:k:window_count:threshold` |
-| `senders` | string | required | Dot-separated list of notification channels (e.g., "slack.discord") |
+| Parameter        | Type   | Default  | Description                                                         |
+|------------------|--------|----------|---------------------------------------------------------------------|
+| `measurement`    | string | required | Source measurement to monitor for anomalies                         |
+| `mad_thresholds` | string | required | MAD threshold conditions. Format: `field:k:window_count:threshold`  |
+| `senders`        | string | required | Dot-separated list of notification channels (e.g., "slack.discord") |
 
 ### MAD threshold parameters
 
-| Component | Description | Example |
-|-----------|-------------|---------|
-| `field_name` | The numeric field to monitor | `temp` |
-| `k` | MAD multiplier for anomaly threshold | `2.5` |
-| `window_count` | Number of recent points for MAD computation | `20` |
-| `threshold` | Count (integer) or duration (e.g., "2m", "1h") | `5` or `2m` |
+| Component      | Description                                    | Example     |
+|----------------|------------------------------------------------|-------------|
+| `field_name`   | The numeric field to monitor                   | `temp`      |
+| `k`            | MAD multiplier for anomaly threshold           | `2.5`       |
+| `window_count` | Number of recent points for MAD computation    | `20`        |
+| `threshold`    | Count (integer) or duration (e.g., "2m", "1h") | `5` or `2m` |
 
 Multiple thresholds are separated by `@`: `temp:2.5:20:5@load:3:10:2m`
 
 ### Optional parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `influxdb3_auth_token` | string | env var | API token for InfluxDB 3 (or use INFLUXDB3_AUTH_TOKEN env var) |
-| `state_change_count` | string | "0" | Maximum allowed value flips before suppressing notifications |
-| `notification_count_text` | string | see below | Template for count-based alerts with variables: $table, $field, $threshold_count, $tags |
-| `notification_time_text` | string | see below | Template for duration-based alerts with variables: $table, $field, $threshold_time, $tags |
-| `notification_path` | string | "notify" | URL path for the notification sending plugin |
-| `port_override` | string | "8181" | Port number where InfluxDB accepts requests |
-| `config_file_path` | string | none | Path to TOML config file relative to PLUGIN_DIR |
+| Parameter                 | Type   | Default                              | Description                                                                               |
+|---------------------------|--------|--------------------------------------|-------------------------------------------------------------------------------------------|
+| `influxdb3_auth_token`    | string | env var                              | API token for InfluxDB 3 (or use INFLUXDB3_AUTH_TOKEN env var)                            |
+| `state_change_count`      | string | "0"                                  | Maximum allowed value flips before suppressing notifications                              |
+| `notification_count_text` | string | see *Default notification templates* | Template for count-based alerts with variables: $table, $field, $threshold_count, $tags   |
+| `notification_time_text`  | string | see *Default notification templates* | Template for duration-based alerts with variables: $table, $field, $threshold_time, $tags |
+| `notification_path`       | string | "notify"                             | URL path for the notification sending plugin                                              |
+| `port_override`           | string | "8181"                               | Port number where InfluxDB accepts requests                                               |
 
-Default notification templates:
-- Count: `"MAD count alert: Field $field in $table outlier for $threshold_count consecutive points. Tags: $tags"`
-- Time: `"MAD duration alert: Field $field in $table outlier for $threshold_time. Tags: $tags"`
+#### Default notification templates
+
+-	Count: `"MAD count alert: Field $field in $table outlier for $threshold_count consecutive points. Tags: $tags"`
+-	Time: `"MAD duration alert: Field $field in $table outlier for $threshold_time. Tags: $tags"`
+
+### TOML configuration
+
+| Parameter          | Type   | Default | Description                                                                      |
+|--------------------|--------|---------|----------------------------------------------------------------------------------|
+| `config_file_path` | string | none    | TOML config file path relative to `PLUGIN_DIR` (required for TOML configuration) |
+
+*To use a TOML configuration file, set the `PLUGIN_DIR` environment variable and specify the `config_file_path` in the trigger arguments.* This is in addition to the `--plugin-dir` flag when starting InfluxDB 3.
 
 ### Notification channel parameters
 
 #### Slack
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `slack_webhook_url` | string | Yes | Webhook URL from Slack |
-| `slack_headers` | string | No | Base64-encoded HTTP headers |
+
+| Parameter           | Type   | Required | Description                 |
+|---------------------|--------|----------|-----------------------------|
+| `slack_webhook_url` | string | Yes      | Webhook URL from Slack      |
+| `slack_headers`     | string | No       | Base64-encoded HTTP headers |
 
 #### Discord
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `discord_webhook_url` | string | Yes | Webhook URL from Discord |
-| `discord_headers` | string | No | Base64-encoded HTTP headers |
+
+| Parameter             | Type   | Required | Description                 |
+|-----------------------|--------|----------|-----------------------------|
+| `discord_webhook_url` | string | Yes      | Webhook URL from Discord    |
+| `discord_headers`     | string | No       | Base64-encoded HTTP headers |
 
 #### HTTP
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `http_webhook_url` | string | Yes | Custom webhook URL for POST requests |
-| `http_headers` | string | No | Base64-encoded HTTP headers |
+
+| Parameter          | Type   | Required | Description                          |
+|--------------------|--------|----------|--------------------------------------|
+| `http_webhook_url` | string | Yes      | Custom webhook URL for POST requests |
+| `http_headers`     | string | No       | Base64-encoded HTTP headers          |
 
 #### SMS/WhatsApp (via Twilio)
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `twilio_sid` | string | Yes | Twilio Account SID (or use TWILIO_SID env var) |
-| `twilio_token` | string | Yes | Twilio Auth Token (or use TWILIO_TOKEN env var) |
-| `twilio_from_number` | string | Yes | Sender phone number |
-| `twilio_to_number` | string | Yes | Recipient phone number |
 
-## Features
+| Parameter            | Type   | Required | Description                                     |
+|----------------------|--------|----------|-------------------------------------------------|
+| `twilio_sid`         | string | Yes      | Twilio Account SID (or use TWILIO_SID env var)  |
+| `twilio_token`       | string | Yes      | Twilio Auth Token (or use TWILIO_TOKEN env var) |
+| `twilio_from_number` | string | Yes      | Sender phone number                             |
+| `twilio_to_number`   | string | Yes      | Recipient phone number                          |
 
-- **MAD-Based Anomaly Detection**: Detects anomalies in field values using Median Absolute Deviation without repeated database queries.
-- **In-Memory Deques**: Maintains recent values in memory for efficient MAD computation.
-- **Count and Duration-Based Triggers**: Supports triggering alerts based on the number of consecutive outliers or the duration of outlier conditions.
-- **Args Overriding**: Allows overriding arguments for  data write type via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, see toml files example on [Git](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/mad_check). Override args parameter in handler function). The `config_file_path` must be specified as a path relative to the directory defined by PLUGIN_DIR.
-- **Flip Detection**: Suppresses notifications if field values change too frequently within a specified window.
-- **Multi-Channel Notifications**: Supports Slack, Discord, HTTP, SMS, and WhatsApp via the Notification Sender Plugin.
-- **Customizable Messages**: Notification templates support dynamic variables (e.g., `$table`, `$field`, `$threshold_count`, `$tags`).
-- **Retry Logic**: Retries failed notifications with randomized backoff.
-- **Environment Variable Support**: Configurable via environment variables (e.g., `INFLUXDB3_AUTH_TOKEN`).
+## Software Requirements
 
-## Requirements
-
-- **InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
-- **Notification Sender Plugin for InfluxDB 3**: Required for sending notifications. See the InfluxData [Notification Sender Plugin](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/notifier).
-- **Table schema**: The plugin assumes that the table schema is already defined in the database, as it relies on this schema to retrieve field and tag names required for processing.
-- Python packages:
-  - `requests` (for notification delivery)
+-	**InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
+-	**Notification Sender Plugin for InfluxDB 3**: Required for sending notifications. See the [influxdata/notifier plugin](../notifier/README.md).
+-	**Python packages**:
+	-	`requests` (for notification delivery)
 
 ### Installation steps
 
-1. Start InfluxDB 3 with plugin support:
-   ```bash
-   influxdb3 serve \
-     --node-id node0 \
-     --object-store file \
-     --data-dir ~/.influxdb3 \
-     --plugin-dir ~/.plugins
-   ```
+1.	Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
 
-2. Install required Python packages:
-   ```bash
-   influxdb3 install package requests
-   ```
+	```bash
+	influxdb3 serve \
+	 --node-id node0 \
+	 --object-store file \
+	 --data-dir ~/.influxdb3 \
+	 --plugin-dir ~/.plugins
+	```
 
-3. Install and configure the [Notification Sender Plugin](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/notifier)
+2.	Install required Python packages:
+
+	```bash
+	influxdb3 install package requests
+	```
+
+3.	*Optional*: For notifications, install and configure the [influxdata/notifier plugin](../notifier/README.md)
+
+## Data requirements
+
+The plugin assumes that the table schema is already defined in the database, as it relies on this schema to retrieve field and tag names required for processing.
 
 ## Trigger setup
 
@@ -161,10 +166,11 @@ influxdb3 write \
 ```
 
 ### Expected results
-- Plugin maintains a 20-point window of recent temperature values
-- Computes median and MAD from this window
-- When temperature exceeds median ± 2.5*MAD for 5 consecutive points, sends Slack notification
-- Notification includes: "MAD count alert: Field temperature in environment outlier for 5 consecutive points. Tags: room=office"
+
+-	Plugin maintains a 20-point window of recent temperature values
+-	Computes median and MAD from this window
+-	When temperature exceeds median ± 2.5*MAD for 5 consecutive points, sends Slack notification
+-	Notification includes: "MAD count alert: Field temperature in environment outlier for 5 consecutive points. Tags: room=office"
 
 ### Example 2: Duration-based anomaly detection with multiple fields
 
@@ -181,10 +187,11 @@ influxdb3 create trigger \
 ```
 
 ### Expected results
-- Monitors two fields independently:
-  - `cpu_load`: Alerts when exceeds 3 MADs for 2 minutes
-  - `memory_used`: Alerts when exceeds 2.5 MADs for 5 minutes
-- Sends notifications to both Slack and Discord
+
+-	Monitors two fields independently:
+	-	`cpu_load`: Alerts when exceeds 3 MADs for 2 minutes
+	-	`memory_used`: Alerts when exceeds 2.5 MADs for 5 minutes
+-	Sends notifications to both Slack and Discord
 
 ### Example 3: Anomaly detection with flip suppression
 
@@ -201,9 +208,10 @@ influxdb3 create trigger \
 ```
 
 ### Expected results
-- Detects vibration anomalies exceeding 2 MADs for 10 consecutive points
-- If values flip between normal/anomalous more than 3 times in the 50-point window, suppresses notifications
-- Sends custom formatted message to HTTP endpoint
+
+-	Detects vibration anomalies exceeding 2 MADs for 10 consecutive points
+-	If values flip between normal/anomalous more than 3 times in the 50-point window, suppresses notifications
+-	Sends custom formatted message to HTTP endpoint
 
 ## Using TOML Configuration Files
 
@@ -215,44 +223,41 @@ This plugin supports using TOML configuration files to specify all plugin argume
 
 ### Setting Up TOML Configuration
 
-1. **Start InfluxDB 3 with the PLUGIN_DIR environment variable set**:
-   ```bash
-   PLUGIN_DIR=~/.plugins influxdb3 serve --node-id node0 --object-store file --data-dir ~/.influxdb3 --plugin-dir ~/.plugins
-   ```
+1.	**Start InfluxDB 3 with the PLUGIN_DIR environment variable set**:
 
-2. **Copy the example TOML configuration file to your plugin directory**:
-   ```bash
-   cp mad_anomaly_config_data_writes.toml ~/.plugins/
-   ```
+	```bash
+	PLUGIN_DIR=~/.plugins influxdb3 serve --node-id node0 --object-store file --data-dir ~/.influxdb3 --plugin-dir ~/.plugins
+	```
 
-3. **Edit the TOML file** to match your requirements:
-   ```toml
-   # Required parameters
-   measurement = "cpu"
-   mad_thresholds = "temp:2.5:20:5@load:3:10:2m"
-   senders = "slack"
-   
-   # Notification settings
-   slack_webhook_url = "https://hooks.slack.com/services/..."
-   notification_count_text = "Custom alert: $field anomaly detected"
-   ```
+2.	**Copy the example TOML configuration file to your plugin directory**:
 
-4. **Create a trigger using the `config_file_path` argument**:
-   ```bash
-   influxdb3 create trigger \
-     --database mydb \
-     --plugin-filename mad_check_plugin.py \
-     --trigger-spec "all_tables" \
-     --trigger-arguments config_file_path=mad_anomaly_config_data_writes.toml \
-     mad_toml_trigger
-   ```
+	```bash
+	cp mad_anomaly_config_data_writes.toml ~/.plugins/
+	```
+
+3.	**Edit the TOML file** to match your requirements:\`\``toml
+
+	# Required parameters
+
+	measurement = "cpu" mad_thresholds = "temp:2.5:20:5@load:3:10:2m" senders = "slack"
+
+# Notification settings slack_webhook_url = "https://hooks.slack.com/services/..." notification_count_text = "Custom alert: $field anomaly detected"
+
+	4. **Create a trigger using the `config_file_path` argument**:
+	   ```bash
+	   influxdb3 create trigger \
+	     --database mydb \
+	     --plugin-filename mad_check_plugin.py \
+	     --trigger-spec "all_tables" \
+	     --trigger-arguments config_file_path=mad_anomaly_config_data_writes.toml \
+	     mad_toml_trigger
 
 ## Code overview
 
 ### Files
 
-- `mad_check_plugin.py`: The main plugin code containing the handler for data write triggers
-- `mad_anomaly_config_data_writes.toml`: Example TOML configuration file
+-	`mad_check_plugin.py`: The main plugin code containing the handler for data write triggers
+-	`mad_anomaly_config_data_writes.toml`: Example TOML configuration file
 
 ### Logging
 
@@ -263,26 +268,30 @@ influxdb3 query --database _internal "SELECT * FROM system.processing_engine_log
 ```
 
 Log columns:
-- **event_time**: Timestamp of the log event
-- **trigger_name**: Name of the trigger that generated the log
-- **log_level**: Severity level (INFO, WARN, ERROR)
-- **log_text**: Message describing the action or error
+
+-	**event_time**: Timestamp of the log event
+-	**trigger_name**: Name of the trigger that generated the log
+-	**log_level**: Severity level (INFO, WARN, ERROR)
+-	**log_text**: Message describing the action or error
 
 ### Main functions
 
 #### `process_writes(influxdb3_local, table_batches, args)`
+
 Handles real-time anomaly detection on incoming data.
 
 Key operations:
-1. Filters table batches for the specified measurement
-2. Maintains in-memory deques of recent values per field
-3. Computes MAD for each monitored field
-4. Tracks consecutive outliers and duration
-5. Sends notifications when thresholds are met
+
+1.	Filters table batches for the specified measurement
+2.	Maintains in-memory deques of recent values per field
+3.	Computes MAD for each monitored field
+4.	Tracks consecutive outliers and duration
+5.	Sends notifications when thresholds are met
 
 ### Key algorithms
 
 #### MAD (Median Absolute Deviation) Calculation
+
 ```python
 median = statistics.median(values)
 mad = statistics.median([abs(x - median) for x in values])
@@ -291,6 +300,7 @@ is_anomaly = abs(value - median) > threshold
 ```
 
 #### Flip Detection
+
 Counts transitions between normal and anomalous states within the window to prevent alert fatigue from rapidly changing values.
 
 ## Troubleshooting
@@ -298,54 +308,62 @@ Counts transitions between normal and anomalous states within the window to prev
 ### Common issues
 
 #### Issue: No notifications being sent
+
 **Solution**:
-1. Verify the Notification Sender Plugin is installed and running
-2. Check webhook URLs are correct:
-   ```bash
-   influxdb3 query --database _internal "SELECT * FROM system.processing_engine_logs WHERE log_text LIKE '%notification%'"
-   ```
-3. Ensure notification channel parameters are provided for selected senders
+
+1.	Verify the Notification Sender Plugin is installed and running
+2.	Check webhook URLs are correct:`bash
+	influxdb3 query --database _internal "SELECT * FROM system.processing_engine_logs WHERE log_text LIKE '%notification%'"
+	`
+3.	Ensure notification channel parameters are provided for selected senders
 
 #### Issue: "Invalid MAD thresholds format" error
+
 **Solution**: Check threshold format is correct:
-- Count-based: `field:k:window:count` (e.g., `temp:2.5:20:5`)
-- Duration-based: `field:k:window:duration` (e.g., `temp:2.5:20:2m`)
-- Multiple thresholds separated by `@`
+
+-	Count-based: `field:k:window:count` (e.g., `temp:2.5:20:5`)
+-	Duration-based: `field:k:window:duration` (e.g., `temp:2.5:20:2m`)
+-	Multiple thresholds separated by `@`
 
 #### Issue: Too many false positive alerts
+
 **Solution**:
-1. Increase the k multiplier (e.g., from 2.5 to 3.0)
-2. Increase the threshold count or duration
-3. Enable flip suppression with `state_change_count`
-4. Increase the window size for more stable statistics
+
+1.	Increase the k multiplier (e.g., from 2.5 to 3.0)
+2.	Increase the threshold count or duration
+3.	Enable flip suppression with `state_change_count`
+4.	Increase the window size for more stable statistics
 
 #### Issue: Missing anomalies (false negatives)
+
 **Solution**:
-1. Decrease the k multiplier
-2. Decrease the threshold count or duration
-3. Check if data has seasonal patterns that affect the median
+
+1.	Decrease the k multiplier
+2.	Decrease the threshold count or duration
+3.	Check if data has seasonal patterns that affect the median
 
 ### Debugging tips
 
-1. **Monitor deque sizes**:
-   ```bash
-   influxdb3 query --database _internal "SELECT * FROM system.processing_engine_logs WHERE log_text LIKE '%Deque%'"
-   ```
+1.	**Monitor deque sizes**:
 
-2. **Check MAD calculations**:
-   ```bash
-   influxdb3 query --database _internal "SELECT * FROM system.processing_engine_logs WHERE log_text LIKE '%MAD:%'"
-   ```
+	```bash
+	influxdb3 query --database _internal "SELECT * FROM system.processing_engine_logs WHERE log_text LIKE '%Deque%'"
+	```
 
-3. **Test with known anomalies**:
-   Write test data with obvious outliers to verify detection
+2.	**Check MAD calculations**:
+
+	```bash
+	influxdb3 query --database _internal "SELECT * FROM system.processing_engine_logs WHERE log_text LIKE '%MAD:%'"
+	```
+
+3.	**Test with known anomalies**: Write test data with obvious outliers to verify detection
 
 ### Performance considerations
 
-- **Memory usage**: Each field maintains a deque of `window_count` values
-- **Computation**: MAD is computed on every data write for monitored fields
-- **Caching**: Measurement and tag names are cached for 1 hour
-- **Notification retries**: Failed notifications retry up to 3 times with exponential backoff
+-	**Memory usage**: Each field maintains a deque of `window_count` values
+-	**Computation**: MAD is computed on every data write for monitored fields
+-	**Caching**: Measurement and tag names are cached for 1 hour
+-	**Notification retries**: Failed notifications retry up to 3 times with exponential backoff
 
 ## Questions/Comments
 

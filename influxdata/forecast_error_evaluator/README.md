@@ -1,115 +1,123 @@
 # Forecast Error Evaluator Plugin
 
-⚡ scheduled
-🏷️ forecasting, validation, monitoring, alerting
-🔧 InfluxDB 3 Core, InfluxDB 3 Enterprise
+⚡ scheduled 🏷️ forecasting, validation, monitoring, alerting 🔧 InfluxDB 3 Core, InfluxDB 3 Enterprise
 
 ## Description
 
-The Forecast Error Evaluator Plugin validates forecast model accuracy for time series data
-in InfluxDB 3 by comparing predicted values with actual observations.
-The plugin periodically computes error metrics (MSE, MAE, or RMSE), detects anomalies based on error thresholds, and sends notifications when forecast accuracy degrades.
-It includes debounce logic to suppress transient anomalies and supports multi-channel notifications via the Notification Sender Plugin.
+The Forecast Error Evaluator Plugin validates forecast model accuracy for time series data in InfluxDB 3 by comparing predicted values with actual observations. The plugin periodically computes error metrics (MSE, MAE, or RMSE), detects anomalies based on error thresholds, and sends notifications when forecast accuracy degrades. It includes debounce logic to suppress transient anomalies and supports multi-channel notifications via the Notification Sender Plugin.
+
+## Configuration
+
+Plugin parameters may be specified as key-value pairs in the `--trigger-arguments` flag (CLI) or in the `trigger_arguments` field (API) when creating a trigger. Some plugins support TOML configuration files, which can be specified using the plugin's `config_file_path` parameter.
+
+If a plugin supports multiple trigger specifications, some parameters may depend on the trigger specification that you use.
 
 ### Plugin metadata
 
 This plugin includes a JSON metadata schema in its docstring that defines supported trigger types and configuration parameters. This metadata enables the [InfluxDB 3 Explorer](https://docs.influxdata.com/influxdb3/explorer/) UI to display and configure the plugin.
 
-## Configuration
-
 ### Required parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `forecast_measurement` | string | required | Measurement containing forecasted values |
-| `actual_measurement` | string | required | Measurement containing actual (ground truth) values |
-| `forecast_field` | string | required | Field name for forecasted values |
-| `actual_field` | string | required | Field name for actual values |
-| `error_metric` | string | required | Error metric to compute: "mse", "mae", or "rmse" |
-| `error_thresholds` | string | required | Threshold levels. Format: `INFO-"0.5":WARN-"0.9":ERROR-"1.2":CRITICAL-"1.5"` |
-| `window` | string | required | Time window for data analysis. Format: `<number><unit>` (e.g., "1h") |
-| `senders` | string | required | Dot-separated list of notification channels (e.g., "slack.discord") |
+| Parameter              | Type   | Default  | Description                                                                  |
+|------------------------|--------|----------|------------------------------------------------------------------------------|
+| `forecast_measurement` | string | required | Measurement containing forecasted values                                     |
+| `actual_measurement`   | string | required | Measurement containing actual (ground truth) values                          |
+| `forecast_field`       | string | required | Field name for forecasted values                                             |
+| `actual_field`         | string | required | Field name for actual values                                                 |
+| `error_metric`         | string | required | Error metric to compute: "mse", "mae", or "rmse"                             |
+| `error_thresholds`     | string | required | Threshold levels. Format: `INFO-"0.5":WARN-"0.9":ERROR-"1.2":CRITICAL-"1.5"` |
+| `window`               | string | required | Time window for data analysis. Format: `<number><unit>` (e.g., "1h")         |
+| `senders`              | string | required | Dot-separated list of notification channels (e.g., "slack.discord")          |
 
 ### Notification parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `notification_text` | string | default template | Template for notification message with variables `$measurement`, `$level`, `$field`, `$error`, `$metric`, `$tags` |
-| `notification_path` | string | "notify" | URL path for the notification sending plugin |
-| `port_override` | integer | 8181 | Port number where InfluxDB accepts requests |
+| Parameter           | Type    | Default          | Description                                                                                                       |
+|---------------------|---------|------------------|-------------------------------------------------------------------------------------------------------------------|
+| `notification_text` | string  | default template | Template for notification message with variables `$measurement`, `$level`, `$field`, `$error`, `$metric`, `$tags` |
+| `notification_path` | string  | "notify"         | URL path for the notification sending plugin                                                                      |
+| `port_override`     | integer | 8181             | Port number where InfluxDB accepts requests                                                                       |
 
 ### Timing parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `min_condition_duration` | string | none | Minimum duration for anomaly condition to persist before triggering notification |
-| `rounding_freq` | string | "1s" | Frequency to round timestamps for alignment |
+| Parameter                | Type   | Default | Description                                                                      |
+|--------------------------|--------|---------|----------------------------------------------------------------------------------|
+| `min_condition_duration` | string | none    | Minimum duration for anomaly condition to persist before triggering notification |
+| `rounding_freq`          | string | "1s"    | Frequency to round timestamps for alignment                                      |
 
 ### Authentication parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| Parameter              | Type   | Default      | Description                                                     |
+|------------------------|--------|--------------|-----------------------------------------------------------------|
 | `influxdb3_auth_token` | string | env variable | API token for InfluxDB 3. Can be set via `INFLUXDB3_AUTH_TOKEN` |
-| `config_file_path` | string | none | Path to TOML config file relative to PLUGIN_DIR |
 
 ### Sender-specific parameters
 
 #### Slack notifications
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `slack_webhook_url` | string | required | Webhook URL from Slack |
-| `slack_headers` | string | none | Base64-encoded HTTP headers |
+
+| Parameter           | Type   | Default  | Description                 |
+|---------------------|--------|----------|-----------------------------|
+| `slack_webhook_url` | string | required | Webhook URL from Slack      |
+| `slack_headers`     | string | none     | Base64-encoded HTTP headers |
 
 #### Discord notifications
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `discord_webhook_url` | string | required | Webhook URL from Discord |
-| `discord_headers` | string | none | Base64-encoded HTTP headers |
+
+| Parameter             | Type   | Default  | Description                 |
+|-----------------------|--------|----------|-----------------------------|
+| `discord_webhook_url` | string | required | Webhook URL from Discord    |
+| `discord_headers`     | string | none     | Base64-encoded HTTP headers |
 
 #### HTTP notifications
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+
+| Parameter          | Type   | Default  | Description                          |
+|--------------------|--------|----------|--------------------------------------|
 | `http_webhook_url` | string | required | Custom webhook URL for POST requests |
-| `http_headers` | string | none | Base64-encoded HTTP headers |
+| `http_headers`     | string | none     | Base64-encoded HTTP headers          |
 
 #### SMS notifications (via Twilio)
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `twilio_sid` | string | env variable | Twilio Account SID (or `TWILIO_SID` env var) |
-| `twilio_token` | string | env variable | Twilio Auth Token (or `TWILIO_TOKEN` env var) |
-| `twilio_from_number` | string | required | Twilio sender number (e.g., "+1234567890") |
-| `twilio_to_number` | string | required | Recipient number (e.g., "+0987654321") |
 
-## Requirements
+| Parameter            | Type   | Default      | Description                                   |
+|----------------------|--------|--------------|-----------------------------------------------|
+| `twilio_sid`         | string | env variable | Twilio Account SID (or `TWILIO_SID` env var)  |
+| `twilio_token`       | string | env variable | Twilio Auth Token (or `TWILIO_TOKEN` env var) |
+| `twilio_from_number` | string | required     | Twilio sender number (e.g., "+1234567890")    |
+| `twilio_to_number`   | string | required     | Recipient number (e.g., "+0987654321")        |
 
-### Software requirements
-- InfluxDB 3 Core or Enterprise with Processing Engine enabled
-- Notification Sender Plugin for InfluxDB 3 (required for notifications)
-- Python packages:
-  - `pandas` (for data processing)
-  - `requests` (for HTTP notifications)
+### TOML configuration
+
+| Parameter          | Type   | Default | Description                                                                      |
+|--------------------|--------|---------|----------------------------------------------------------------------------------|
+| `config_file_path` | string | none    | TOML config file path relative to `PLUGIN_DIR` (required for TOML configuration) |
+
+*To use a TOML configuration file, set the `PLUGIN_DIR` environment variable and specify the `config_file_path` in the trigger arguments.* This is in addition to the `--plugin-dir` flag when starting InfluxDB 3.
+
+## Software Requirements
+
+-	**InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
+-	**Notification Sender Plugin for InfluxDB 3**: Required for sending notifications. See the [influxdata/notifier plugin](../notifier/README.md).
+-	**Python packages**:
+	-	`pandas` (for data processing)
+	-	`requests` (for HTTP notifications)
 
 ### Installation steps
 
-1. Start InfluxDB 3 with plugin support:
-   ```bash
-   influxdb3 serve \
-     --node-id node0 \
-     --object-store file \
-     --data-dir ~/.influxdb3 \
-     --plugin-dir ~/.plugins
-   ```
+1.	Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
 
-2. Install required Python packages:
-   ```bash
-   influxdb3 install package pandas
-   influxdb3 install package requests
-   ```
+	```bash
+	influxdb3 serve \
+	 --node-id node0 \
+	 --object-store file \
+	 --data-dir ~/.influxdb3 \
+	 --plugin-dir ~/.plugins
+	```
 
-3. Install the Notification Sender Plugin (required):
-   ```bash
-   # Ensure notifier plugin is available in ~/.plugins/
-   ```
+2.	Install required Python packages:
+
+	```bash
+	influxdb3 install package pandas
+	influxdb3 install package requests
+	```
+
+3.	Install the [influxdata/notifier plugin](../notifier/README.md) (required)
 
 ## Trigger setup
 
@@ -158,15 +166,15 @@ influxdb3 query \
 ```
 
 ### Expected behavior
-- Plugin computes RMSE between forecast and actual values
-- If RMSE > 0.5, sends INFO-level notification
-- If RMSE > 1.0, sends WARN-level notification
-- Only triggers if condition persists for 10+ minutes (debounce)
+
+-	Plugin computes RMSE between forecast and actual values
+-	If RMSE > 0.5, sends INFO-level notification
+-	If RMSE > 1.0, sends WARN-level notification
+-	Only triggers if condition persists for 10+ minutes (debounce)
 
 **Notification example:**
-```
-[WARN] Forecast error alert in temp_forecast.predicted: rmse=1.2. Tags: location=station1
-```
+
+	[WARN] Forecast error alert in temp_forecast.predicted: rmse=1.2. Tags: location=station1
 
 ### Example 2: Multi-metric validation with multiple channels
 
@@ -248,8 +256,8 @@ influxdb3 create trigger \
 
 ### Files
 
-- `forecast_error_evaluator.py`: The main plugin code containing scheduler handler for forecast validation
-- `forecast_error_config_scheduler.toml`: Example TOML configuration file
+-	`forecast_error_evaluator.py`: The main plugin code containing scheduler handler for forecast validation
+-	`forecast_error_config_scheduler.toml`: Example TOML configuration file
 
 ### Logging
 
@@ -260,55 +268,65 @@ influxdb3 query --database _internal "SELECT * FROM system.processing_engine_log
 ```
 
 Log columns:
-- **event_time**: Timestamp of the log event
-- **trigger_name**: Name of the trigger that generated the log
-- **log_level**: Severity level (INFO, WARN, ERROR)
-- **log_text**: Message describing validation results or errors
+
+-	**event_time**: Timestamp of the log event
+-	**trigger_name**: Name of the trigger that generated the log
+-	**log_level**: Severity level (INFO, WARN, ERROR)
+-	**log_text**: Message describing validation results or errors
 
 ### Main functions
 
 #### `process_scheduled_call(influxdb3_local, call_time, args)`
-Handles scheduled forecast validation tasks.
-Queries forecast and actual measurements, computes error metrics, and triggers notifications.
+
+Handles scheduled forecast validation tasks. Queries forecast and actual measurements, computes error metrics, and triggers notifications.
 
 Key operations:
-1. Parses configuration from arguments or TOML file
-2. Queries forecast and actual measurements within time window
-3. Aligns timestamps using rounding frequency
-4. Computes specified error metric (MSE, MAE, or RMSE)
-5. Evaluates thresholds and applies debounce logic
-6. Sends notifications via configured channels
+
+1.	Parses configuration from arguments or TOML file
+2.	Queries forecast and actual measurements within time window
+3.	Aligns timestamps using rounding frequency
+4.	Computes specified error metric (MSE, MAE, or RMSE)
+5.	Evaluates thresholds and applies debounce logic
+6.	Sends notifications via configured channels
 
 #### `compute_error_metric(forecast_values, actual_values, metric_type)`
+
 Core error computation engine that calculates forecast accuracy metrics.
 
 Supported error metrics:
-- `mse`: Mean Squared Error
-- `mae`: Mean Absolute Error  
-- `rmse`: Root Mean Squared Error (square root of MSE)
+
+-	`mse`: Mean Squared Error
+-	`mae`: Mean Absolute Error  
+-	`rmse`: Root Mean Squared Error (square root of MSE)
 
 #### `evaluate_thresholds(error_value, threshold_config)`
+
 Evaluates computed error against configured thresholds to determine alert level.
 
 Returns alert level based on threshold ranges:
-- `INFO`: Informational threshold exceeded
-- `WARN`: Warning threshold exceeded
-- `ERROR`: Error threshold exceeded
-- `CRITICAL`: Critical threshold exceeded
+
+-	`INFO`: Informational threshold exceeded
+-	`WARN`: Warning threshold exceeded
+-	`ERROR`: Error threshold exceeded
+-	`CRITICAL`: Critical threshold exceeded
 
 ## Troubleshooting
 
 ### Common issues
 
 #### Issue: No overlapping timestamps between forecast and actual data
+
 **Solution**: Check that both measurements have data in the specified time window and use `rounding_freq` for alignment:
+
 ```bash
 influxdb3 query --database mydb "SELECT time, field_value FROM forecast_measurement WHERE time >= now() - 1h"
 influxdb3 query --database mydb "SELECT time, field_value FROM actual_measurement WHERE time >= now() - 1h"
 ```
 
 #### Issue: Notifications not being sent
+
 **Solution**: Verify the Notification Sender Plugin is installed and webhook URLs are correct:
+
 ```bash
 # Check if notifier plugin exists
 ls ~/.plugins/notifier_plugin.py
@@ -318,13 +336,17 @@ curl -X POST "your_webhook_url" -d '{"text": "test message"}'
 ```
 
 #### Issue: Error threshold format not recognized
+
 **Solution**: Use proper threshold format with level prefixes:
+
 ```bash
 --trigger-arguments 'error_thresholds=INFO-"0.5":WARN-"1.0":ERROR-"2.0":CRITICAL-"3.0"'
 ```
 
 #### Issue: Environment variables not loaded
+
 **Solution**: Set environment variables before starting InfluxDB:
+
 ```bash
 export INFLUXDB3_AUTH_TOKEN="your_token"
 export TWILIO_SID="your_sid"
@@ -333,35 +355,39 @@ influxdb3 serve --plugin-dir ~/.plugins
 
 ### Debugging tips
 
-1. **Check data availability** in both measurements:
-   ```bash
-   influxdb3 query --database mydb \
-     "SELECT COUNT(*) FROM forecast_measurement WHERE time >= now() - window"
-   ```
+1.	**Check data availability** in both measurements:
 
-2. **Verify timestamp alignment** with rounding frequency:
-   ```bash
-   --trigger-arguments 'rounding_freq=5min'
-   ```
+	```bash
+	influxdb3 query --database mydb \
+	 "SELECT COUNT(*) FROM forecast_measurement WHERE time >= now() - window"
+	```
 
-3. **Test with shorter windows** for faster debugging:
-   ```bash
-   --trigger-arguments 'window=10m,min_condition_duration=1m'
-   ```
+2.	**Verify timestamp alignment** with rounding frequency:
 
-4. **Monitor notification delivery** in logs:
-   ```bash
-   influxdb3 query --database _internal \
-     "SELECT * FROM system.processing_engine_logs WHERE log_text LIKE '%notification%'"
-   ```
+	```bash
+	--trigger-arguments 'rounding_freq=5min'
+	```
+
+3.	**Test with shorter windows** for faster debugging:
+
+	```bash
+	--trigger-arguments 'window=10m,min_condition_duration=1m'
+	```
+
+4.	**Monitor notification delivery** in logs:
+
+	```bash
+	influxdb3 query --database _internal \
+	 "SELECT * FROM system.processing_engine_logs WHERE log_text LIKE '%notification%'"
+	```
 
 ### Performance considerations
 
-- **Data alignment**: Use appropriate `rounding_freq` to balance accuracy and performance
-- **Window size**: Larger windows increase computation time but provide more robust error estimates
-- **Debounce duration**: Balance between noise suppression and alert responsiveness
-- **Notification throttling**: Built-in retry logic prevents notification spam
-- **Memory usage**: Plugin processes data in pandas DataFrames - consider memory for large datasets
+-	**Data alignment**: Use appropriate `rounding_freq` to balance accuracy and performance
+-	**Window size**: Larger windows increase computation time but provide more robust error estimates
+-	**Debounce duration**: Balance between noise suppression and alert responsiveness
+-	**Notification throttling**: Built-in retry logic prevents notification spam
+-	**Memory usage**: Plugin processes data in pandas DataFrames - consider memory for large datasets
 
 ## Questions/Comments
 

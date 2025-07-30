@@ -1,86 +1,97 @@
 # State Change Plugin
 
 ⚡ scheduled, data-write  
-🏷️ monitoring, alerting, threshold-detection, state-tracking
-🔧 InfluxDB 3 Core, InfluxDB 3 Enterprise
+🏷️ monitoring, alerting, threshold-detection, state-tracking 🔧 InfluxDB 3 Core, InfluxDB 3 Enterprise
 
 ## Description
 
-The State Change Plugin provides comprehensive field monitoring and threshold detection for InfluxDB 3 data streams.
-Detect field value changes, monitor threshold conditions, and trigger notifications when specified criteria are met.
-Supports both scheduled batch monitoring and real-time data write monitoring with configurable stability checks and multi-channel alerts.
+The State Change Plugin provides comprehensive field monitoring and threshold detection for InfluxDB 3 data streams. Detect field value changes, monitor threshold conditions, and trigger notifications when specified criteria are met. Supports both scheduled batch monitoring and real-time data write monitoring with configurable stability checks and multi-channel alerts.
+
+## Configuration
+
+Plugin parameters may be specified as key-value pairs in the `--trigger-arguments` flag (CLI) or in the `trigger_arguments` field (API) when creating a trigger. Some plugins support TOML configuration files, which can be specified using the plugin's `config_file_path` parameter.
+
+If a plugin supports multiple trigger specifications, some parameters may depend on the trigger specification that you use.
 
 ### Plugin metadata
 
 This plugin includes a JSON metadata schema in its docstring that defines supported trigger types and configuration parameters. This metadata enables the [InfluxDB 3 Explorer](https://docs.influxdata.com/influxdb3/explorer/) UI to display and configure the plugin.
 
-## Configuration
-
 ### Scheduled trigger parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `measurement` | string | required | Measurement to monitor for field changes |
+| Parameter            | Type   | Default  | Description                                            |
+|----------------------|--------|----------|--------------------------------------------------------|
+| `measurement`        | string | required | Measurement to monitor for field changes               |
 | `field_change_count` | string | required | Dot-separated field thresholds (e.g., "temp:3.load:2") |
-| `senders` | string | required | Dot-separated notification channels |
-| `window` | string | required | Time window for analysis. Format: `<number><unit>` |
+| `senders`            | string | required | Dot-separated notification channels                    |
+| `window`             | string | required | Time window for analysis. Format: `<number><unit>`     |
 
-### Data write trigger parameters  
+### Data write trigger parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `measurement` | string | required | Measurement to monitor for threshold conditions |
+| Parameter          | Type   | Default  | Description                                            |
+|--------------------|--------|----------|--------------------------------------------------------|
+| `measurement`      | string | required | Measurement to monitor for threshold conditions        |
 | `field_thresholds` | string | required | Threshold conditions (e.g., "temp:30:10@status:ok:1h") |
-| `senders` | string | required | Dot-separated notification channels |
+| `senders`          | string | required | Dot-separated notification channels                    |
 
 ### Notification parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `influxdb3_auth_token` | string | env var | InfluxDB 3 API token |
-| `notification_text` | string | template | Message template for scheduled notifications |
+| Parameter                 | Type   | Default  | Description                                    |
+|---------------------------|--------|----------|------------------------------------------------|
+| `influxdb3_auth_token`    | string | env var  | InfluxDB 3 API token                           |
+| `notification_text`       | string | template | Message template for scheduled notifications   |
 | `notification_count_text` | string | template | Message template for count-based notifications |
-| `notification_time_text` | string | template | Message template for time-based notifications |
-| `notification_path` | string | "notify" | Notification endpoint path |
-| `port_override` | number | 8181 | InfluxDB port override |
+| `notification_time_text`  | string | template | Message template for time-based notifications  |
+| `notification_path`       | string | "notify" | Notification endpoint path                     |
+| `port_override`           | number | 8181     | InfluxDB port override                         |
 
 ### Advanced parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `state_change_window` | number | 1 | Recent values to check for stability |
-| `state_change_count` | number | 1 | Max changes allowed within stability window |
-| `config_file_path` | string | none | TOML config file path relative to PLUGIN_DIR |
+| Parameter             | Type   | Default | Description                                 |
+|-----------------------|--------|---------|---------------------------------------------|
+| `state_change_window` | number | 1       | Recent values to check for stability        |
+| `state_change_count`  | number | 1       | Max changes allowed within stability window |
+
+### TOML configuration
+
+| Parameter          | Type   | Default | Description                                                                      |
+|--------------------|--------|---------|----------------------------------------------------------------------------------|
+| `config_file_path` | string | none    | TOML config file path relative to `PLUGIN_DIR` (required for TOML configuration) |
+
+*To use a TOML configuration file, set the `PLUGIN_DIR` environment variable and specify the `config_file_path` in the trigger arguments.* This is in addition to the `--plugin-dir` flag when starting InfluxDB 3.
 
 ### Channel-specific configuration
 
-Notification channels require additional parameters based on the sender type (same as the [Notifier Plugin](../notifier/README.md)).
+Notification channels require additional parameters based on the sender type (same as the [influxdata/notifier plugin](../notifier/README.md)).
 
-## Features
-- **Scheduler Plugin**: Periodically queries a measurement within a time window, counts field value changes for unique tag combinations, and sends notifications if thresholds are exceeded.
-- **Data Write Plugin**: Triggers on data writes, monitors field thresholds (count or duration-based), and suppresses notifications for unstable data states.
-- **Args Overriding**: Allows overriding arguments for scheduled and data write types via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, see toml files example on [Git](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/state_change). Override args parameter in handler function). The `config_file_path` must be specified as a path relative to the directory defined by PLUGIN_DIR.
-- **Multi-Channel Notifications**: Supports Slack, Discord, HTTP, SMS, and WhatsApp via the Notification Sender Plugin.
-- **Customizable Messages**: Notification templates support dynamic variables (e.g., `$table`, `$field`, `$changes`, `$tags`).
-- **Retry Logic**: Retries failed notifications with randomized backoff.
-- **Environment Variable Support**: Configurable via environment variables (e.g., `INFLUXDB3_AUTH_TOKEN`).
-- **State Stability Check**: Suppresses notifications if field values change too frequently (data writes type).
+## Data requirements
 
-## Requirements
+The plugin assumes that the table schema is already defined in the database, as it relies on this schema to retrieve field and tag names required for processing.
 
-- **InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
-- **Table schema**: The plugin assumes that the table schema is already defined in the database, as it relies on this schema to retrieve field and tag names required for processing.
-- **Notification Sender Plugin for InfluxDB 3**: Required for sending notifications. See the InfluxData [Notification Sender Plugin](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/notifier).
+## Software requirements
 
-## Installation
+-	**InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
+-	**Notification Sender Plugin for InfluxDB 3**: Required for sending notifications. See the [influxdata/notifier plugin](../notifier/README.md).
+-	**Python packages**:
+	-	`requests` (for HTTP notifications)
 
-### Install dependencies
+1.	Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
 
-Install required Python packages:
+	```bash
+	influxdb3 serve \
+	 --node-id node0 \
+	 --object-store file \
+	 --data-dir ~/.influxdb3 \
+	 --plugin-dir ~/.plugins
+	```
+
+2.	Install required Python packages:
 
 ```bash
-influxdb3 install package requests
+   influxdb3 install package requests
 ```
+
+1.	*Optional*: For notifications, install and configure the [influxdata/notifier plugin](../notifier/README.md)
 
 ### Create scheduled trigger
 
@@ -158,63 +169,72 @@ influxdb3 create trigger \
 
 ## Features
 
-- **Dual monitoring modes**: Scheduled batch monitoring and real-time data write monitoring
-- **Flexible thresholds**: Support for count-based and duration-based conditions
-- **Stability checks**: Configurable state change detection to reduce noise
-- **Multi-channel alerts**: Integration with Slack, Discord, HTTP, SMS, and WhatsApp
-- **Template notifications**: Customizable message templates with dynamic variables
-- **Caching optimization**: Measurement and tag name caching for improved performance
-- **Environment variable support**: Credential management via environment variables
+-	**Dual monitoring modes**: Scheduled batch monitoring and real-time data write monitoring
+-	**Flexible thresholds**: Support for count-based and duration-based conditions
+-	**Stability checks**: Configurable state change detection to reduce noise
+-	**Multi-channel alerts**: Integration with Slack, Discord, HTTP, SMS, and WhatsApp
+-	**Template notifications**: Customizable message templates with dynamic variables
+-	**Caching optimization**: Measurement and tag name caching for improved performance
+-	**Environment variable support**: Credential management via environment variables
 
 ## Troubleshooting
 
 ### Common issues
 
 **No notifications triggered**
-- Verify notification channel configuration (webhook URLs, credentials)
-- Check threshold values are appropriate for your data
-- Ensure the Notifier Plugin is installed and configured
-- Review plugin logs for error messages
+
+-	Verify notification channel configuration (webhook URLs, credentials)
+-	Check threshold values are appropriate for your data
+-	Ensure the Notifier Plugin is installed and configured
+-	Review plugin logs for error messages
 
 **Too many notifications**
-- Adjust `state_change_window` and `state_change_count` for stability filtering
-- Increase threshold values to reduce sensitivity
-- Consider longer monitoring windows for scheduled triggers
+
+-	Adjust `state_change_window` and `state_change_count` for stability filtering
+-	Increase threshold values to reduce sensitivity
+-	Consider longer monitoring windows for scheduled triggers
 
 **Authentication errors**
-- Set `INFLUXDB3_AUTH_TOKEN` environment variable
-- Verify token has appropriate database permissions
-- Check Twilio credentials for SMS/WhatsApp notifications
+
+-	Set `INFLUXDB3_AUTH_TOKEN` environment variable
+-	Verify token has appropriate database permissions
+-	Check Twilio credentials for SMS/WhatsApp notifications
 
 ### Field threshold formats
 
 **Count-based thresholds**
-- Format: `field_name:"value":count`
-- Example: `temp:"30.5":10` (10 occurrences of temperature = 30.5)
 
-**Time-based thresholds**  
-- Format: `field_name:"value":duration`
-- Example: `status:"error":5min` (status = error for 5 minutes)
-- Supported units: `s`, `min`, `h`, `d`, `w`
+-	Format: `field_name:"value":count`
+-	Example: `temp:"30.5":10` (10 occurrences of temperature = 30.5)
+
+**Time-based thresholds**
+
+-	Format: `field_name:"value":duration`
+-	Example: `status:"error":5min` (status = error for 5 minutes)
+-	Supported units: `s`, `min`, `h`, `d`, `w`
 
 **Multiple conditions**
-- Separate with `@`: `temp:"30":5@humidity:"high":10min`
+
+-	Separate with `@`: `temp:"30":5@humidity:"high":10min`
 
 ### Message template variables
 
 **Scheduled notifications**
-- `$table`: Measurement name
-- `$field`: Field name
-- `$changes`: Number of changes detected
-- `$window`: Time window
-- `$tags`: Tag values
+
+-	`$table`: Measurement name
+-	`$field`: Field name
+-	`$changes`: Number of changes detected
+-	`$window`: Time window
+-	`$tags`: Tag values
 
 **Data write notifications**
-- `$table`: Measurement name
-- `$field`: Field name  
-- `$value`: Threshold value
-- `$duration`: Time duration or count
-- `$row`: Unique row identifier
+
+-	`$table`: Measurement name
+-	`$field`: Field name  
+-	`$value`: Threshold value
+-	`$duration`: Time duration or count
+-	`$row`: Unique row identifier
 
 ## Questions/Comments
+
 For support, open a GitHub issue or contact us via [Discord](https://discord.com/invite/vZe2w2Ds8B) in the `#influxdb3_core` channel, [Slack](https://influxcommunity.slack.com/) in the `#influxdb3_core` channel, or the [Community Forums](https://community.influxdata.com/).

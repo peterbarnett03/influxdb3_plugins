@@ -34,16 +34,17 @@ To work with InfluxDB 3 Explorer, each plugin file must start with a docstring c
 
 ### Required Fields
 
-- **plugin_type**: At a minimum, this field must be defined. It specifies which trigger types the plugin supports.
-- **\*_args_config**: The configuration arrays (`http_args_config`, `onwrite_args_config`, and `scheduled_args_config`) can be omitted if the plugin does not use them.
+-	**plugin_type**: At a minimum, this field must be defined. It specifies which trigger types the plugin supports.
+-	**\*_args_config**: The configuration arrays (`http_args_config`, `onwrite_args_config`, and `scheduled_args_config`) can be omitted if the plugin does not use them.
 
 ### Argument Configuration
 
 Each argument in the `*_args_config` arrays must include:
-- **name**: The argument name
-- **example**: An example value
-- **description**: A clear description of the argument's purpose
-- **required**: Boolean indicating whether the argument is mandatory
+
+-	**name**: The argument name
+-	**example**: An example value
+-	**description**: A clear description of the argument's purpose
+-	**required**: Boolean indicating whether the argument is mandatory
 
 **Important**: The header structure must comply with valid JSON format.
 
@@ -73,20 +74,19 @@ The automatically generated plugin library entries have the following structure:
 
 ### Field Descriptions
 
-- **name**: Plugin name (displayed in UI)
-- **path**: Relative path to the plugin file from the repository root
-  - For example, if the full URL is `https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/downsampler/downsampler.py`, use `"influxdata/downsampler/downsampler.py"`
-- **description**: A short description of the plugin (displayed in UI)
-- **author**: The author's name (displayed in UI)
-- **docs_file_link**: Link to the documentation (README or other documentation, displayed in UI)
-- **required_plugins**: Dependencies on other plugins, specified as:
-  ```json
-  {
-    "name": "Notification sender",
-    "path": "influxdata/notifier/notifier_plugin.py"
-  }
-  ```
-- **required_libraries**: Python libraries required for the plugin to work
-  - Example: `"required_libraries": ["httpx", "twilio"]`
-- **last_update**: The date of the last plugin update
-- **trigger_types_supported**: Array of supported trigger types
+-	**name**: Plugin name (displayed in UI)
+-	**path**: Relative path to the plugin file from the repository root
+	-	For example, if the full URL is `https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/downsampler/downsampler.py`, use `"influxdata/downsampler/downsampler.py"`
+-	**description**: A short description of the plugin (displayed in UI)
+-	**author**: The author's name (displayed in UI)
+-	**docs_file_link**: Link to the documentation (README or other documentation, displayed in UI)
+-	**required_plugins**: Dependencies on other plugins, specified as:`json
+	{
+	"name": "Notification sender",
+	"path": "influxdata/notifier/notifier_plugin.py"
+	}
+	`
+-	**required_libraries**: Python libraries required for the plugin to work
+	-	Example: `"required_libraries": ["httpx", "twilio"]`
+-	**last_update**: The date of the last plugin update
+-	**trigger_types_supported**: Array of supported trigger types

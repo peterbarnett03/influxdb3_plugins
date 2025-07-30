@@ -1,75 +1,96 @@
 # Notifier Plugin
 
 ⚡ http  
-🏷️ notifications, webhooks, messaging, alerts
-🔧 InfluxDB 3 Core, InfluxDB 3 Enterprise
+🏷️ notifications, webhooks, messaging, alerts 🔧 InfluxDB 3 Core, InfluxDB 3 Enterprise
 
 ## Description
 
-The Notifier Plugin provides multi-channel notification capabilities for InfluxDB 3, enabling real-time alert delivery through various communication channels.
-Send notifications via Slack, Discord, HTTP webhooks, SMS, or WhatsApp based on incoming HTTP requests.
-Acts as a centralized notification dispatcher that receives data from other plugins or external systems and routes notifications to the appropriate channels.
+The Notifier Plugin provides multi-channel notification capabilities for InfluxDB 3, enabling real-time alert delivery through various communication channels. Send notifications via Slack, Discord, HTTP webhooks, SMS, or WhatsApp based on incoming HTTP requests. Acts as a centralized notification dispatcher that receives data from other plugins or external systems and routes notifications to the appropriate channels.
+
+## Configuration
+
+Plugin parameters may be specified as key-value pairs in the `--trigger-arguments` flag (CLI) or in the `trigger_arguments` field (API) when creating a trigger. Some plugins support TOML configuration files, which can be specified using the plugin's `config_file_path` parameter.
+
+If a plugin supports multiple trigger specifications, some parameters may depend on the trigger specification that you use.
 
 ### Plugin metadata
 
 This plugin includes a JSON metadata schema in its docstring that defines supported trigger types and configuration parameters. This metadata enables the [InfluxDB 3 Explorer](https://docs.influxdata.com/influxdb3/explorer/) UI to display and configure the plugin.
 
-## Configuration
-
 ### Request body parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `notification_text` | string | required | Text content of the notification message |
-| `senders_config` | object | required | Configuration for each notification channel |
+| Parameter           | Type   | Default  | Description                                 |
+|---------------------|--------|----------|---------------------------------------------|
+| `notification_text` | string | required | Text content of the notification message    |
+| `senders_config`    | object | required | Configuration for each notification channel |
 
 ### Sender-specific configuration
 
 The `senders_config` parameter accepts channel configurations where keys are sender names and values contain channel-specific settings:
 
 #### Slack notifications
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `slack_webhook_url` | string | required | Slack webhook URL |
-| `slack_headers` | string | none | Base64-encoded JSON headers |
+
+| Parameter           | Type   | Default  | Description                 |
+|---------------------|--------|----------|-----------------------------|
+| `slack_webhook_url` | string | required | Slack webhook URL           |
+| `slack_headers`     | string | none     | Base64-encoded JSON headers |
 
 #### Discord notifications
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `discord_webhook_url` | string | required | Discord webhook URL |
-| `discord_headers` | string | none | Base64-encoded JSON headers |
+
+| Parameter             | Type   | Default  | Description                 |
+|-----------------------|--------|----------|-----------------------------|
+| `discord_webhook_url` | string | required | Discord webhook URL         |
+| `discord_headers`     | string | none     | Base64-encoded JSON headers |
 
 #### HTTP webhook notifications
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+
+| Parameter          | Type   | Default  | Description                      |
+|--------------------|--------|----------|----------------------------------|
 | `http_webhook_url` | string | required | Custom webhook URL for HTTP POST |
-| `http_headers` | string | none | Base64-encoded JSON headers |
+| `http_headers`     | string | none     | Base64-encoded JSON headers      |
 
 #### SMS notifications (via Twilio)
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `twilio_sid` | string | required | Twilio Account SID (or use `TWILIO_SID` env var) |
-| `twilio_token` | string | required | Twilio Auth Token (or use `TWILIO_TOKEN` env var) |
-| `twilio_from_number` | string | required | Sender phone number in E.164 format |
-| `twilio_to_number` | string | required | Recipient phone number in E.164 format |
+
+| Parameter            | Type   | Default  | Description                                       |
+|----------------------|--------|----------|---------------------------------------------------|
+| `twilio_sid`         | string | required | Twilio Account SID (or use `TWILIO_SID` env var)  |
+| `twilio_token`       | string | required | Twilio Auth Token (or use `TWILIO_TOKEN` env var) |
+| `twilio_from_number` | string | required | Sender phone number in E.164 format               |
+| `twilio_to_number`   | string | required | Recipient phone number in E.164 format            |
 
 #### WhatsApp notifications (via Twilio)
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `twilio_sid` | string | required | Twilio Account SID (or use `TWILIO_SID` env var) |
-| `twilio_token` | string | required | Twilio Auth Token (or use `TWILIO_TOKEN` env var) |
-| `twilio_from_number` | string | required | Sender WhatsApp number in E.164 format |
-| `twilio_to_number` | string | required | Recipient WhatsApp number in E.164 format |
 
-## Installation
+| Parameter            | Type   | Default  | Description                                       |
+|----------------------|--------|----------|---------------------------------------------------|
+| `twilio_sid`         | string | required | Twilio Account SID (or use `TWILIO_SID` env var)  |
+| `twilio_token`       | string | required | Twilio Auth Token (or use `TWILIO_TOKEN` env var) |
+| `twilio_from_number` | string | required | Sender WhatsApp number in E.164 format            |
+| `twilio_to_number`   | string | required | Recipient WhatsApp number in E.164 format         |
 
-### Install dependencies
+## Software Requirements
 
-Install required Python packages:
+-	**InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
+-	**Python packages**:
+	-	`httpx` (for HTTP requests)
+	-	`twilio` (for SMS/WhatsApp notifications)
+
+### Installation steps
+
+1.	Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
+
+	```bash
+	influxdb3 serve \
+	 --node-id node0 \
+	 --object-store file \
+	 --data-dir ~/.influxdb3 \
+	 --plugin-dir ~/.plugins
+	```
+
+2.	Install required Python packages:
 
 ```bash
-influxdb3 install package httpx
-influxdb3 install package twilio
+   influxdb3 install package httpx
+   influxdb3 install package twilio
 ```
 
 ### Create trigger
@@ -156,30 +177,25 @@ curl -X POST http://localhost:8181/api/v3/engine/notify \
   }'
 ```
 
-## Features
-
-- **Multi-channel delivery**: Support for Slack, Discord, HTTP webhooks, SMS, and WhatsApp
-- **Retry logic**: Automatic retry with exponential backoff for failed notifications
-- **Environment variables**: Credential management via environment variables
-- **Asynchronous processing**: Non-blocking HTTP notifications for better performance
-- **Flexible configuration**: Channel-specific settings and optional headers support
-
 ## Troubleshooting
 
 ### Common issues
 
 **Notification not delivered**
-- Verify webhook URLs are correct and accessible
-- Check Twilio credentials and phone number formats
-- Review logs for specific error messages
+
+-	Verify webhook URLs are correct and accessible
+-	Check Twilio credentials and phone number formats
+-	Review logs for specific error messages
 
 **Authentication errors**
-- Ensure Twilio credentials are set via environment variables or request parameters
-- Verify webhook URLs have proper authentication if required
+
+-	Ensure Twilio credentials are set via environment variables or request parameters
+-	Verify webhook URLs have proper authentication if required
 
 **Rate limiting**
-- Plugin includes built-in retry logic with exponential backoff
-- Consider implementing client-side rate limiting for high-frequency notifications
+
+-	Plugin includes built-in retry logic with exponential backoff
+-	Consider implementing client-side rate limiting for high-frequency notifications
 
 ### Environment variables
 
@@ -199,4 +215,5 @@ influxdb3 query --database _internal "SELECT * FROM system.processing_engine_log
 ```
 
 ## Questions/Comments
+
 For support, open a GitHub issue or contact us via [Discord](https://discord.com/invite/vZe2w2Ds8B) in the `#influxdb3_core` channel, [Slack](https://influxcommunity.slack.com/) in the `#influxdb3_core` channel, or the [Community Forums](https://community.influxdata.com/).
