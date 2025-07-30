@@ -29,6 +29,7 @@ Trigger this manually via `curl` or any HTTP request.
 - Writes summary forecast results to `prophet_forecast`  
 
 ### 3️⃣ `plot_forecast_http.py`
+
 - HTTP-triggered plugin  
 - Reads data from both `peyton_views` and `prophet_forecast`  
 - Creates an interactive Plotly chart combining historical data and forecast  
@@ -41,24 +42,33 @@ Trigger this manually via `curl` or any HTTP request.
 ### ✅ Step 1: Install Required Packages
 
 This project depends on `plotly` and `prophet`. Install them using:
-```bash 
+
+```bash
 influxdb3 install package plotly
 ```
+
 ```bash
 influxdb3 install package prophet
 ```
+
 Create a database:
+
 ```bash
 influxdb3 create database prophet
 ```
+
 ### ✅ Step 2: Save the Plugins
+
 Place both plugins in your configured --plugin-dir:
+
 - load_peyton_data.py
 - forecast_peyton.py
-- plot_forecast_http.py
-  
+- plot_forecast_http.py  
+
 ### ✅ Step 3: Create Triggers
+
 #### Plugin 1: Load Data via HTTP
+
 ```bash
 influxdb3 create trigger \
   --trigger-spec "request:load_peyton" \
@@ -66,16 +76,21 @@ influxdb3 create trigger \
   --database prophet \
   load_peyton
 ```
+
 Then trigger it manually:
 
 ```bash
 curl http://localhost:8181/api/v3/engine/load_peyton
 ```
+
 You should see the following output:
+
 ```bash
 {"status": "success", "rows_written": 2905}
 ```
+
 #### Plugin 2: Forecast on a Schedule
+
 ```bash
 influxdb3 create trigger \
   --trigger-spec "every:1d" \
@@ -83,20 +98,25 @@ influxdb3 create trigger \
   --database prophet \
   peyton_forecast
 ```
+
 To disable the forecasting:
+
 ```bash
 inflxudb3 disable trigger --databse prophet peyton_forecast
 ```
 
 #### Plugin 3: Visualize Forecast via HTTP
-```bash 
+
+```bash
 influxdb3 create trigger \
   --trigger-spec "request:plot_forecast" \
   --plugin-filename "plot_forecast_http.py" \
   --database prophet \
   forecast_plot
 ```
+
 ---
+
 ## 📊 Output
 
 ### Tables
@@ -104,11 +124,12 @@ influxdb3 create trigger \
 - **`peyton_views`**: Raw historical pageview data  
 - **`prophet_forecast`**: All forecasts made by prophet
 
-### Graph 
+### Graph
+
 View in your browser:
-```
-http://localhost:8181/api/v3/engine/plot_forecast
-```
+
+ http://localhost:8181/api/v3/engine/plot_forecast
+
 ![visualization](img/graph.png)
 
 ---
