@@ -83,9 +83,12 @@ This plugin includes a JSON metadata schema in its docstring that defines suppor
 
 *To use a TOML configuration file, set the `PLUGIN_DIR` environment variable and specify the `config_file_path` in the trigger arguments.* This is in addition to the `--plugin-dir` flag when starting InfluxDB 3.
 
-Example TOML configuration file provided: [prophet_forecasting_scheduler.toml](prophet_forecasting_scheduler.toml)
+#### Example TOML configuration
 
-For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [project README](/README.md).
+[prophet_forecasting_scheduler.toml](prophet_forecasting_scheduler.toml)
+
+For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [influxdb3_plugins
+/README.md](/README.md).
 
 ## Software Requirements
 
