@@ -154,7 +154,7 @@ influxdb3 create trigger \
   --database monitoring \
   --plugin-filename threshold_deadman_checks_plugin.py \
   --trigger-spec "every:5m" \
-  --trigger-arguments "measurement=system_metrics,senders=slack.discord,field_aggregation_values=cpu_usage:avg@>=80-WARN\$cpu_usage:avg@>=95-ERROR\$memory_usage:max@>=90-WARN,window=5m,interval=1min,trigger_count=3,slack_webhook_url=https://hooks.slack.com/services/...,discord_webhook_url=https://discord.com/api/webhooks/..." \
+  --trigger-arguments "measurement=system_metrics,senders=slack.discord,field_aggregation_values='cpu_usage:avg@>=80-WARN cpu_usage:avg@>=95-ERROR memory_usage:max@>=90-WARN',window=5m,interval=1min,trigger_count=3,slack_webhook_url=https://hooks.slack.com/services/...,discord_webhook_url=https://discord.com/api/webhooks/..." \
   system_threshold_monitor
 ```
 
@@ -180,7 +180,7 @@ influxdb3 create trigger \
   --database comprehensive \
   --plugin-filename threshold_deadman_checks_plugin.py \
   --trigger-spec "every:10m" \
-  --trigger-arguments "measurement=temperature_sensors,senders=whatsapp,field_aggregation_values=temperature:avg@>=35-WARN\$temperature:max@>=40-ERROR,window=15m,deadman_check=true,trigger_count=2,twilio_from_number=+1234567890,twilio_to_number=+0987654321" \
+  --trigger-arguments "measurement=temperature_sensors,senders=whatsapp,field_aggregation_values='temperature:avg@>=35-WARN temperature:max@>=40-ERROR',window=15m,deadman_check=true,trigger_count=2,twilio_from_number=+1234567890,twilio_to_number=+0987654321" \
   comprehensive_sensor_monitor
 ```
 
@@ -218,9 +218,9 @@ influxdb3 create trigger \
 
 **Aggregation conditions (scheduled)**
 
-- Format: `field:aggregation@"operator value-level"`
-- Example: `temp:avg@">=30-ERROR"`
-- Multiple conditions: `temp:avg@">=30-WARN"$humidity:min@"<40-INFO"`
+- Format: `field:aggregation@operator value-level`
+- Example: `temp:avg@>=30-ERROR`
+- Multiple conditions: `"temp:avg@>=30-WARN humidity:min@<40-INFO"`
 
 **Field conditions (data write)**
 

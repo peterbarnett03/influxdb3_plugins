@@ -351,7 +351,7 @@ def send_notification(
             resp = requests.post(url, headers=headers, data=data, timeout=timeout)
             resp.raise_for_status()  # raises on 4xx/5xx
             influxdb3_local.info(
-                f"[{task_id}] Alert sent successfully to notification plugin with results: {resp.json()['results']}"
+                f"[{task_id}] Alert sent to notification plugin with results: {resp.json()['results']}"
             )
             break
         except requests.RequestException as e:
@@ -544,8 +544,6 @@ def parse_mad_thresholds(influxdb3_local, args: dict, task_id: str) -> list[tupl
                 influxdb3_local.warn(
                     f"[{task_id}] Invalid threshold definition: {threshold}, skipping"
                 )
-        if not results:
-            raise Exception(f"[{task_id}] No valid MAD threshold in '{raw_input}'")
         return results
 
     segments: list = [seg.strip() for seg in raw_input.split("@") if seg.strip()]

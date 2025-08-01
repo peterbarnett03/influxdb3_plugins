@@ -607,7 +607,7 @@ def send_notification(
             resp = requests.post(url, headers=headers, data=data, timeout=timeout)
             resp.raise_for_status()  # raises on 4xx/5xx
             influxdb3_local.info(
-                f"[{task_id}] Alert sent successfully to notification plugin with results: {resp.json()['results']}"
+                f"[{task_id}] Alert sent to notification plugin with results: {resp.json()['results']}"
             )
             break
         except requests.RequestException as e:
@@ -982,8 +982,8 @@ def parse_field_aggregation_values(
 
     Args:
         influxdb3_local: InfluxDB client instance.
-        args (dict): Contains the 'field_aggregation_values' key with $-separated strings,
-            e.g., 'field:avg@">=10-INFO"$field2:min@"<5.0-WARN"'.
+        args (dict): Contains the 'field_aggregation_values' key with space-separated strings,
+            e.g., 'field:avg@>=10-INFO field2:min@<5.0-WARN'.
         task_id (str): Task identifier (used for logging/warnings).
 
     Returns:
@@ -1045,7 +1045,11 @@ def parse_field_aggregation_values(
             raise Exception(f"[{task_id}] No valid field aggregation values provided.")
         return result
 
-    pairs = raw_input.split("$")
+    # Strip quotes around the string if present
+    if raw_input[0] == raw_input[-1] and raw_input[0] in ('"', "'"):
+        raw_input = raw_input[1:-1]
+
+    pairs = raw_input.split(" ")
     for pair in pairs:
         if not pair or ":" not in pair:
             influxdb3_local.warn(

@@ -326,7 +326,7 @@ def send_notification(
             resp = requests.post(url, headers=headers, data=data, timeout=timeout)
             resp.raise_for_status()  # raises on 4xx/5xx
             influxdb3_local.info(
-                f"[{task_id}] Alert sent successfully to notification plugin with results: {resp.json()['results']}"
+                f"[{task_id}] Alert sent to notification plugin with results: {resp.json()['results']}"
             )
             break
         except requests.RequestException as e:
