@@ -689,10 +689,12 @@ def process_scheduled_call(
             return
 
         # Query data
+        tags: list = get_tag_names(influxdb3_local, measurement, task_id)
+        tags_clause: str = ", ".join([f'"{tag}"' for tag in tags])
         end_time: datetime = call_time
         start_time: datetime = end_time - window
         query: str = f"""
-                SELECT "{field}", "time"
+                SELECT "{field}", "time", {tags_clause}
                 FROM "{measurement}"
                 WHERE time >= $start_time AND time < $end_time
                 ORDER BY time
@@ -729,7 +731,8 @@ def process_scheduled_call(
                 )
                 detector_class = AVAILABLE_DETECTORS[detector_name]
                 detector = detector_class(**params)
-                detector.fit(series)
+                if detector_name not in ("ThresholdAD",):
+                    detector.fit(series)
                 anomalies: pd.Series = detector.detect(series)
                 anomaly_results.append(anomalies)
                 influxdb3_local.info(f"[{task_id}] Applied detector {detector_name}")
@@ -751,7 +754,6 @@ def process_scheduled_call(
         consensus_anomalies = consensus_anomalies.astype(bool)
 
         # Process anomalies with debounce logic
-        tags: list = get_tag_names(influxdb3_local, measurement, task_id)
         for idx, is_anomaly in consensus_anomalies.items():
             row: pd.Series = df[df["time"] == pd.Timestamp(idx.isoformat()).value].iloc[
                 0
