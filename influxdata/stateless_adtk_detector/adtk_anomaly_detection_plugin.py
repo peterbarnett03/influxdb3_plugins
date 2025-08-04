@@ -692,8 +692,8 @@ def process_scheduled_call(
         end_time: datetime = call_time
         start_time: datetime = end_time - window
         query: str = f"""
-                SELECT {field}, time
-                FROM {measurement}
+                SELECT "{field}", "time"
+                FROM "{measurement}"
                 WHERE time >= $start_time AND time < $end_time
                 ORDER BY time
             """
@@ -701,7 +701,6 @@ def process_scheduled_call(
             query,
             {"start_time": start_time.isoformat(), "end_time": end_time.isoformat()},
         )
-
         if not result:
             influxdb3_local.info(
                 f"[{task_id}] No data found for {measurement}.{field} from {start_time} to {end_time}"

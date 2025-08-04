@@ -368,7 +368,7 @@ def generate_query(
     tag_filter_clause: str = generate_tag_filter_clause(tag_values)
 
     return f"""
-        SELECT time AS ds, {field} AS y
+        SELECT time AS ds, "{field}" AS y
         FROM {measurement}
         WHERE time >= '{start_time.isoformat()}'
           AND time < '{end_time.isoformat()}'

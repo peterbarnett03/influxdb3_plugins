@@ -572,12 +572,12 @@ def generate_query(
         str: Formatted InfluxDB query string.
     """
     # If tags is None or empty, default to selecting only time and field
-    select_clause = f"time, {field}"
+    select_clause = f'time, "{field}"'
     if tags:
         # Add tags to the SELECT clause, ensuring proper escaping
         select_clause += ", " + ", ".join([f"{tag}" for tag in tags])
 
-    return f"SELECT {select_clause} FROM {measurement} WHERE time >= '{start_time.isoformat()}' AND time < '{end_time.isoformat()}' ORDER BY time"
+    return f"SELECT {select_clause} FROM '{measurement}' WHERE time >= '{start_time.isoformat()}' AND time < '{end_time.isoformat()}' ORDER BY time"
 
 
 def process_scheduled_call(
