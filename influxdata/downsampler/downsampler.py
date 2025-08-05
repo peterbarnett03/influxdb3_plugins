@@ -65,7 +65,7 @@
         {
             "name": "target_database",
             "example": "mydb",
-            "description": "Target database for writing downsampled data. If not provided, uses 'default' database.",
+            "description": "Target database for writing downsampled data. If not provided, uses the trigger's database.",
             "required": false
         },
         {
@@ -933,11 +933,11 @@ def write_downsampled_data(
 
     # Calculate metrics for logging
     record_count: int = len(data)
-    db_name: str = target_database if target_database else "default"
+    db_name: str | None = target_database if target_database else None
     # Log the operation details
     log_data: dict = {
         "records": record_count,
-        "database": db_name,
+        "database": db_name if db_name else "default",
         "measurement": target_measurement,
         "max_retries": max_retries,
     }
@@ -946,7 +946,10 @@ def write_downsampled_data(
         for tries in range(max_retries):
             try:
                 for row in data:
-                    influxdb3_local.write_to_db(db_name, row)
+                    if db_name:
+                        influxdb3_local.write_to_db(db_name, row)
+                    else:
+                        influxdb3_local.write(row)
                 # Log successful write with metrics
                 success_log: dict = {
                     "records_written": record_count,
