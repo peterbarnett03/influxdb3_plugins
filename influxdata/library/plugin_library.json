@@ -144,13 +144,13 @@
             },
             {
                 "name": "System Metrics Collector",
-                "path": "examples/schedule/system_metrics/system_metrics.py",
+                "path": "influxdata/system_metrics/system_metrics.py",
                 "description": "Collects system-level metrics (CPU, memory, disk, and network) using psutil and writes them to InfluxDB. Designed to run on a schedule and provide observability into host-level performance.",
                 "author": "InfluxData",
-                "docs_file_link": "",
+                "docs_file_link": "https://github.com/influxdata/influxdb3_plugins/blob/main/influxdata/system_metrics/README.md",
                 "required_plugins": [],
                 "required_libraries": ["psutil"],
-                "last_update": "2025-06-27",
+                "last_update": "2025-07-23",
                 "trigger_types_supported": ["scheduler"]
             },
             {

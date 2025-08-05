@@ -2,7 +2,7 @@
 # Copy this file to your PLUGIN_DIR and reference it with `--trigger-arguments config_file_path=system_metrics_config_scheduler.toml`
 
 ########## Required Parameters ##########
-# No required parameters - all have sensible defaults
+# No required parameters
 
 ########## Optional Parameters ##########
 
@@ -20,8 +20,8 @@ max_retries = 3         # Maximum retry attempts on collection failure
 
 ###### Example: Create Trigger Using This Config ######
 # influxdb3 create trigger \
-#   --database system_monitoring \
+#   --database [YOUR_DATABASE] \
 #   --plugin-filename system_metrics.py \
-#   --trigger-spec "every:30s" \
+#   --trigger-spec "every:[DURATION e.g. 1s, 1m, 1h]" \
 #   --trigger-arguments config_file_path=system_metrics_config_scheduler.toml \
 #   system_metrics_trigger

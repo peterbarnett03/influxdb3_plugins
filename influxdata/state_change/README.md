@@ -1,162 +1,237 @@
-# State Change Monitoring Plugin for InfluxDB 3
+# State Change Plugin
 
-This plugin system provides field change and threshold monitoring capabilities for InfluxDB 3 through two complementary plugins: `scheduler` and `data writes`. These plugins detect changes in field values or threshold conditions and use the **Notification Sender Plugin for InfluxDB 3** to dispatch notifications via various channels.
+⚡ scheduled, data-write  
+🏷️ monitoring, alerting, threshold-detection, state-tracking 🔧 InfluxDB 3 Core, InfluxDB 3 Enterprise
 
-## Prerequisites
-- **InfluxDB v3 Core/Enterprise**: with the Processing Engine enabled.
-- **Notification Sender Plugin for InfluxDB 3**: Required for sending notifications. [Link to Notification Sender Plugin](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/notifier).
+## Description
 
-## Files
-- `state_change_check_plugin.py`: The main plugin code containing handlers for `scheduler` and `data writes` triggers.
+The State Change Plugin provides comprehensive field monitoring and threshold detection for InfluxDB 3 data streams. Detect field value changes, monitor threshold conditions, and trigger notifications when specified criteria are met. Supports both scheduled batch monitoring and real-time data write monitoring with configurable stability checks and multi-channel alerts.
 
-## Features
-- **Scheduler Plugin**: Periodically queries a measurement within a time window, counts field value changes for unique tag combinations, and sends notifications if thresholds are exceeded.
-- **Data Write Plugin**: Triggers on data writes, monitors field thresholds (count or duration-based), and suppresses notifications for unstable data states.
-- **Args Overriding**: Allows overriding arguments for scheduled and data write types via TOML file (env var `PLUGIN_DIR` and `config_file_path` parameter should be set, all parameters and their values should be the same as in `--trigger-arguments`, override args parameter in handler function). The `config_file_path` must be specified as a path relative to the directory defined by PLUGIN_DIR.
-- **Multi-Channel Notifications**: Supports Slack, Discord, HTTP, SMS, and WhatsApp via the Notification Sender Plugin.
-- **Customizable Messages**: Notification templates support dynamic variables (e.g., `$table`, `$field`, `$changes`, `$tags`).
-- **Retry Logic**: Retries failed notifications with randomized backoff.
-- **Environment Variable Support**: Configurable via environment variables (e.g., `INFLUXDB3_AUTH_TOKEN`).
-- **State Stability Check**: Suppresses notifications if field values change too frequently (data writes type).
+## Configuration
 
-## Logging
-Logs are stored in the `_internal` database (or the database where the trigger is created) in the `system.processing_engine_logs` table. To view logs, use the following query:
+Plugin parameters may be specified as key-value pairs in the `--trigger-arguments` flag (CLI) or in the `trigger_arguments` field (API) when creating a trigger. Some plugins support TOML configuration files, which can be specified using the plugin's `config_file_path` parameter.
 
-```bash
-influxdb3 query --database _internal "SELECT * FROM system.processing_engine_logs"
-```
+If a plugin supports multiple trigger specifications, some parameters may depend on the trigger specification that you use.
 
-### Log Columns Description
-- **event_time**: Timestamp of the log event.
-- **trigger_name**: Name of the trigger that generated the log.
-- **log_level**: Severity level (`INFO`, `WARN`, `ERROR`).
-- **log_text**: Message describing the action or error.
+### Plugin metadata
 
-## Setup & Run
+This plugin includes a JSON metadata schema in its docstring that defines supported trigger types and configuration parameters. This metadata enables the [InfluxDB 3 Explorer](https://docs.influxdata.com/influxdb3/explorer/) UI to display and configure the plugin.
 
-### 1. Install & Run InfluxDB v3 Core/Enterprise
-- Download and install InfluxDB v3 Core/Enterprise.
-- Ensure the `plugins` directory exists; if not, create it:
-  ```bash
-  mkdir ~/.plugins
-  ```
-- Place `state_change_check_plugin.py` in `~/.plugins/`.
-- Start InfluxDB 3 with the correct paths:
-  ```bash
-  influxdb3 serve --node-id node0 --object-store file --data-dir ~/.influxdb3 --plugin-dir ~/.plugins
-  ```
+### Scheduled trigger parameters
 
-### 2. Install Required Python Packages
-```bash
-influxdb3 install package requests
-```
+| Parameter            | Type   | Default  | Description                                                                                  |
+|----------------------|--------|----------|----------------------------------------------------------------------------------------------|
+| `measurement`        | string | required | Measurement to monitor for field changes                                                     |
+| `field_change_count` | string | required | Dot-separated field thresholds (e.g., "temp:3.load:2"). Supports count-based conditions    |
+| `senders`            | string | required | Dot-separated notification channels with multi-channel alert support (Slack, Discord, etc.) |
+| `window`             | string | required | Time window for analysis. Format: `<number><unit>` (e.g., "10m", "1h")                      |
 
-### 3. Install and Configure the Notification Sender Plugin
-- Ensure the [Notification Sender Plugin for InfluxDB 3](https://github.com/influxdata/influxdb3_plugins/tree/main/influxdata/notifier) is installed and configured. This plugin is **required** for sending notifications via Slack, Discord, HTTP, SMS, or WhatsApp.
+### Data write trigger parameters
 
-## Configure & Create Triggers
+| Parameter          | Type   | Default  | Description                                                                                                    |
+|--------------------|--------|----------|----------------------------------------------------------------------------------------------------------------|
+| `measurement`      | string | required | Measurement to monitor for threshold conditions                                                                |
+| `field_thresholds` | string | required | Flexible threshold conditions with count-based and duration-based support (e.g., "temp:30:10@status:ok:1h") |
+| `senders`          | string | required | Dot-separated notification channels with multi-channel alert support (Slack, Discord, HTTP, SMS, WhatsApp)   |
 
-### Scheduler Plugin
-The Scheduler Plugin periodically queries a measurement within a specified time window, counts changes in field values for each unique tag combination, and sends notifications if the number of changes exceeds the defined threshold.
+### Notification parameters
 
-#### Arguments (Scheduler Mode)
-The following arguments are extracted from the `args` dictionary for the Scheduler Plugin:
+| Parameter                 | Type   | Default  | Description                                                                             |
+|---------------------------|--------|----------|-----------------------------------------------------------------------------------------|
+| `influxdb3_auth_token`    | string | env var  | InfluxDB 3 API token with environment variable support for credential management        |
+| `notification_text`       | string | template | Customizable message template for scheduled notifications with dynamic variables        |
+| `notification_count_text` | string | template | Customizable message template for count-based notifications with dynamic variables     |
+| `notification_time_text`  | string | template | Customizable message template for time-based notifications with dynamic variables      |
+| `notification_path`       | string | "notify" | Notification endpoint path                                                              |
+| `port_override`           | number | 8181     | InfluxDB port override                                                                  |
 
-| Argument               | Description                                                                                          | Required  | Example                                                                                   |
-|------------------------|------------------------------------------------------------------------------------------------------|-----------|-------------------------------------------------------------------------------------------|
-| `measurement`          | The InfluxDB table (measurement) to monitor.                                                         | Yes       | `"cpu"`                                                                                   |
-| `field_change_count`   | Dot-separated list of field thresholds (e.g., `field:count`). Example: `temp:3.load:2`.              | Yes       | `"temp:3.load:2"`                                                                         |
-| `senders`              | Dot-separated list of notification channels (e.g., `slack.discord`).                                 | Yes       | `"slack.discord"`                                                                         |
-| `window`               | Time window for data analysis (e.g., `1h` for 1 hour). Units: `s`, `min`, `h`, `d`, `w`.             | Yes       | `"1h"`                                                                                    |
-| `influxdb3_auth_token` | API token for InfluxDB 3. Can be set via `INFLUXDB3_AUTH_TOKEN` environment variable.                | No        | `"YOUR_API_TOKEN"`                                                                        |
-| `notification_text`    | Template for notification message with variables `$table`, `$field`, `$changes`, `$window`, `$tags`. | No        | `"Field $field in table $table changed $changes times in window $window for tags $tags"`  |
-| `notification_path`    | URL path for the notification sending plugin.                                                        | No        | `"some/path"` (default: `notify`)                                                         |
-| `port_override`        | Port number where InfluxDB accepts requests.                                                         | No        | `8182` (default: `8181`)                                                                  |
-| `config_file_path`     | Path to the configuration file from `PLUGIN_DIR` env var. Format: `'example.toml'`.                  | No        | `'example.toml'`                                                                          |
+### Advanced parameters
 
-#### Sender-Specific Configurations
-Depending on the channels specified in `senders`, additional arguments are required:
+| Parameter             | Type   | Default | Description                                                                               |
+|-----------------------|--------|---------|-------------------------------------------------------------------------------------------|
+| `state_change_window` | number | 1       | Recent values to check for stability (configurable state change detection to reduce noise) |
+| `state_change_count`  | number | 1       | Max changes allowed within stability window (configurable state change detection)         |
 
-- **Slack**:
-  - `slack_webhook_url` (string): Webhook URL from Slack (required).
-  - `slack_headers` (string, optional): Base64-encoded HTTP headers (optional).
-  - Example: `"slack_webhook_url=https://hooks.slack.com/services/..."`.
+### TOML configuration
 
-- **Discord**:
-  - `discord_webhook_url` (string): Webhook URL from Discord (required).
-  - `discord_headers` (string, optional): Base64-encoded HTTP headers (optional).
-  - Example: `"discord_webhook_url=https://discord.com/api/webhooks/..."`.
+| Parameter          | Type   | Default | Description                                                                      |
+|--------------------|--------|---------|----------------------------------------------------------------------------------|
+| `config_file_path` | string | none    | TOML config file path relative to `PLUGIN_DIR` (required for TOML configuration) |
 
-- **HTTP**:
-  - `http_webhook_url` (string): Custom webhook URL for POST requests (required).
-  - `http_headers` (string, optional): Base64-encoded HTTP headers (optional).
-  - Example: `"http_webhook_url=https://example.com/webhook"`.
+*To use a TOML configuration file, set the `PLUGIN_DIR` environment variable and specify the `config_file_path` in the trigger arguments.* This is in addition to the `--plugin-dir` flag when starting InfluxDB 3.
 
-- **SMS** (via Twilio`):
-  - `twilio_sid` (string): Twilio ID, or via `TWILIO_SID` env var (required).
-  - `twilio_token` (string): Twilio Auth Token, or via `TWILIO_TOKEN` env var (required).
-  - `twilio_from_number` (string): Twilio sender number (e.g., `+1234567890`) (required).
-  - `twilio_to_number` (string): Recipient number (e.g., `+0987654321`) (required).
-  - Example: `"twilio_service_id=ACxxx,twilio_token=xxx,twilio_from_number=+1234567890,twilio_to_number=+0987654321"`.
+Example TOML configuration files provided:
 
-- **WhatsApp** (via Twilio):
-  - Same as SMS arguments, with WhatsApp-enabled numbers.
+- [state_change_config_scheduler.toml](state_change_config_scheduler.toml) - for scheduled triggers
+- [state_change_config_data_writes.toml](state_change_config_data_writes.toml) - for data write triggers
 
-#### Example
+For more information on using TOML configuration files, see the Using TOML Configuration Files section in the [influxdb3_plugins/README.md](/README.md).
+
+### Channel-specific configuration
+
+Notification channels require additional parameters based on the sender type (same as the [influxdata/notifier plugin](../notifier/README.md)).
+
+## Schema requirement
+
+The plugin assumes that the table schema is already defined in the database, as it relies on this schema to retrieve field and tag names required for processing.
+
+## Software requirements
+
+- **InfluxDB 3 Core/Enterprise**: with the Processing Engine enabled.
+- **Notification Sender Plugin for InfluxDB 3**: Required for sending notifications. See the [influxdata/notifier plugin](../notifier/README.md).
+- **Python packages**:
+ 	- `requests` (for HTTP notifications)
+
+1. Start InfluxDB 3 with the Processing Engine enabled (`--plugin-dir /path/to/plugins`):
+
+   ```bash
+   influxdb3 serve \
+     --node-id node0 \
+     --object-store file \
+     --data-dir ~/.influxdb3 \
+     --plugin-dir ~/.plugins
+   ```
+
+2. Install required Python packages:
+
+   ```bash
+   influxdb3 install package requests
+   ```
+
+3. *Optional*: For notifications, install and configure the [influxdata/notifier plugin](../notifier/README.md)
+
+### Create scheduled trigger
+
+Create a trigger for periodic field change monitoring:
+
 ```bash
 influxdb3 create trigger \
   --database mydb \
   --plugin-filename state_change_check_plugin.py \
   --trigger-spec "every:10m" \
-  --trigger-arguments measurement=cpu,field_change_count="temp:3.load:2",window=10m,senders=slack,slack_webhook_url="https://hooks.slack.com/services/...",influxdb3_auth_token="YOUR_API_TOKEN" \
-  scheduler_trigger
+  --trigger-arguments "measurement=cpu,field_change_count=temp:3.load:2,window=10m,senders=slack,slack_webhook_url=https://hooks.slack.com/services/..." \
+  state_change_scheduler
 ```
 
-### Data Write Plugin
-The Data Write Plugin triggers on data writes to the database, monitors field thresholds based on count or duration, and sends notifications when conditions are met. It also suppresses notifications if field values change too frequently.
+### Create data write trigger
 
-#### Arguments (Data Write Mode)
-The following arguments are extracted from the `args` dictionary for the Data Write Plugin:
+Create a trigger for real-time threshold monitoring:
 
-| Argument                  | Description                                                                                                                     | Required | Example                                                                                                          |
-|---------------------------|---------------------------------------------------------------------------------------------------------------------------------|----------|------------------------------------------------------------------------------------------------------------------|
-| `measurement`             | The InfluxDB table (measurement) to monitor.                                                                                    | Yes      | `"cpu"`                                                                                                          |
-| `field_thresholds`        | Threshold conditions (e.g., `field:value:count` or `field:value:time`). Example: `temp:"30.5":10@humidity:"true":2h`.           | Yes      | `"temp:"30.1":10@humidity:"true":2h"`                                                                            |
-| `senders`                 | Dot-separated list of notification channels.                                                                                    | Yes      | `"slack.discord"`                                                                                                |
-| `influxdb3_auth_token`    | API token for InfluxDB 3. Can be set via `INFLUXDB3_AUTH_TOKEN` environment variable.                                           | No       | `"YOUR_API_TOKEN"`                                                                                               |
-| `state_change_window`     | Number of recent values to check for stability.                                                                                 | No       | `5` (default: `1`)                                                                                               |
-| `state_change_count`      | Maximum allowed changes within `state_change_window` to allow notifications.                                                    | No       | `2` (default: `1`)                                                                                               |
-| `notification_count_text` | Template for notification message (when condition with count) with variables `$table`, `$field`, `$value`, `$duration`, `$row`. | No       | `"State change detected: Field $field in table $table changed to $value during last $duration times. Row: $row"` |
-| `notification_time_text`  | Template for notification message (when condition with time) with variables `$table`, `$field`, `$value`, `$duration`, `$row`.  | No       | `"State change detected: Field $field in table $table changed to $value during $duration. Row: $row`             |
-| `notification_path`       | URL path for the notification sending plugin.                                                                                   | No       | `"some/path"` (default: `notify`)                                                                                |
-| `port_override`           | Port number where InfluxDB accepts requests.                                                                                    | No       | `8182` (default: `8181`)                                                                                         |
-| `config_file_path`        | Path to the configuration file from `PLUGIN_DIR` env var. Format: `'example.toml'`.                                             | No       | `'example.toml'`                                                                                                 |
-
-#### Field Thresholds Format
-- Format: `field_name:"value":count_or_time` (e.g., `temp:"30":10` for 10 occurrences, or `humidity:"true":2h` for 2 hours).
-- Multiple conditions are separated by `@` (e.g., `temp:"30":10@humidity:"true":2h`).
-- `value` can be an integer, float, boolean, or string.
-- `count_or_duration` is either an integer (count) or a duration (e.g., `2h`, `30s`, `2d`, `1w`, `2min`).
-
-#### Sender-Specific Configurations
-The same sender-specific arguments as described in the Scheduler Plugin section apply here.
-
-#### Example
 ```bash
 influxdb3 create trigger \
   --database mydb \
   --plugin-filename state_change_check_plugin.py \
   --trigger-spec "all_tables" \
-  --trigger-arguments measurement=cpu,field_thresholds="temp:"30":10@status:"ok":1h",senders=slack,slack_webhook_url="https://hooks.slack.com/services/...",influxdb3_auth_token="YOUR_API_TOKEN" \
-  data_write_trigger
+  --trigger-arguments "measurement=cpu,field_thresholds=temp:30:10@status:ok:1h,senders=slack,slack_webhook_url=https://hooks.slack.com/services/..." \
+  state_change_datawrite
 ```
 
-## Important Notes
-- **Environment Variables**: Use environment variables for sensitive data (e.g., `INFLUXDB3_AUTH_TOKEN`, `TWILIO_SID`, `TWILIO_TOKEN`).
-- **Retries**: Notifications are retried up to three times with randomized backoff delays.
-- **Row in Notifications (Data Write)**: The `row` variable represents a unique combination of measurement, field, value, and tags (e.g., `cpu:temp:30:host=server1`).
-- **Tags in Notifications (Scheduler)**: The `tags` variable includes all tag names and values for the triggering condition (e.g., `host=server1,region=eu`).
-- **Measurements/Tag Name Caching**: The plugin caches the list of measurements in database and tag names for each measurement for one hour to avoid unnecessary repeated queries and improve performance.
+### Enable triggers
+
+```bash
+influxdb3 enable trigger --database mydb state_change_scheduler
+influxdb3 enable trigger --database mydb state_change_datawrite
+```
+
+## Examples
+
+### Scheduled field change monitoring
+
+Monitor field changes over a time window and alert when thresholds are exceeded:
+
+```bash
+influxdb3 create trigger \
+  --database sensors \
+  --plugin-filename state_change_check_plugin.py \
+  --trigger-spec "every:15m" \
+  --trigger-arguments "measurement=temperature,field_change_count=value:5,window=1h,senders=slack,slack_webhook_url=https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX,notification_text=Temperature sensor $field changed $changes times in $window for tags $tags" \
+  temp_change_monitor
+```
+
+### Real-time threshold detection
+
+Monitor data writes for threshold conditions:
+
+```bash
+influxdb3 create trigger \
+  --database monitoring \
+  --plugin-filename state_change_check_plugin.py \
+  --trigger-spec "all_tables" \
+  --trigger-arguments "measurement=system_metrics,field_thresholds=cpu_usage:80:5@memory_usage:90:10min,senders=discord,discord_webhook_url=https://discord.com/api/webhooks/..." \
+  system_threshold_monitor
+```
+
+### Multi-condition monitoring
+
+Monitor multiple fields with different threshold types:
+
+```bash
+influxdb3 create trigger \
+  --database application \
+  --plugin-filename state_change_check_plugin.py \
+  --trigger-spec "all_tables" \
+  --trigger-arguments "measurement=app_health,field_thresholds=error_rate:0.05:3@response_time:500:30s@status:down:1,senders=slack.sms,slack_webhook_url=https://hooks.slack.com/services/...,twilio_from_number=+1234567890,twilio_to_number=+0987654321" \
+  app_health_monitor
+```
+
+## Troubleshooting
+
+### Common issues
+
+**No notifications triggered**
+
+- Verify notification channel configuration (webhook URLs, credentials)
+- Check threshold values are appropriate for your data
+- Ensure the Notifier Plugin is installed and configured
+- Review plugin logs for error messages
+
+**Too many notifications**
+
+- Adjust `state_change_window` and `state_change_count` for stability filtering
+- Increase threshold values to reduce sensitivity
+- Consider longer monitoring windows for scheduled triggers
+
+**Authentication errors**
+
+- Set `INFLUXDB3_AUTH_TOKEN` environment variable
+- Verify token has appropriate database permissions
+- Check Twilio credentials for SMS/WhatsApp notifications
+
+### Field threshold formats
+
+**Count-based thresholds**
+
+- Format: `field_name:"value":count`
+- Example: `temp:"30.5":10` (10 occurrences of temperature = 30.5)
+
+**Time-based thresholds**
+
+- Format: `field_name:"value":duration`
+- Example: `status:"error":5min` (status = error for 5 minutes)
+- Supported units: `s`, `min`, `h`, `d`, `w`
+
+**Multiple conditions**
+
+- Separate with `@`: `temp:"30":5@humidity:"high":10min`
+
+### Message template variables
+
+**Scheduled notifications**
+
+- `$table`: Measurement name
+- `$field`: Field name
+- `$changes`: Number of changes detected
+- `$window`: Time window
+- `$tags`: Tag values
+
+**Data write notifications**
+
+- `$table`: Measurement name
+- `$field`: Field name  
+- `$value`: Threshold value
+- `$duration`: Time duration or count
+- `$row`: Unique row identifier
 
 ## Questions/Comments
+
 For support, open a GitHub issue or contact us via [Discord](https://discord.com/invite/vZe2w2Ds8B) in the `#influxdb3_core` channel, [Slack](https://influxcommunity.slack.com/) in the `#influxdb3_core` channel, or the [Community Forums](https://community.influxdata.com/).

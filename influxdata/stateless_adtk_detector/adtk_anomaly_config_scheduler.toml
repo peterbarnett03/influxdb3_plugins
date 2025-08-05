@@ -1,96 +1,103 @@
 # ADTK Anomaly Detection Plugin Scheduler Configuration Template
-# Copy this file to your PLUGIN_DIR and reference it with
-#   --trigger-arguments config_file_path=adtk_anomaly_config_scheduler.toml
+# Copy this file to your PLUGIN_DIR (e.g., /plugins) and reference it with
+#   --trigger-arguments config_file_path=<relative_path>
+# Example: If the file is at /plugins/configs/adtk_anomaly_config_scheduler.toml, use
+#   config_file_path=configs/adtk_anomaly_config_scheduler.toml
 
 
 ########## Required Parameters ##########
 # InfluxDB measurement (table) to query for anomalies
-measurement = "cpu"                        # e.g., "cpu", "temperature"
+# Specify the measurement name (string) from your source InfluxDB database
+measurement = "your_measurement"  # e.g., "cpu", "temperature", "home"
 
 # Numeric field to apply ADTK detectors on
-field = "usage"                            # e.g., "usage", "value"
+# Specify the field name (string) for anomaly detection
+field = "your_field"  # e.g., "usage", "value", "temp"
 
-# ADTK detectors to use (dot-separated list)
-detectors = "QuantileAD.LevelShiftAD"       # e.g., "InterQuartileRangeAD.ThresholdAD"
+# ADTK detectors to use
+# Specify a list of detector names (strings)
+detectors = ["your_detector"]  # e.g., ["QuantileAD"], ["ThresholdAD", "QuantileAD"]
 
-# Base64-encoded JSON string specifying detector parameters
-# Format: {"DetectorName": {param1: value, ...}, ...}
-detector_params = "eyJRZXF1YW50aWxlQURSIjogeyJsb3d..."  # decodes to {"QuantileAD": {"low_quantile": 0.05, "high_quantile": 0.95}, ...}
+# Time window for analysis
+# Format: <number><unit>, where unit is s (seconds), min (minutes), h (hours), d (days), w (weeks)
+window = "your_window"  # e.g., "15m", "24h"
 
-# Time window for analysis. Format: <number><unit>
-# Units: s, min, h, d, w
-window = "1h"                              # e.g., "15m", "24h"
-
-# Notification channels (dot-separated list)
-senders = "slack.discord"                  # e.g., "slack", "http.sms"
-
-
+# Notification channels
+# Specify a list of notification channels (strings)
+senders = ["your_channel"]  # e.g., ["slack"], ["http", "sms"]
 
 ########## Optional Parameters ##########
 # Minimum number of detectors that must agree on an anomaly
-# min_consensus = "2"                         # default: 1
+# Specify an integer ≥ 1; default is 1
+#min_consensus = 1  # e.g., 2
 
 # Minimum duration an anomaly condition must persist before notifying
-# min_condition_duration = "5m"           # e.g., "1m", "10m"
+# Format: <number><unit>, where unit is s (seconds), min (minutes), h (hours), d (days), w (weeks)
+#min_condition_duration = "your_duration"  # e.g., "1m", "10m"
 
-# InfluxDB 3 API token (or set via INFLUXDB3_AUTH_TOKEN env var)
-# influxdb3_auth_token = "YOUR_API_TOKEN"
+# InfluxDB 3 API token
+# Specify the token (string); can also be provided via INFLUXDB3_AUTH_TOKEN environment variable
+#influxdb3_auth_token = "your_api_token"  # e.g., "apiv3_AuHk_8LYFHTa1QMccTQECqwO..."
 
 # Template for notification messages
-# Variables: $table, $field, $value, $detectors, $timestamp, $tags
-# notification_text = "Anomaly in $table.$field: value=$value at $timestamp detected by $detectors. Tags: $tags"
+# Use variables: $table, $field, $value, $detectors, $timestamp, $tags
+#notification_text = "your_notification_template"  # e.g., "Anomaly in $table.$field: value=$value at $timestamp detected by $detectors. Tags: $tags"
 
-# URL path for Notification Sender plugin (default: "notify")
-# notification_path = "notify"
+# URL path for Notification Sender plugin
+# Specify a custom path (string); defaults to "notify" if omitted
+#notification_path = "your_notification_path"  # e.g., "notify", "custom/notify"
 
-# Override InfluxDB port for notifications (default: 8181)
-# port_override = "8182"
-
-
+# Override InfluxDB port for notifications
+# Specify a port number (string); defaults to 8181 if omitted
+#port_override = "your_port"  # e.g., "8183"
 
 ########## Sender-Specific Settings ##########
-# For each channel listed in senders, uncomment and configure the following parameters:
+# For each channel listed in senders, uncomment and configure the relevant parameters below:
 
 # --- Slack ---
-# Webhook URL for Slack notifications (required)
-# slack_webhook_url = "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+# Webhook URL for Slack notifications (required for Slack)
+#slack_webhook_url = "your_slack_webhook_url"  # e.g., "https://hooks.slack.com/services/T06D40M2..."
 # Optional: Custom headers for Slack webhook (Base64-encoded JSON string)
-# slack_headers = "eyJIb3N0IjogImV4YW1wbGUuY29tIn0="
+#slack_headers = "your_slack_headers"  # e.g., "eyJIb3N0IjogImV4YW1wbGUuY29tIn0="
 
 # --- Discord ---
-# Webhook URL for Discord notifications (required)
-# discord_webhook_url = "https://discord.com/api/webhooks/AAA/BBB"
+# Webhook URL for Discord notifications (required for Discord)
+#discord_webhook_url = "your_discord_webhook_url"  # e.g., "https://discord.com/api/webhooks/AAA/BBB"
 # Optional: Custom headers for Discord webhook (Base64-encoded JSON string)
-# discord_headers = "eyJDb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIn0="
+#discord_headers = "your_discord_headers"  # e.g., "eyJDb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIn0="
 
 # --- HTTP ---
-# HTTP endpoint to send notifications (required)
-# http_webhook_url = "https://example.com/webhook"
+# HTTP endpoint to send notifications (required for HTTP)
+#http_webhook_url = "your_http_webhook_url"  # e.g., "https://example.com/webhook"
 # Optional: Custom HTTP headers (Base64-encoded JSON string)
-# http_headers = "eyJhdXRoIjogIkJlYXJlciBZT1VSX1RPS0VOIn0="
+#http_headers = "your_http_headers"  # e.g., "eyJhdXRoIjogIkJlYXJlciBZT1VSX1RPS0VOIn0="
 
 # --- SMS (Twilio) ---
-# Twilio Account SID (required, or via TWILIO_SID env var)
-# twilio_sid = "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-# Twilio Auth Token (required, or via TWILIO_TOKEN env var)
-# twilio_token = "your_auth_token"
-# Twilio sender number (required, format: +1234567890)
-# twilio_from_number = "+1234567890"
-# Recipient phone number (required, format: +0987654321)
-# twilio_to_number = "+0987654321"
+# Twilio Account SID (required for SMS, or via TWILIO_SID env var)
+#twilio_sid = "your_twilio_sid"  # e.g., "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+# Twilio Auth Token (required for SMS, or via TWILIO_TOKEN env var)
+#twilio_token = "your_twilio_token"  # e.g., "your_auth_token"
+# Twilio sender number (required for SMS, format: +1234567890)
+#twilio_from_number = "your_twilio_from_number"  # e.g., "+1234567890"
+# Recipient phone number (required for SMS, format: +0987654321)
+#twilio_to_number = "your_twilio_to_number"  # e.g., "+0987654321"
 
 # --- WhatsApp (via Twilio) ---
-# WhatsApp sender number (required, format: +1234567890)
-# whatsapp_from_number = "+1234567890"
-# WhatsApp recipient number (required, format: +0987654321)
-# whatsapp_to_number = "+0987654321"
+# WhatsApp sender number (required for WhatsApp, format: +1234567890)
+#whatsapp_from_number = "your_whatsapp_from_number"  # e.g., "+1234567890"
+# WhatsApp recipient number (required for WhatsApp, format: +0987654321)
+#whatsapp_to_number = "your_whatsapp_to_number"  # e.g., "+0987654321"
 
-
+# Detector parameters (Required)
+# Format: {"DetectorName": {param1: value, ...}, ...}
+# Specify parameters for each detector listed in detectors
+[detector_params]
+your_detector = { param1 = "value1", param2 = "value2" }  # e.g., QuantileAD = { low = 0.05, high = 0.95 }
 
 ###### Example: Create Trigger Using This Config ######
 # influxdb3 create trigger \
-#   --database mydb \
+#   --database your_database_name \
 #   --plugin-filename adtk_anomaly_detection_plugin.py \
-#   --trigger-spec "every:10m" \
+#   --trigger-spec "every:your_interval" \
 #   --trigger-arguments config_file_path=adtk_anomaly_config_scheduler.toml \
-#   adtk_anomaly_trigger
+#   your_trigger_name

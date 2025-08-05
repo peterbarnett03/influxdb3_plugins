@@ -1,81 +1,89 @@
-# Threshold and deadman checks Plugin Data Write Configuration Template
-# # Copy this file to your PLUGIN_DIR and reference it with
-#   --trigger-arguments config_file_path=threshold_deadman_config_data_writes.toml`
+# Threshold and Deadman Checks Plugin Data Write Configuration Template
+# Copy this file to your PLUGIN_DIR (e.g., /plugins) and reference it with
+#   --trigger-arguments config_file_path=<relative_path>
+# Example: If the file is at /plugins/configs/threshold_deadman_config_data_writes.toml, use
+#   config_file_path=configs/threshold_deadman_config_data_writes.toml
 
 
 ########## Required Parameters ##########
-# Measurement to monitor for threshold conditions
-measurement = "cpu"                  # e.g., "cpu", "temperature"
+# InfluxDB measurement (table) to monitor for threshold conditions
+# Specify the measurement name (string) from your source InfluxDB database
+measurement = "your_measurement"  # e.g., "cpu", "temperature", "home"
 
-# Field-level conditions: field>value-level or field<value-level
-# Multiple separated by $: e.g., "temp>=30-INFO$status==ok-ERROR"
-field_conditions = "temp>30-INFO$status=='ok'-ERROR"
+# Notification channels
+# Specify a list of notification channels (strings)
+senders = ["your_channel"]  # e.g., ["slack"], ["slack", "http"]
 
-# Notification channels (dot-separated list)
-senders = "slack.discord"            # e.g., "slack.sms.http"
-
-
+# Field-level conditions
+# Format: [[field, operator, value, level], ...]
+#   - field: field name (string)
+#   - operator: comparison operator (string, e.g., ">", ">=", "<", "<=", "==")
+#   - value: threshold value (number)
+#   - level: alert level (string, e.g., "INFO", "WARN", "ERROR", "CRITICAL")
+field_conditions = [["field1", ">", 0.0, "your_level"]]  # e.g., [["temp", ">", 150, "INFO"], ["hum", ">=", 15, "INFO"]]
 
 ########## Optional Parameters ##########
 # Times condition must be met before alert
-# trigger_count = "2"                   # default: 1
+# Specify an integer ≥ 1; default is 1
+#trigger_count = 1  # e.g., 2
 
-# InfluxDB auth token (or via INFLUXDB3_AUTH_TOKEN env var)
-# influxdb3_auth_token = "YOUR_API_TOKEN"
+# InfluxDB 3 API token for notifications
+# Specify the token (string); can also be provided via INFLUXDB3_AUTH_TOKEN environment variable
+#influxdb3_auth_token = "your_api_token"  # e.g., "apiv3_AuHk_8LYFHTa1QMccT..."
 
-# Templates for notifications:
-# Count-based: $level, $field, $op_sym, $compare_val, $actual
-# notification_text = "[$level] $field $op_sym $compare_val matched (actual: $actual)"
+# Template for notifications
+# Use variables: $level, $field, $op_sym, $compare_val, $actual
+#notification_text = "your_notification_template"  # e.g., "[$level] $field $op_sym $compare_val matched (actual: $actual)"
 
-# Notification Sender path and port
-# notification_path = "notify"         # default: notify
-# port_override = 8182                 # default: 8181
+# Custom URL path for Notification Sender plugin
+# Specify a custom path (string); defaults to "notify" if omitted
+#notification_path = "your_notification_path"  # e.g., "notify", "custom/notify"
 
-
+# Override InfluxDB port for notifications
+# Specify a port number (integer); defaults to 8181 if omitted
+#port_override = 8181  # e.g., 8183
 
 ########## Sender-Specific Settings ##########
-# For each channel listed in senders, uncomment and configure the following parameters:
+# For each channel listed in senders, uncomment and configure the relevant parameters below:
 
 # --- Slack ---
-# Webhook URL for Slack notifications (required)
-# slack_webhook_url = "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+# Webhook URL for Slack notifications (required for Slack)
+#slack_webhook_url = "your_slack_webhook_url"  # e.g., "https://hooks.slack.com/services/XXX/YYY/ZZZ"
 # Optional: Custom headers for Slack webhook (Base64-encoded JSON string)
-# slack_headers = "eyJIb3N0IjogImV4YW1wbGUuY29tIn0="
+#slack_headers = "your_slack_headers"  # e.g., "eyJIb3N0IjogImV4YW1wbGUuY29tIn0="
 
 # --- Discord ---
-# Webhook URL for Discord notifications (required)
-# discord_webhook_url = "https://discord.com/api/webhooks/AAA/BBB"
+# Webhook URL for Discord notifications (required for Discord)
+#discord_webhook_url = "your_discord_webhook_url"  # e.g., "https://discord.com/api/webhooks/AAA/BBB"
 # Optional: Custom headers for Discord webhook (Base64-encoded JSON string)
-# discord_headers = "eyJDb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIn0="
+#discord_headers = "your_discord_headers"  # e.g., "eyJDb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIn0="
 
 # --- HTTP ---
-# HTTP endpoint to send notifications (required)
-# http_webhook_url = "https://example.com/webhook"
+# HTTP endpoint to send notifications (required for HTTP)
+#http_webhook_url = "your_http_webhook_url"  # e.g., "https://example.com/webhook"
 # Optional: Custom HTTP headers (Base64-encoded JSON string)
-# http_headers = "eyJhdXRoIjogIkJlYXJlciBZT1VSX1RPS0VOIn0="
+#http_headers = "your_http_headers"  # e.g., "eyJhdXRoIjogIkJlYXJlciBZT1VSX1RPS0VOIn0="
 
 # --- SMS (Twilio) ---
-# Twilio Account SID (required, or via TWILIO_SID env var)
-# twilio_sid = "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-# Twilio Auth Token (required, or via TWILIO_TOKEN env var)
-# twilio_token = "your_auth_token"
-# Twilio sender number (required, format: +1234567890)
-# twilio_from_number = "+1234567890"
-# Recipient phone number (required, format: +0987654321)
-# twilio_to_number = "+0987654321"
+# Twilio Account SID (required for SMS, or via TWILIO_SID env var)
+#twilio_sid = "your_twilio_sid"  # e.g., "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+# Twilio Auth Token (required for SMS, or via TWILIO_TOKEN env var)
+#twilio_token = "your_twilio_token"  # e.g., "your_auth_token"
+# Twilio sender number (required for SMS, format: +1234567890)
+#twilio_from_number = "your_twilio_from_number"  # e.g., "+1234567890"
+# Recipient phone number (required for SMS, format: +0987654321)
+#twilio_to_number = "your_twilio_to_number"  # e.g., "+0987654321"
 
 # --- WhatsApp (via Twilio) ---
-# WhatsApp sender number (required, format: +1234567890)
-# whatsapp_from_number = "+1234567890"
-# WhatsApp recipient number (required, format: +0987654321)
-# whatsapp_to_number = "+0987654321"
-
-
+# WhatsApp sender number (required for WhatsApp, format: +1234567890)
+#whatsapp_from_number = "your_whatsapp_from_number"  # e.g., "+1234567890"
+# WhatsApp recipient number (required for WhatsApp, format: +0987654321)
+#whatsapp_to_number = "your_whatsapp_to_number"  # e.g., "+0987654321"
 
 ###### Example: Create Trigger Using This Config ######
 # influxdb3 create trigger \
-#   --database mydb \
+#   --database your_database_name \
 #   --plugin-filename threshold_deadman_checks_plugin.py \
 #   --trigger-spec "all_tables" \
 #   --trigger-arguments config_file_path=threshold_deadman_config_data_writes.toml \
-#   threshold_deadman_datawrite_trigger
+#   your_trigger_name

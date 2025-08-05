@@ -294,7 +294,15 @@ def parse_senders(influxdb3_local, args: dict, task_id: str) -> dict:
     """
     senders_config: defaultdict = defaultdict(dict)
 
-    senders: list = args["senders"].split(".")
+    senders: str | list = args.get("senders")
+    if args["use_config_file"]:
+        if not isinstance(senders, list):
+            raise Exception(
+                f"[{task_id}] 'senders' must be a list when using config file"
+            )
+    else:
+        senders = senders.split(".")
+
     for sender in senders:
         if sender not in AVAILABLE_SENDERS:
             influxdb3_local.warn(f"[{task_id}] Invalid sender type: {sender}")
@@ -354,7 +362,7 @@ def send_notification(
             resp = requests.post(url, headers=headers, data=data, timeout=timeout)
             resp.raise_for_status()  # raises on 4xx/5xx
             influxdb3_local.info(
-                f"[{task_id}] Alert sent successfully to notification plugin with results: {resp.json()['results']}"
+                f"[{task_id}] Alert sent to notification plugin with results: {resp.json()['results']}"
             )
             break
         except requests.RequestException as e:
@@ -485,7 +493,7 @@ def parse_detector_params(
     influxdb3_local, args: dict, detectors: list, task_id: str
 ) -> dict:
     """
-    Parse and validate detector parameters from args, expecting detector_params as a base64-encoded JSON string.
+    Parse and validate detector parameters from args, expecting detector_params as a base64-encoded JSON string or use values from config file.
 
     Args:
         influxdb3_local: InfluxDB client instance.
@@ -499,23 +507,32 @@ def parse_detector_params(
     Raises:
         Exception: If detector_params is not valid base64, contains invalid JSON, or is missing required parameters.
     """
-    base64_params: str = args["detector_params"]
-    try:
-        # Decode base64-encoded string
-        decoded_bytes: bytes = base64.b64decode(base64_params)
-        decoded_str: str = decoded_bytes.decode("utf-8")
-    except Exception:
-        raise Exception(
-            f"[{task_id}] Invalid base64 encoding in detector_params: {base64_params}"
-        )
+    input_params: str | dict = args["detector_params"]
 
-    try:
-        # Parse JSON from decoded string
-        params: dict = json.loads(decoded_str)
-    except json.JSONDecodeError:
-        raise Exception(
-            f"[{task_id}] Invalid JSON in decoded detector_params: {decoded_str}"
-        )
+    if args["use_config_file"]:
+        if isinstance(input_params, dict):
+            params: dict = input_params
+        else:
+            raise Exception(
+                f"[{task_id}] detector_params must be a dict when using config file"
+            )
+    else:
+        try:
+            # Decode base64-encoded string
+            decoded_bytes: bytes = base64.b64decode(input_params)
+            decoded_str: str = decoded_bytes.decode("utf-8")
+        except Exception:
+            raise Exception(
+                f"[{task_id}] Invalid base64 encoding in detector_params: {input_params}"
+            )
+
+        try:
+            # Parse JSON from decoded string
+            params: dict = json.loads(decoded_str)
+        except json.JSONDecodeError:
+            raise Exception(
+                f"[{task_id}] Invalid JSON in decoded detector_params: {decoded_str}"
+            )
 
     valid_params: dict = {}
     for detector in detectors[:]:
@@ -612,10 +629,13 @@ def process_scheduled_call(
                 influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
                 with open(file_path, "rb") as f:
                     args = tomllib.load(f)
+                    args["use_config_file"] = True
                 influxdb3_local.info(f"[{task_id}] New args content: {args}")
             except Exception:
                 influxdb3_local.error(f"[{task_id}] Failed to read config file")
                 return
+        else:
+            args["use_config_file"] = False
 
     if (
         not args
@@ -641,7 +661,11 @@ def process_scheduled_call(
             return
 
         field: str = args["field"]
-        detectors: list = args["detectors"].split(".")
+        detectors: list = (
+            args["detectors"].split(".")
+            if not args.get("use_config_file")
+            else args["detectors"]
+        )
         detector_params: dict = parse_detector_params(
             influxdb3_local, args, detectors, task_id
         )
@@ -657,19 +681,21 @@ def process_scheduled_call(
             "notification_text",
             "Anomaly detected in $table.$field with value $value by $detectors. Tags: $tags",
         )
-        influxdb3_auth_token: str = os.getenv("INFLUXDB3_AUTH_TOKEN") or args.get(
-            "influxdb3_auth_token"
+        influxdb3_auth_token: str = args.get("influxdb3_auth_token") or os.getenv(
+            "INFLUXDB3_AUTH_TOKEN"
         )
         if not influxdb3_auth_token:
             influxdb3_local.error(f"[{task_id}] Missing influxdb3_auth_token")
             return
 
         # Query data
+        tags: list = get_tag_names(influxdb3_local, measurement, task_id)
+        tags_clause: str = ", ".join([f'"{tag}"' for tag in tags])
         end_time: datetime = call_time
         start_time: datetime = end_time - window
         query: str = f"""
-                SELECT {field}, time
-                FROM {measurement}
+                SELECT "{field}", "time", {tags_clause}
+                FROM "{measurement}"
                 WHERE time >= $start_time AND time < $end_time
                 ORDER BY time
             """
@@ -677,7 +703,6 @@ def process_scheduled_call(
             query,
             {"start_time": start_time.isoformat(), "end_time": end_time.isoformat()},
         )
-
         if not result:
             influxdb3_local.info(
                 f"[{task_id}] No data found for {measurement}.{field} from {start_time} to {end_time}"
@@ -706,7 +731,8 @@ def process_scheduled_call(
                 )
                 detector_class = AVAILABLE_DETECTORS[detector_name]
                 detector = detector_class(**params)
-                detector.fit(series)
+                if detector_name not in ("ThresholdAD",):
+                    detector.fit(series)
                 anomalies: pd.Series = detector.detect(series)
                 anomaly_results.append(anomalies)
                 influxdb3_local.info(f"[{task_id}] Applied detector {detector_name}")
@@ -728,12 +754,11 @@ def process_scheduled_call(
         consensus_anomalies = consensus_anomalies.astype(bool)
 
         # Process anomalies with debounce logic
-        tags: list = get_tag_names(influxdb3_local, measurement, task_id)
         for idx, is_anomaly in consensus_anomalies.items():
             row: pd.Series = df[df["time"] == pd.Timestamp(idx.isoformat()).value].iloc[
                 0
             ]
-            time_datetime: datetime = pd.to_datetime(row["time"], unit='ns')
+            time_datetime: datetime = pd.to_datetime(row["time"], unit="ns")
             cache_key: str = generate_cache_key(measurement, field, tags, row)
             tag_str: str = ", ".join(f"{t}={row.get(t, 'None')}" for t in tags)
             start_time_str: str = influxdb3_local.cache.get(cache_key, default="")
@@ -742,9 +767,7 @@ def process_scheduled_call(
                 if not start_time_str:
                     if min_condition_duration > timedelta(0):
                         # Start of a new anomaly
-                        influxdb3_local.cache.put(
-                            cache_key, time_datetime.isoformat()
-                        )
+                        influxdb3_local.cache.put(cache_key, time_datetime.isoformat())
                         influxdb3_local.info(
                             f"[{task_id}] Anomaly started for {measurement}.{field} (tags: {tag_str}), waiting for duration {min_condition_duration}"
                         )
@@ -780,9 +803,7 @@ def process_scheduled_call(
                     duration_start_time: datetime = datetime.fromisoformat(
                         start_time_str
                     )
-                    elapsed: timedelta = (
-                        time_datetime - duration_start_time
-                    )
+                    elapsed: timedelta = time_datetime - duration_start_time
                     if elapsed >= min_condition_duration:
                         # Send notification
                         payload: dict = {

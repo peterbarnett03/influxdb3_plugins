@@ -393,7 +393,15 @@ def parse_senders(influxdb3_local, args: dict, task_id: str) -> dict:
     """
     senders_config: defaultdict = defaultdict(dict)
 
-    senders: list = args["senders"].split(".")
+    senders: str | list = args.get("senders")
+    if args["use_config_file"]:
+        if not isinstance(senders, list):
+            raise Exception(
+                f"[{task_id}] 'senders' must be a list when using config file"
+            )
+    else:
+        senders = senders.split(".")
+
     for sender in senders:
         if sender not in AVAILABLE_SENDERS:
             influxdb3_local.warn(f"[{task_id}] Invalid sender type: {sender}")
@@ -453,7 +461,7 @@ def send_notification(
             resp = requests.post(url, headers=headers, data=data, timeout=timeout)
             resp.raise_for_status()  # raises on 4xx/5xx
             influxdb3_local.info(
-                f"[{task_id}] Alert sent successfully to notification plugin with results: {resp.json()['results']}"
+                f"[{task_id}] Alert sent to notification plugin with results: {resp.json()['results']}"
             )
             break
         except requests.RequestException as e:
@@ -571,9 +579,9 @@ def parse_field_thresholds(
     influxdb3_local,
     args: dict,
     task_id: str,
-) -> list[tuple]:
+) -> list:
     """
-    Extracts and parses field threshold definitions from args and returns a list of tuples.
+    Extracts and parses field threshold definitions from args or use values from config file.
 
     Args:
         influxdb3_local: InfluxDB client instance.
@@ -599,7 +607,7 @@ def parse_field_thresholds(
         "w"   → "weeks"
 
     Returns:
-        A list of tuples (field_name, coerced_value, converted_third):
+        A list of lists [field_name, coerced_value, converted_third]:
           - coerced_value is int, float, bool, or str
           - converted_third is int or timedelta
 
@@ -609,8 +617,8 @@ def parse_field_thresholds(
         ... }
         parse_field_thresholds(args)
         [
-            ("temp", 30, 60),
-            ("humidity", True, datetime.timedelta(hours=2))
+            ["temp", 30, 60],
+            ["humidity", True, datetime.timedelta(hours=2)]
         ]
     """
     valid_units: dict[str, str] = {
@@ -621,10 +629,60 @@ def parse_field_thresholds(
         "w": "weeks",
     }
 
-    raw_input: str = args.get("field_thresholds")
+    raw_input: str | list = args.get("field_thresholds")
     results: list = []
-    segments: list = [seg.strip() for seg in raw_input.split("@") if seg.strip()]
 
+    if args["use_config_file"]:
+        if not isinstance(raw_input, list):
+            raise Exception(
+                "[{task_id}] field_thresholds must be a list while using config file"
+            )
+        for threshold in raw_input:
+            try:
+                field_name = str(threshold[0])
+                value = threshold[1]
+                duration: str | int = threshold[2]
+                if isinstance(duration, str):
+                    num_part, unit_part = "", ""
+                    for unit in sorted(valid_units.keys(), key=len, reverse=True):
+                        if duration.endswith(unit):
+                            num_part = duration[: -len(unit)]
+                            unit_part = unit
+                            break
+                    if not num_part or unit_part not in valid_units:
+                        influxdb3_local.warn(
+                            f"[{task_id}] Invalid duration format '{duration}'"
+                        )
+                        continue
+                    try:
+                        num = int(num_part)
+                    except ValueError:
+                        influxdb3_local.warn(
+                            f"[{task_id}] Invalid number in duration '{duration}'"
+                        )
+                        continue
+                    threshold_param: timedelta | int = timedelta(
+                        **{valid_units[unit_part]: num}
+                    )
+                elif isinstance(duration, int):
+                    threshold_param = duration
+                else:
+                    influxdb3_local.warn(
+                        f"[{task_id}] Invalid duration format '{duration}'"
+                    )
+                    continue
+                results.append([field_name, value, threshold_param])
+            except Exception:
+                influxdb3_local.warn(
+                    f"[{task_id}] Invalid duration definition: {threshold}, skipping"
+                )
+        if not results:
+            raise Exception(
+                f"[{task_id}] No valid field threshold segments found in {raw_input}"
+            )
+        return results
+
+    segments: list = [seg.strip() for seg in raw_input.split("@") if seg.strip()]
     for segment in segments:
         # Each segment must contain exactly two ':' characters
         if segment.count(":") != 2:
@@ -769,10 +827,13 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
                 influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
                 with open(file_path, "rb") as f:
                     args = tomllib.load(f)
+                    args["use_config_file"] = True
                 influxdb3_local.info(f"[{task_id}] New args content: {args}")
             except Exception:
                 influxdb3_local.error(f"[{task_id}] Failed to read config file")
                 return
+        else:
+            args["use_config_file"] = False
 
     if (
         not args
@@ -802,8 +863,8 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
         state_change_window: int = int(args.get("state_change_window", 1))
         state_change_count: int = int(args.get("state_change_count", 1))
         notification_path: str = args.get("notification_path", "notify")
-        influxdb3_auth_token: str = os.getenv(
-            "INFLUXDB3_AUTH_TOKEN", args.get("influxdb3_auth_token")
+        influxdb3_auth_token: str = args.get("influxdb3_auth_token") or os.getenv(
+            "INFLUXDB3_AUTH_TOKEN"
         )
         if influxdb3_auth_token is None:
             influxdb3_local.error(
@@ -1026,7 +1087,7 @@ def parse_field_change_count(
     influxdb3_local, args: dict, task_id: str
 ) -> dict[str, int]:
     """
-    Parses the 'field_change_count' parameter into a dictionary of field names and their change thresholds.
+    Parses the 'field_change_count' parameter into a dictionary of field names and their change thresholds or use values from config file.
 
     Args:
         influxdb3_local: InfluxDB client instance.
@@ -1039,9 +1100,16 @@ def parse_field_change_count(
     Raises:
         Exception: If the format is invalid or no valid fields are found.
     """
-    raw_input: str = args.get("field_change_count")
-
+    raw_input: str | dict = args.get("field_change_count")
     field_counts: dict = {}
+
+    if args["use_config_file"]:
+        if not isinstance(raw_input, dict):
+            raise Exception(
+                f"[{task_id}] field_change_count must be a dictionary when using config file"
+            )
+        return raw_input
+
     pairs: list = raw_input.split(".")
     for pair in pairs:
         if ":" not in pair:
@@ -1171,10 +1239,13 @@ def process_scheduled_call(
                 influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
                 with open(file_path, "rb") as f:
                     args = tomllib.load(f)
+                    args["use_config_file"] = True
                 influxdb3_local.info(f"[{task_id}] New args content: {args}")
             except Exception:
                 influxdb3_local.error(f"[{task_id}] Failed to read config file")
                 return
+        else:
+            args["use_config_file"] = False
 
     # Check for required arguments
     if (
@@ -1205,8 +1276,8 @@ def process_scheduled_call(
         window: timedelta = parse_window(args, task_id)
         notification_path: str = args.get("notification_path", "notify")
         port_override: int = parse_port_override(args, task_id)
-        influxdb3_auth_token: str = os.getenv(
-            "INFLUXDB3_AUTH_TOKEN", args.get("influxdb3_auth_token")
+        influxdb3_auth_token: str = args.get("influxdb3_auth_token") or os.getenv(
+            "INFLUXDB3_AUTH_TOKEN"
         )
         if influxdb3_auth_token is None:
             influxdb3_local.error(
