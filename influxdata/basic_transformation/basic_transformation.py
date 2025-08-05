@@ -694,10 +694,9 @@ def get_fields_names(influxdb3_local, measurement: str, task_id: str) -> list[st
     res: list[dict] = influxdb3_local.query(query, {"measurement": measurement})
 
     if not res:
-        influxdb3_local.info(
+        raise Exception(
             f"[{task_id}] No fields found for measurement '{measurement}'."
         )
-        return []
 
     field_names: list[str] = [field["column_name"] for field in res]
 

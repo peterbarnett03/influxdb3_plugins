@@ -1,92 +1,93 @@
-# MAD-Based Anomaly Detection Plugin Data Write Configuration Template
-# Copy this file to your PLUGIN_DIR and reference it with
-#   --trigger-arguments config_file_path=mad_anomaly_config_data_writes.toml
-
+# MAD-Based Anomaly Detection Plugin Configuration Template
+# Copy this file to your PLUGIN_DIR (e.g., /plugins) and reference it with
+#   --trigger-arguments config_file_path=<relative_path>
+# Example: If the file is at /plugins/configs/mad_anomaly_config_data_writes.toml, use
+#   config_file_path=configs/mad_anomaly_config_data_writes.toml
 
 ########## Required Parameters ##########
 # InfluxDB measurement (table) to monitor for anomalies
-measurement = "cpu"                   # e.g., "cpu", "temperature"
+# Specify the measurement name (string) from your source InfluxDB database
+measurement = "your_measurement"  # e.g., "cpu", "temperature", "home"
 
 # MAD threshold conditions for anomaly detection
-# Format: field:k:window_count:threshold
-#   - field: numeric field name
-#   - k: multiplier of MAD for cutoff
-#   - window_count: number of recent points to compute median and MAD
-#   - threshold: integer (count-based) or duration string (e.g., 2m) for duration-based triggering
-# Example: temp:2:20:5@load:'3.5':10:2m
-mad_thresholds = "temp:'2.5':20:5@load:'3.0':10:2m"
+# Format: [[field, k, window_count, threshold], ...]
+#   - field: numeric field name (string)
+#   - k: multiplier of MAD for cutoff (float)
+#   - window_count: number of recent points to compute median and MAD (integer)
+#   - threshold: integer (count-based) or duration string (e.g., "2m") for duration-based triggering
+# Supported units for duration: s (seconds), min (minutes), h (hours), d (days), w (weeks)
+mad_thresholds = [["field1", 2.0, 5, "your_threshold"]]  # e.g., [["temp", 2.0, 5, 1], ["load", 3.5, 10, "2m"]]
 
-# Notification channels (dot-separated list)
-senders = "slack.discord"            # e.g., "slack", "http.sms"
-
-
+# Notification channels
+# Specify a dot-separated list of notification channels (strings)
+senders = ["your_channel"]  # e.g., ["slack"], ["http", "sms"]
 
 ########## Optional Parameters ##########
-# InfluxDB 3 API token (can also be set via INFLUXDB3_AUTH_TOKEN env var)
-# influxdb3_auth_token = "YOUR_API_TOKEN"
+# InfluxDB 3 API token
+# Specify the token (string); can also be provided via INFLUXDB3_AUTH_TOKEN environment variable
+#influxdb3_auth_token = "your_api_token"  # e.g., "apiv3_AuHk_8LYFHTa1QMccT..."
 
 # Maximum allowed flips in recent values before suppressing notifications
-# state_change_count = 2                # default: 0 (disabled)
+# Specify an integer ≥ 0; default is 0 (disabled)
+#state_change_count = 2  # e.g., 2
 
 # Template for count-based notifications
-# Variables: $table, $field, $threshold_count, $tags
-# notification_count_text = "MAD count alert: $field on $table outlier for $threshold_count points. Tags: $tags"
+# Use variables: $table, $field, $threshold_count, $tags
+#notification_count_text = "your_count_notification_template"  # e.g., "MAD count alert: $field on $table outlier for $threshold_count points. Tags: $tags"
 
 # Template for duration-based notifications
-# Variables: $table, $field, $threshold_time, $tags
-# notification_time_text = "MAD duration alert: $field on $table outlier for $threshold_time. Tags: $tags"
+# Use variables: $table, $field, $threshold_time, $tags
+#notification_time_text = "your_time_notification_template"  # e.g., "MAD duration alert: $field on $table outlier for $threshold_time. Tags: $tags"
 
-# Custom URL path for Notification Sender plugin (default: "notify")
-# notification_path = "custom/notify"
+# Custom URL path for Notification Sender plugin
+# Specify a custom path (string); defaults to "notify" if omitted
+#notification_path = "your_notification_path"  # e.g., "custom/notify"
 
-# Override InfluxDB port (default: 8181)
-# port_override = 8182
-
-
+# Override InfluxDB port
+# Specify a port number (integer); defaults to 8181 if omitted
+#port_override = 8181  # e.g., 8183
 
 ########## Sender-Specific Settings ##########
-# For each channel listed in senders, uncomment and configure the following parameters:
+# For each channel listed in senders, uncomment and configure the relevant parameters below:
 
 # --- Slack ---
-# Webhook URL for Slack notifications (required)
-# slack_webhook_url = "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+# Webhook URL for Slack notifications (required for Slack)
+#slack_webhook_url = "your_slack_webhook_url"  # e.g., "https://hooks.slack.com/services/T06D4..."
 # Optional: Custom headers for Slack webhook (Base64-encoded JSON string)
-# slack_headers = "eyJIb3N0IjogImV4YW1wbGUuY29tIn0="
+#slack_headers = "your_slack_headers"  # e.g., "eyJIb3N0IjogImV4YW1wbGUuY29tIn0="
 
 # --- Discord ---
-# Webhook URL for Discord notifications (required)
-# discord_webhook_url = "https://discord.com/api/webhooks/AAA/BBB"
+# Webhook URL for Discord notifications (required for Discord)
+#discord_webhook_url = "your_discord_webhook_url"  # e.g., "https://discord.com/api/webhooks/AAA/BBB"
 # Optional: Custom headers for Discord webhook (Base64-encoded JSON string)
-# discord_headers = "eyJDb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIn0="
+#discord_headers = "your_discord_headers"  # e.g., "eyJDb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIn0="
 
 # --- HTTP ---
-# HTTP endpoint to send notifications (required)
-# http_webhook_url = "https://example.com/webhook"
+# HTTP endpoint to send notifications (required for HTTP)
+#http_webhook_url = "your_http_webhook_url"  # e.g., "https://example.com/webhook"
 # Optional: Custom HTTP headers (Base64-encoded JSON string)
-# http_headers = "eyJhdXRoIjogIkJlYXJlciBZT1VSX1RPS0VOIn0="
+#http_headers = "your_http_headers"  # e.g., "eyJhdXRoIjogIkJlYXJlciBZT1VSX1RPS0VOIn0="
 
 # --- SMS (Twilio) ---
-# Twilio Account SID (required, or via TWILIO_SID env var)
-# twilio_sid = "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-# Twilio Auth Token (required, or via TWILIO_TOKEN env var)
-# twilio_token = "your_auth_token"
-# Twilio sender number (required, format: +1234567890)
-# twilio_from_number = "+1234567890"
-# Recipient phone number (required, format: +0987654321)
-# twilio_to_number = "+0987654321"
+# Twilio Account SID (required for SMS, or via TWILIO_SID env var)
+#twilio_sid = "your_twilio_sid"  # e.g., "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+# Twilio Auth Token (required for SMS, or via TWILIO_TOKEN env var)
+#twilio_token = "your_twilio_token"  # e.g., "your_auth_token"
+# Twilio sender number (required for SMS, format: +1234567890)
+#twilio_from_number = "your_twilio_from_number"  # e.g., "+1234567890"
+# Recipient phone number (required for SMS, format: +0987654321)
+#twilio_to_number = "your_twilio_to_number"  # e.g., "+0987654321"
 
 # --- WhatsApp (via Twilio) ---
-# WhatsApp sender number (required, format: +1234567890)
-# whatsapp_from_number = "+1234567890"
-# WhatsApp recipient number (required, format: +0987654321)
-# whatsapp_to_number = "+0987654321"
-
-
+# WhatsApp sender number (required for WhatsApp, format: +1234567890)
+#whatsapp_from_number = "your_whatsapp_from_number"  # e.g., "+1234567890"
+# WhatsApp recipient number (required for WhatsApp, format: +0987654321)
+#whatsapp_to_number = "your_whatsapp_to_number"  # e.g., "+0987654321"
 
 ###### Example: Create Trigger Using This Config ######
 # influxdb3 create trigger \
-#   --database mydb \
+#   --database your_database_name \
 #   --plugin-filename mad_check_plugin.py \
 #   --trigger-spec "all_tables" \
 #   --trigger-arguments config_file_path=mad_anomaly_config_data_writes.toml \
-#   mad_anomaly_trigger
+#   your_trigger_name

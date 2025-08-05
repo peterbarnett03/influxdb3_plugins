@@ -283,7 +283,15 @@ def parse_senders(influxdb3_local, args: dict, task_id: str) -> dict:
     """
     senders_config: defaultdict = defaultdict(dict)
 
-    senders: list = args["senders"].split(".")
+    senders: str | list = args.get("senders")
+    if args["use_config_file"]:
+        if not isinstance(senders, list):
+            raise Exception(
+                f"[{task_id}] 'senders' must be a list when using config file"
+            )
+    else:
+        senders = senders.split(".")
+
     for sender in senders:
         if sender not in AVAILABLE_SENDERS:
             influxdb3_local.warn(f"[{task_id}] Invalid sender type: {sender}")
@@ -343,7 +351,7 @@ def send_notification(
             resp = requests.post(url, headers=headers, data=data, timeout=timeout)
             resp.raise_for_status()  # raises on 4xx/5xx
             influxdb3_local.info(
-                f"[{task_id}] Alert sent successfully to notification plugin with results: {resp.json()['results']}"
+                f"[{task_id}] Alert sent to notification plugin with results: {resp.json()['results']}"
             )
             break
         except requests.RequestException as e:
@@ -459,7 +467,7 @@ def _coerce_value(raw: str) -> str | int | float | bool:
 
 def parse_mad_thresholds(influxdb3_local, args: dict, task_id: str) -> list[tuple]:
     """
-    Parse MAD-based threshold definitions from args into structured tuples.
+    Parse MAD-based threshold definitions from args into structured tuples or use values from config file.
 
     Args:
         influxdb3_local: InfluxDB client for logging.
@@ -477,8 +485,8 @@ def parse_mad_thresholds(influxdb3_local, args: dict, task_id: str) -> list[tupl
             • If duration string (e.g., "2m", "30s") → duration-based.
 
     Returns:
-        list[tuple[str, float, int, int|timedelta]]:
-            Each tuple: (field_name, k, window_count, threshold_param).
+        list[list[str, float, int, int|timedelta]]:
+            Each list: [field_name, k, window_count, threshold_param].
 
     Raises:
         Exception: If no valid segments are parsed.
@@ -490,10 +498,55 @@ def parse_mad_thresholds(influxdb3_local, args: dict, task_id: str) -> list[tupl
         "d": "days",
         "w": "weeks",
     }
-    raw_input: str = args.get("mad_thresholds")
-    results: list[tuple] = []
-    segments: list = [seg.strip() for seg in raw_input.split("@") if seg.strip()]
+    raw_input: str | list = args.get("mad_thresholds")
+    results: list = []
 
+    if args["use_config_file"]:
+        if not isinstance(raw_input, list):
+            raise Exception(
+                f"[{task_id}] 'mad_thresholds' must be a list when using config file"
+            )
+        for threshold in raw_input:
+            try:
+                field_name: str = str(threshold[0])
+                k: float = float(threshold[1])
+                window_count: int = int(threshold[2])
+                threshold_input: int | str = threshold[3]
+                if isinstance(threshold_input, str):
+                    num_part, unit_part = "", ""
+                    for unit in sorted(valid_units.keys(), key=len, reverse=True):
+                        if threshold_input.endswith(unit):
+                            num_part = threshold_input[: -len(unit)]
+                            unit_part = unit
+                            break
+                    if not num_part or unit_part not in valid_units:
+                        influxdb3_local.warn(
+                            f"[{task_id}] Invalid threshold format '{threshold_input}'"
+                        )
+                        continue
+                    try:
+                        num = int(num_part)
+                    except ValueError:
+                        influxdb3_local.warn(
+                            f"[{task_id}] Invalid number in threshold '{threshold_input}'"
+                        )
+                        continue
+                    threshold_param = timedelta(**{valid_units[unit_part]: num})
+                elif isinstance(threshold_input, int):
+                    threshold_param = threshold_input
+                else:
+                    influxdb3_local.warn(
+                        f"[{task_id}] Invalid threshold format '{threshold_input}'"
+                    )
+                    continue
+                results.append([field_name, k, window_count, threshold_param])
+            except Exception:
+                influxdb3_local.warn(
+                    f"[{task_id}] Invalid threshold definition: {threshold}, skipping"
+                )
+        return results
+
+    segments: list = [seg.strip() for seg in raw_input.split("@") if seg.strip()]
     for seg in segments:
         parts = seg.split(":")
         if len(parts) != 4:
@@ -542,7 +595,7 @@ def parse_mad_thresholds(influxdb3_local, args: dict, task_id: str) -> list[tupl
                 continue
             threshold_param = timedelta(**{valid_units[unit_part]: num})
 
-        results.append((field_name, k, window_count, threshold_param))
+        results.append([field_name, k, window_count, threshold_param])
 
     if not results:
         raise Exception(f"[{task_id}] No valid MAD threshold segments in '{raw_input}'")
@@ -623,10 +676,13 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
                 influxdb3_local.info(f"[{task_id}] Reading config file {file_path}")
                 with open(file_path, "rb") as f:
                     args = tomllib.load(f)
+                    args["use_config_file"] = True
                 influxdb3_local.info(f"[{task_id}] New args content: {args}")
             except Exception:
                 influxdb3_local.error(f"[{task_id}] Failed to read config file")
                 return
+        else:
+            args["use_config_file"] = False
 
     if (
         not args
@@ -653,8 +709,8 @@ def process_writes(influxdb3_local, table_batches: list, args: dict | None = Non
         port_override: int = parse_port_override(args, task_id)
         state_change_count: int = int(args.get("state_change_count", 0))
         notification_path: str = args.get("notification_path", "notify")
-        influxdb3_auth_token: str = os.getenv("INFLUXDB3_AUTH_TOKEN") or args.get(
-            "influxdb3_auth_token"
+        influxdb3_auth_token: str = args.get("influxdb3_auth_token") or os.getenv(
+            "INFLUXDB3_AUTH_TOKEN"
         )
         if not influxdb3_auth_token:
             influxdb3_local.error(f"[{task_id}] Missing influxdb3_auth_token")

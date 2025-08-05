@@ -326,7 +326,7 @@ def send_notification(
             resp = requests.post(url, headers=headers, data=data, timeout=timeout)
             resp.raise_for_status()  # raises on 4xx/5xx
             influxdb3_local.info(
-                f"[{task_id}] Alert sent successfully to notification plugin with results: {resp.json()['results']}"
+                f"[{task_id}] Alert sent to notification plugin with results: {resp.json()['results']}"
             )
             break
         except requests.RequestException as e:
@@ -572,12 +572,12 @@ def generate_query(
         str: Formatted InfluxDB query string.
     """
     # If tags is None or empty, default to selecting only time and field
-    select_clause = f"time, {field}"
+    select_clause = f'time, "{field}"'
     if tags:
         # Add tags to the SELECT clause, ensuring proper escaping
         select_clause += ", " + ", ".join([f"{tag}" for tag in tags])
 
-    return f"SELECT {select_clause} FROM {measurement} WHERE time >= '{start_time.isoformat()}' AND time < '{end_time.isoformat()}' ORDER BY time"
+    return f"SELECT {select_clause} FROM '{measurement}' WHERE time >= '{start_time.isoformat()}' AND time < '{end_time.isoformat()}' ORDER BY time"
 
 
 def process_scheduled_call(
@@ -689,9 +689,9 @@ def process_scheduled_call(
         min_condition_duration: timedelta = parse_time_duration(
             args.get("min_condition_duration", "0s"), task_id
         )
-        influxdb3_auth_token: str | None = os.getenv(
+        influxdb3_auth_token: str | None = args.get("influxdb3_auth_token") or os.getenv(
             "INFLUXDB3_AUTH_TOKEN"
-        ) or args.get("influxdb3_auth_token")
+        )
         if not influxdb3_auth_token:
             influxdb3_local.error(f"[{task_id}] Missing influxdb3_auth_token")
             return
