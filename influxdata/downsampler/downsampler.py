@@ -1120,7 +1120,7 @@ def process_scheduled_call(
         max_retries: int = parse_max_retries(args)
         offset: timedelta = parse_offset(args, task_id)
         window: timedelta = parse_window(args, task_id)
-        call_time_: datetime = call_time.replace(tzinfo=timezone.utc)
+        call_time_: datetime = call_time.astimezone(timezone.utc)
 
         real_now: datetime = call_time_ - offset
         real_then: datetime = real_now - window
