@@ -85,6 +85,7 @@ def collect_cpu_metrics(influxdb3_local, hostname, task_id):
         .float64_field("load5", load_avg[1])\
         .float64_field("load15", load_avg[2])
     influxdb3_local.write(line)
+    influxdb3_local.info("Wrote from custom repo!")
     
     # Per CPU core metrics
     try:
